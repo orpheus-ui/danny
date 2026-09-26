@@ -25,11 +25,11 @@ Danny is an open-source video downloader for macOS, inspired by [Downie](https:/
 ## Build
 
 ```bash
-brew install xcodegen          # generates the Xcode project
-./scripts/build-assets.sh      # builds the asset catalog
-xcodegen generate
-open Danny.xcodeproj           # ⌘R to run
+make bootstrap   # tools (Homebrew), git hooks, asset catalog, Xcode project
+make run         # build and launch
 ```
+
+`make help` lists every command; `open Danny.xcodeproj` works too once it's generated.
 
 ### Dependencies
 
@@ -47,6 +47,11 @@ Danny looks for `yt-dlp` and `ffmpeg` in this order:
 - **⌘⇧V** — paste and download from anywhere
 - **Browser Capture** (globe icon or ⌘⇧B) — for sites where extraction fails. Browse, play the video, then pick the stream from the sidebar. The first launch asks for your consent
 - **⌘N** — enter a URL manually · **⌘, ** — settings (save folder, concurrency, clipboard watching)
+
+## Contributing
+
+Bug fixes, design polish and (from M2) plugins are welcome — start with
+[CONTRIBUTING.md](CONTRIBUTING.md). What's planned: [docs/roadmap.md](docs/roadmap.md).
 
 ## Legal
 

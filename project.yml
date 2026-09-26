@@ -1,0 +1,58 @@
+name: Danny
+options:
+  bundleIdPrefix: app.danny
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+
+targets:
+  Danny:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources
+      - path: Resources/Assets.xcassets
+      - path: Resources/bin
+        type: folder
+        buildPhase: resources
+    info:
+      path: Sources/Support/Info.plist
+      properties:
+        CFBundleDisplayName: Danny
+        CFBundleName: Danny
+        LSApplicationCategoryType: public.app-category.utilities
+        NSHumanReadableCopyright: MIT License. Danny is not affiliated with YouTube, X, or Instagram.
+        LSMinimumSystemVersion: "14.0"
+        NSPrincipalClass: NSApplication
+        NSHighResolutionCapable: true
+        NSSupportsAutomaticGraphicsSwitching: true
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.danny.desktop
+        PRODUCT_NAME: Danny
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        COMBINE_HIDPI_IMAGES: YES
+        INFOPLIST_KEY_LSUIElement: NO
+
+schemes:
+  Danny:
+    build:
+      targets:
+        Danny: all
+    run:
+      config: Debug

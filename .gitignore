@@ -1,0 +1,13 @@
+.DS_Store
+*.xcodeproj
+DerivedData/
+xcuserdata/
+*.xcuserstate
+build/
+
+Resources/bin/*
+!Resources/bin/.gitkeep
+
+*.ipa
+*.dmg
+*.app

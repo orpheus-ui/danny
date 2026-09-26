@@ -12,7 +12,7 @@ func renderIcon(side: CGFloat) -> CGImage {
         data: nil, width: Int(side), height: Int(side),
         bitsPerComponent: 8, bytesPerRow: 0,
         space: CGColorSpace(name: CGColorSpace.sRGB)!,
-        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue,
     )!
 
     let s = side
@@ -36,12 +36,14 @@ func renderIcon(side: CGFloat) -> CGImage {
     ] as CFArray, locations: [0, 1])!
     ctx.drawRadialGradient(
         glow, startCenter: glowCenter, startRadius: 0,
-        endCenter: glowCenter, endRadius: s * 0.55, options: [])
+        endCenter: glowCenter, endRadius: s * 0.55, options: [],
+    )
 
     let chipSide = s * 0.52
     let chipRect = CGRect(
         x: (s - chipSide) / 2, y: (s - chipSide) / 2 - s * 0.01,
-        width: chipSide, height: chipSide)
+        width: chipSide, height: chipSide,
+    )
     let chipRadius = chipSide * 0.28
     ctx.saveGState()
     ctx.addPath(CGPath(roundedRect: chipRect, cornerWidth: chipRadius, cornerHeight: chipRadius, transform: nil))
@@ -53,7 +55,8 @@ func renderIcon(side: CGFloat) -> CGImage {
     ctx.drawLinearGradient(
         chip,
         start: CGPoint(x: chipRect.minX, y: chipRect.maxY),
-        end: CGPoint(x: chipRect.maxX, y: chipRect.minY), options: [])
+        end: CGPoint(x: chipRect.maxX, y: chipRect.minY), options: [],
+    )
     ctx.restoreGState()
 
     let white = CGColor(red: 1, green: 1, blue: 1, alpha: 1)
@@ -78,7 +81,12 @@ func renderIcon(side: CGFloat) -> CGImage {
     let trayY = chipRect.minY + chipSide * 0.16
     let trayHalf = chipSide * 0.21
     let trayLine = CGRect(x: cx - trayHalf, y: trayY, width: trayHalf * 2, height: shaftHalf * 1.6)
-    let trayPath = CGPath(roundedRect: trayLine, cornerWidth: shaftHalf * 0.8, cornerHeight: shaftHalf * 0.8, transform: nil)
+    let trayPath = CGPath(
+        roundedRect: trayLine,
+        cornerWidth: shaftHalf * 0.8,
+        cornerHeight: shaftHalf * 0.8,
+        transform: nil,
+    )
     ctx.addPath(trayPath)
     ctx.fillPath()
 

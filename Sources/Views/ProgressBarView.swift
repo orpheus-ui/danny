@@ -86,7 +86,9 @@ struct ProgressBarView: View {
     }
 
     private func labelX(fillWidth edge: CGFloat, totalWidth: CGFloat) -> CGFloat {
-        if item.status == .finished || item.status == .failed || item.status == .processing || item.status == .resolving {
+        if item.status == .finished || item.status == .failed || item.status == .processing || item
+            .status == .resolving
+        {
             return totalWidth / 2
         }
         let half: CGFloat = 55
@@ -96,17 +98,17 @@ struct ProgressBarView: View {
     private var label: String? {
         switch item.status {
         case .queued:
-            return nil
+            nil
         case .resolving:
-            return "Fetching…"
+            "Fetching…"
         case .downloading:
-            return progressLabel
+            progressLabel
         case .processing:
-            return "Merging…"
+            "Merging…"
         case .finished:
-            return "Done :)"
+            "Done :)"
         case .failed:
-            return "Failed :("
+            "Failed :("
         }
     }
 

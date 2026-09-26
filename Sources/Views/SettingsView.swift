@@ -11,9 +11,12 @@ struct SettingsView: View {
         return Form {
             Section("Engine") {
                 LabeledContent("Download engine", value: engineStatus)
-                Text("YouTube and other sites change constantly. If downloads fail with HTTP 403, update yt-dlp: `brew upgrade yt-dlp`.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text("""
+                YouTube and other sites change constantly. If downloads fail with HTTP 403, \
+                update yt-dlp: `brew upgrade yt-dlp`.
+                """)
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
 
             Section("Downloads") {
@@ -27,8 +30,11 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                     Button("Choose…") { chooseFolder() }
                 }
-                Stepper("Simultaneous downloads: \(settings.maxConcurrentDownloads)",
-                        value: $settings.maxConcurrentDownloads, in: 1...6)
+                Stepper(
+                    "Simultaneous downloads: \(settings.maxConcurrentDownloads)",
+                    value: $settings.maxConcurrentDownloads,
+                    in: 1 ... 6,
+                )
             }
 
             Section("Clipboard") {
@@ -40,9 +46,12 @@ struct SettingsView: View {
 
             Section("Browser capture") {
                 Toggle("Consent granted", isOn: $settings.browserConsentGiven)
-                Text("The capture browser watches network traffic in its own window so you can pick streams Danny couldn't extract on its own.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text("""
+                The capture browser watches network traffic in its own window so you can pick \
+                streams Danny couldn't extract on its own.
+                """)
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

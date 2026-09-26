@@ -31,7 +31,11 @@ struct MainWindow: View {
             }
             Button("Not Now", role: .cancel) {}
         } message: {
-            Text("Danny will open a built-in browser window. While you browse, it lists every video file and HLS stream it detects, so you can pick one to download. Only use this with content you have permission to download.")
+            Text("""
+            Danny will open a built-in browser window. While you browse, it lists every video \
+            file and HLS stream it detects, so you can pick one to download. Only use this with \
+            content you have permission to download.
+            """)
         }
         .sheet(isPresented: $manager.pendingManualAdd) {
             AddURLSheet(url: $manualURL) { url in
@@ -56,7 +60,8 @@ struct MainWindow: View {
                             onCancel: { manager.cancel(id: item.id) },
                             onRetry: { manager.retry(id: item.id) },
                             onReveal: { manager.revealInFinder(id: item.id) },
-                            onBrowserCapture: { requestBrowser(url: item.sourceURL) })
+                            onBrowserCapture: { requestBrowser(url: item.sourceURL) },
+                        )
                     }
                     if manager.visibleItems.isEmpty {
                         emptyState
@@ -71,7 +76,8 @@ struct MainWindow: View {
                 sortOrder: $manager.sortOrder,
                 onBrowser: { requestBrowser(url: nil) },
                 onPaste: pasteFromClipboard,
-                onEnterURL: { manager.pendingManualAdd = true })
+                onEnterURL: { manager.pendingManualAdd = true },
+            )
         }
     }
 

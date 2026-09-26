@@ -1,6 +1,6 @@
 import Foundation
 
-struct PersistenceStore {
+enum PersistenceStore {
     static func historyURL() -> URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser

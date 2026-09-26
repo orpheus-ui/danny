@@ -18,7 +18,7 @@ Danny is an open-source video downloader for macOS, inspired by [Downie](https:/
 
 ## Requirements
 
-- macOS 14 Sonoma or newer (Liquid Glass effects on macOS 26+)
+- macOS 26 Tahoe or newer — Danny is built on Liquid Glass
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [ffmpeg](https://ffmpeg.org) for downloading and merging streams
 - Xcode 26 to build from source
 

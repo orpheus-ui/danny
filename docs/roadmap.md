@@ -15,7 +15,7 @@ a plan in [plans/](plans/) says *how* for anything bigger than a PR.
 - [x] `make` targets, Brewfile, pre-push hook, PR template
 - [x] CI: lint + tests on macOS runners, Conventional Commit PR titles
 - [x] Docs: product, roadmap, decisions, architecture, engineering, backlog, contributing
-- [ ] macOS 26 baseline — raise the deployment target, remove `#available` fallbacks (ADR-002)
+- [x] macOS 26 baseline — deployment target raised, `#available` fallbacks removed (ADR-002)
 - [ ] GitHub: branch protection on `main` and `development`, `development` as default branch
 
 ## M1 — Match the design

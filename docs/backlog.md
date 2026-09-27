@@ -39,4 +39,6 @@ its own PR, delete it from here when it merges.
   (bundled copy + update check) instead of asking users to run `brew upgrade`.
 - **Pause/resume** of a download (needs the M1 Paused state and engine support).
 - **UI snapshot tests** for every card state (M1).
-- **Release pipeline** — signing, notarization, Sparkle updates, Homebrew cask (M4).
+- **App size.** The DMG is ~104 MB, almost all of it the universal ffmpeg and
+  yt-dlp. Options: download them on first run instead of bundling, or a smaller
+  ffmpeg build with only the codecs merging needs.

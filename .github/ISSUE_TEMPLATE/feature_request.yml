@@ -1,0 +1,21 @@
+name: Feature request
+description: An idea for Danny
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The problem or situation, before any solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help?
+      description: How you imagine it working. Sketches welcome.
+  - type: markdown
+    attributes:
+      value: |
+        Check [the roadmap](https://github.com/orpheus-ui/danny/blob/development/docs/roadmap.md)
+        first — it may already be planned.

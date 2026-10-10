@@ -56,8 +56,8 @@ Actions*). The workflow picks them up automatically; nothing else changes.
 
 Everything is hardened-runtime signed, inside out: the bundled `yt-dlp` and `ffmpeg`
 first (with `scripts/helper.entitlements`, because yt-dlp is a PyInstaller build that
-loads its own Python libraries), then the app, then the DMG. Both the app and the DMG
-are notarized and stapled, so they open offline.
+loads its own Python libraries), then the app, then the DMG. With the notary key as
+well, the app and the DMG are notarized and stapled, so they open offline.
 
 ## Installing an unsigned build
 

@@ -58,6 +58,10 @@ cmd_notarize() {
     echo "⚠ No notary credentials — skipping notarization of $(basename "$target")"
     return
   fi
+  if ! signed; then # Apple rejects ad-hoc signatures; fail here, not after the upload
+    echo "✗ Notarization needs a Developer ID signature — set DEVELOPER_ID too (docs/releasing.md)" >&2
+    exit 1
+  fi
   local submission="$target"
   if [ "${target##*.}" = "app" ]; then
     submission="$OUT/notarize.zip"
@@ -94,12 +98,13 @@ cmd_checksums() {
 
 # Release notes: commits since the last release, grouped by git-cliff (cliff.toml).
 cmd_notes() {
-  local v
+  local v banner="Unsigned build"
   v=$(version)
+  if signed; then banner="Unnotarized build"; fi
   {
     if ! notarizing; then
-      cat <<'EOF'
-> **Unsigned build.** macOS will block the first launch. Open it once, then go to
+      cat <<EOF
+> **$banner.** macOS will block the first launch. Open it once, then go to
 > **System Settings → Privacy & Security** and click **Open Anyway**.
 > Details: docs/releasing.md#installing-an-unsigned-build
 

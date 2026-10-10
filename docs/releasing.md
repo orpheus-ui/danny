@@ -54,10 +54,26 @@ Actions*). The workflow picks them up automatically; nothing else changes.
 | `NOTARY_KEY_ID` | that key's ID |
 | `NOTARY_ISSUER_ID` | the issuer ID shown above the keys list |
 
-Everything is hardened-runtime signed, inside out: the bundled `yt-dlp` and `ffmpeg`
-first (with `scripts/helper.entitlements`, because yt-dlp is a PyInstaller build that
-loads its own Python libraries), then the app, then the DMG. With the notary key as
+Everything is hardened-runtime signed, inside out: the bundled `yt-dlp`, `ffmpeg` and
+`ffprobe` first (with `scripts/helper.entitlements`, because yt-dlp is a PyInstaller build
+that loads its own Python libraries), then the app, then the DMG. With the notary key as
 well, the app and the DMG are notarized and stapled, so they open offline.
+
+## Bundled tools
+
+`scripts/fetch-dependencies.sh` fills `Resources/bin`, which ships as
+`Danny.app/Contents/Resources/bin`:
+
+- **yt-dlp** — the pinned universal release, verified against yt-dlp's published checksums.
+- **ffmpeg and ffprobe** — built from the pinned source by `scripts/build-ffmpeg.sh`:
+  universal, LGPL only, and only the parts yt-dlp uses (ADR-013). A build takes a
+  couple of minutes; CI caches it by the script's hash. Every build, cached or not,
+  must pass `scripts/check-ffmpeg.sh`, which runs yt-dlp's ffmpeg commands on
+  `Tests/Fixtures/media`. Their license texts and source go in `bin/licenses`.
+
+Bumping a version is its own PR: change the version and checksum, then `make package`.
+When yt-dlp starts asking ffmpeg for something new, add it to `build-ffmpeg.sh` and a
+case to `check-ffmpeg.sh` in the same PR.
 
 ## Installing an unsigned build
 

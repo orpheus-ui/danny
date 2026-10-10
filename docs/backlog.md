@@ -39,6 +39,9 @@ its own PR, delete it from here when it merges.
   (bundled copy + update check) instead of asking users to run `brew upgrade`.
 - **Pause/resume** of a download (needs the M1 Paused state and engine support).
 - **UI snapshot tests** for every card state (M1).
-- **App size.** The DMG is ~104 MB, almost all of it the universal ffmpeg and
-  yt-dlp. Options: download them on first run instead of bundling, or a smaller
-  ffmpeg build with only the codecs merging needs.
+- **App size.** The bundled tools are most of the app: yt-dlp's PyInstaller binary
+  (37 MB, universal), and ffmpeg and ffprobe at 17 MB each now that they're built
+  for Danny (ADR-013; the old static ffmpeg alone was 161 MB). Options: download
+  yt-dlp on first run instead of bundling it (it needs updating weekly anyway, see
+  above), or one copy of the ffmpeg libraries shared by both tools instead of two
+  static ones.

@@ -17,6 +17,9 @@ on:
     paths:
       - scripts/release.sh
       - scripts/fetch-dependencies.sh
+      - scripts/build-ffmpeg.sh
+      - scripts/check-ffmpeg.sh
+      - Tests/Fixtures/media/**
       - scripts/helper.entitlements
       - .github/workflows/release.yml
       - project.yml
@@ -56,6 +59,15 @@ jobs:
 
       - name: Tools
         run: brew install xcodegen xcbeautify git-cliff
+
+      # ffmpeg is built from source (scripts/build-ffmpeg.sh). The key is the build
+      # script's hash, so a cached build is always the one the script would make;
+      # the script runs scripts/check-ffmpeg.sh on it either way.
+      - name: Cache the ffmpeg build
+        uses: actions/cache@v4
+        with:
+          path: build/deps
+          key: ffmpeg-${{ hashFiles('scripts/build-ffmpeg.sh') }}
 
       - name: Bundle yt-dlp and ffmpeg (pinned, checksum-verified)
         run: scripts/fetch-dependencies.sh

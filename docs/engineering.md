@@ -69,6 +69,9 @@ big-bang rewrites.
 - New behavior ships with tests. A bug fix starts with a test that fails on the old code.
 - Pure logic (parsers, formatters, the queue) gets unit tests; UI states get
   snapshot tests from M1.
+- The bundled ffmpeg has its own check: `scripts/check-ffmpeg.sh` runs the commands
+  yt-dlp gives ffmpeg on the synthetic files in `Tests/Fixtures/media`, and every
+  build must pass it (ADR-013). Something new asked of ffmpeg gets a case there.
 
 ## Keep the machine cool
 

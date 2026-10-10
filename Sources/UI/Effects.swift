@@ -2,8 +2,8 @@ import AppKit
 import SwiftUI
 
 struct WindowConfigurator: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView { WindowConfiguratorView() }
-    func updateNSView(_ nsView: NSView, context: Context) {}
+    func makeNSView(context _: Context) -> NSView { WindowConfiguratorView() }
+    func updateNSView(_: NSView, context _: Context) {}
 }
 
 extension View {
@@ -24,7 +24,7 @@ private final class WindowConfiguratorView: NSView {
 }
 
 struct VisualEffectBackground: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSVisualEffectView {
+    func makeNSView(context _: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
         view.material = .underWindowBackground
         view.blendingMode = .behindWindow
@@ -32,7 +32,7 @@ struct VisualEffectBackground: NSViewRepresentable {
         return view
     }
 
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
+    func updateNSView(_: NSVisualEffectView, context _: Context) {}
 }
 
 struct LiquidWindowBackground: View {
@@ -70,12 +70,11 @@ private struct DannyGlassModifier<S: Shape>: ViewModifier {
 }
 
 extension View {
-    @ViewBuilder
-    func dannyGlass<S: Shape>(
+    func dannyGlass(
         tint: Color = D.glassTint,
-        in shape: S,
+        in shape: some Shape,
         interactive: Bool = false,
-        fallback: Material = .ultraThinMaterial
+        fallback: Material = .ultraThinMaterial,
     ) -> some View {
         modifier(DannyGlassModifier(tint: tint, shape: shape, interactive: interactive, fallback: fallback))
     }

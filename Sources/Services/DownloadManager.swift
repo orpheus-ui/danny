@@ -20,7 +20,7 @@ final class DownloadManager {
     private var saveDebounce: Task<Void, Never>?
 
     var activeCount: Int {
-        items.filter { $0.status.isActive }.count
+        items.filter(\.status.isActive).count
     }
 
     var visibleItems: [DownloadItem] {
@@ -141,7 +141,7 @@ final class DownloadManager {
         items[index].errorMessage = nil
         let task = Task { [weak self] in
             guard let self else { return }
-            await self.run(itemID: item.id)
+            await run(itemID: item.id)
         }
         runningTasks[item.id] = task
     }
@@ -156,13 +156,20 @@ final class DownloadManager {
         let url = items[index].sourceURL
 
         guard binaries.ytdlp.fileExistsAsExecutable else {
-            fail(itemID: itemID, message: "yt-dlp not found. Install with `brew install yt-dlp ffmpeg` or run scripts/fetch-dependencies.sh.")
+            fail(
+                itemID: itemID,
+                message: """
+                yt-dlp not found. Install with `brew install yt-dlp ffmpeg` \
+                or run scripts/fetch-dependencies.sh.
+                """,
+            )
             return
         }
 
         do {
             let metadata = try await client.probe(url: url, binaries: binaries)
-            guard let index = items.firstIndex(where: { $0.id == itemID }), items[index].status == .resolving else { return }
+            guard let index = items.firstIndex(where: { $0.id == itemID }),
+                  items[index].status == .resolving else { return }
             items[index].title = metadata.title.isEmpty ? items[index].title : metadata.title
             items[index].resolution = metadata.resolutionLabel
             items[index].totalBytes = metadata.filesizeApprox
@@ -173,11 +180,13 @@ final class DownloadManager {
             do {
                 path = try await downloadPhase(itemID: itemID, url: url, extraArguments: [])
             } catch let error as YTDLPError
-            where !fallbackAttempted.contains(itemID) && Self.shouldRetryWithFallback(error.message) {
+                where !fallbackAttempted.contains(itemID) && Self.shouldRetryWithFallback(error.message)
+            {
                 fallbackAttempted.insert(itemID)
                 path = try await downloadPhase(
                     itemID: itemID, url: url,
-                    extraArguments: ["--extractor-args", "youtube:player_client=ios"])
+                    extraArguments: ["--extractor-args", "youtube:player_client=ios"],
+                )
             }
 
             guard let index = items.firstIndex(where: { $0.id == itemID }) else { return }
@@ -200,8 +209,8 @@ final class DownloadManager {
         let directory = settings.downloadDirectory.appendingPathComponent("Danny", isDirectory: true)
         var finalPath: String?
         for try await event in client.downloadStream(
-            url: url, into: directory, binaries: binaries, extraArguments: extraArguments)
-        {
+            url: url, into: directory, binaries: binaries, extraArguments: extraArguments,
+        ) {
             guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
             switch event {
             case let .progress(downloaded, total, speed):
@@ -229,7 +238,7 @@ final class DownloadManager {
             || lowered.contains("sign in to confirm")
     }
 
-    private static func hinted(_ message: String, url: URL) -> String {
+    private static func hinted(_ message: String, url _: URL) -> String {
         let lowered = message.lowercased()
         if lowered.contains("403") || lowered.contains("confirm you") {
             return message + "\nThis usually means yt-dlp needs an update: run `brew upgrade yt-dlp` and retry."
@@ -240,7 +249,7 @@ final class DownloadManager {
     func toolVersions() async -> String {
         async let ytdlpVersion = client.version(binaries: binaries)
         let ffmpegInstalled = binaries.ffmpegDirectory != nil
-        let ytdlpText = (await ytdlpVersion) ?? "not found"
+        let ytdlpText = await (ytdlpVersion) ?? "not found"
         return "yt-dlp \(ytdlpText) · ffmpeg \(ffmpegInstalled ? "found" : "missing")"
     }
 

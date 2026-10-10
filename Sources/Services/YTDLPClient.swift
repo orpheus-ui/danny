@@ -24,8 +24,8 @@ nonisolated struct VideoMetadata: Decodable {
     }
 
     var resolutionLabel: String? {
-        if let width, let height, width > 0, height > 0 { "\(width)x\(height)" }
-        else { nil }
+        guard let width, let height, width > 0, height > 0 else { return nil }
+        return "\(width)x\(height)"
     }
 }
 
@@ -85,7 +85,8 @@ nonisolated struct YTDLPClient: Sendable {
     func probe(url: URL, binaries: Binaries) async throws -> VideoMetadata {
         let output = try await runProcess(
             binaries.ytdlp,
-            ["-J", "--no-warnings", "--no-playlist", "--skip-download", url.absoluteString])
+            ["-J", "--no-warnings", "--no-playlist", "--skip-download", url.absoluteString],
+        )
         guard let data = output.data(using: .utf8),
               let metadata = try? JSONDecoder().decode(VideoMetadata.self, from: data)
         else {
@@ -101,14 +102,14 @@ nonisolated struct YTDLPClient: Sendable {
     }
 
     func downloadStream(
-        url: URL, into directory: URL, binaries: Binaries, extraArguments: [String] = []
+        url: URL, into directory: URL, binaries: Binaries, extraArguments: [String] = [],
     ) -> AsyncThrowingStream<DownloadEvent, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    try await self.runDownload(
+                    try await runDownload(
                         url: url, into: directory, binaries: binaries,
-                        extraArguments: extraArguments
+                        extraArguments: extraArguments,
                     ) { event in
                         continuation.yield(event)
                     }
@@ -123,10 +124,12 @@ nonisolated struct YTDLPClient: Sendable {
         }
     }
 
+    /// Split when yt-dlp moves behind the plugin protocol (M2; docs/backlog.md).
     @concurrent
+    // swiftlint:disable:next cyclomatic_complexity
     private func runDownload(
         url: URL, into directory: URL, binaries: Binaries, extraArguments: [String],
-        onEvent: @escaping @Sendable (DownloadEvent) -> Void
+        onEvent: @escaping @Sendable (DownloadEvent) -> Void,
     ) async throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 

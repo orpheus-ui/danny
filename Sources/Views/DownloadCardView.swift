@@ -58,7 +58,8 @@ struct DownloadCardView: View {
             ProgressBarView(
                 item: item,
                 onRetry: onRetry,
-                onBrowserCapture: onBrowserCapture)
+                onBrowserCapture: onBrowserCapture,
+            )
         }
     }
 

@@ -1,0 +1,36 @@
+#!/bin/sh
+#
+# Refuses a direct push to a protected branch. `make bootstrap` installs it
+# (core.hooksPath=.githooks). A safety net against accidents, not a security
+# control — GitHub branch protection is the real one (CONTRIBUTING.md).
+#
+# Creating a protected branch (the remote has no such ref yet) is allowed, so
+# bootstrapping main/development never needs --no-verify.
+
+PROTECTED="main development"
+ZERO=0000000000000000000000000000000000000000
+
+while read -r _local_ref _local_sha remote_ref remote_sha; do
+  branch=${remote_ref#refs/heads/}
+  [ "$remote_sha" = "$ZERO" ] && continue
+
+  for protected in $PROTECTED; do
+    if [ "$branch" = "$protected" ]; then
+      cat >&2 <<EOF
+
+  Direct push to "$branch" blocked.
+
+  $branch takes changes through pull requests, so CI runs before anything lands.
+
+    git switch -c feat/short-description     # or fix/ chore/ docs/
+    git push -u origin feat/short-description
+
+  Then open a PR against development. See CONTRIBUTING.md.
+
+EOF
+      exit 1
+    fi
+  done
+done
+
+exit 0

@@ -31,7 +31,8 @@ struct SnifferBrowserScreen: View {
                     onCaptured: { store.capture(rawURL: $0) },
                     onCommitted: { url in
                         currentURLSync(url)
-                    })
+                    },
+                )
             }
             Divider().opacity(0.2)
             sidebar
@@ -106,7 +107,8 @@ struct SnifferBrowserScreen: View {
             return url
         }
         return URL(
-            string: "https://duckduckgo.com/?q=\(addressField.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")")
+            string: "https://duckduckgo.com/?q=\(addressField.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")",
+        )
     }
 
     private func go() {
@@ -222,7 +224,8 @@ struct CapturedMediaRow: View {
         .padding(8)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.primary.opacity(0.05)))
+                .fill(Color.primary.opacity(0.05)),
+        )
     }
 
     private var host: String {

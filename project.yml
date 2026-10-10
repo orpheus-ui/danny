@@ -49,10 +49,27 @@ targets:
         COMBINE_HIDPI_IMAGES: YES
         INFOPLIST_KEY_LSUIElement: NO
 
+  DannyTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/DannyTests
+    dependencies:
+      - target: Danny
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.danny.desktop.tests
+        GENERATE_INFOPLIST_FILE: YES
+
 schemes:
   Danny:
     build:
       targets:
         Danny: all
+        DannyTests: [test]
     run:
       config: Debug
+    test:
+      config: Debug
+      targets:
+        - DannyTests

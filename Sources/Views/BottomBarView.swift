@@ -33,25 +33,14 @@ struct BottomBarView: View {
     }
 
     private var sortMenu: some View {
-        Menu {
+        PillMenu(icon: "icon-arrows-sort", iconSize: 24, padding: 8) {
             Picker("Sort", selection: $sortOrder) {
                 ForEach(SortOrder.allCases) { order in
                     Text(order.label).tag(order)
                 }
             }
             .pickerStyle(.inline)
-        } label: {
-            Image("icon-arrows-sort")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 24, height: 24)
-                .padding(8)
-                .dannyGlass(tint: Color.black.opacity(0.30), in: .capsule, interactive: true)
         }
-        .menuStyle(.button)
-        .menuIndicator(.hidden)
-        .buttonStyle(.plain)
-        .fixedSize()
         .help("Sort downloads")
     }
 }

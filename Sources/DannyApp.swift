@@ -1,5 +1,5 @@
-import SwiftUI
 import Observation
+import SwiftUI
 
 @main
 struct DannyApp: App {
@@ -48,8 +48,8 @@ final class AppModel {
     init() {
         let settings = AppSettings()
         self.settings = settings
-        self.manager = DownloadManager(settings: settings)
-        self.watcher = ClipboardWatcher(settings: settings, manager: manager)
+        manager = DownloadManager(settings: settings)
+        watcher = ClipboardWatcher(settings: settings, manager: manager)
     }
 }
 

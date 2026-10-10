@@ -70,10 +70,11 @@ final class SniffingWebView: WKWebView {
         }
         NotificationCenter.default.addObserver(
             self, selector: #selector(windowWillClose(_:)),
-            name: NSWindow.willCloseNotification, object: window)
+            name: NSWindow.willCloseNotification, object: window,
+        )
     }
 
-    @objc private func windowWillClose(_ notification: Notification) {
+    @objc private func windowWillClose(_: Notification) {
         teardownMedia()
     }
 
@@ -105,7 +106,8 @@ struct MediaSnifferWebView: NSViewRepresentable {
         let controller = WKUserContentController()
         controller.add(context.coordinator, name: "dannySniff")
         controller.addUserScript(
-            WKUserScript(source: sniffJS, injectionTime: .atDocumentStart, forMainFrameOnly: false))
+            WKUserScript(source: sniffJS, injectionTime: .atDocumentStart, forMainFrameOnly: false),
+        )
         configuration.userContentController = controller
 
         let webView = SniffingWebView(frame: .zero, configuration: configuration)
@@ -118,7 +120,7 @@ struct MediaSnifferWebView: NSViewRepresentable {
         return webView
     }
 
-    func updateNSView(_ webView: WKWebView, context: Context) {
+    func updateNSView(_ webView: WKWebView, context _: Context) {
         reference.webView = webView
     }
 
@@ -137,7 +139,7 @@ struct MediaSnifferWebView: NSViewRepresentable {
 
 extension MediaSnifferWebView.Coordinator: WKScriptMessageHandler {
     nonisolated func userContentController(
-        _ userContentController: WKUserContentController, didReceive message: WKScriptMessage
+        _: WKUserContentController, didReceive message: WKScriptMessage,
     ) {
         guard let body = message.body as? [String: Any],
               let rawURL = body["url"] as? String
@@ -149,15 +151,15 @@ extension MediaSnifferWebView.Coordinator: WKScriptMessageHandler {
 }
 
 extension MediaSnifferWebView.Coordinator: WKNavigationDelegate {
-    nonisolated func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+    nonisolated func webView(_ webView: WKWebView, didCommit _: WKNavigation!) {
         Task { @MainActor in
             self.onCommitted(webView.url)
         }
     }
 
     nonisolated func webView(
-        _ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
-        decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+        _: WKWebView, decidePolicyFor _: WKNavigationAction,
+        decisionHandler: @escaping (WKNavigationActionPolicy) -> Void,
     ) {
         decisionHandler(.allow)
     }
@@ -165,8 +167,8 @@ extension MediaSnifferWebView.Coordinator: WKNavigationDelegate {
 
 extension MediaSnifferWebView.Coordinator: WKUIDelegate {
     nonisolated func webView(
-        _ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
-        for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures
+        _ webView: WKWebView, createWebViewWith _: WKWebViewConfiguration,
+        for navigationAction: WKNavigationAction, windowFeatures _: WKWindowFeatures,
     ) -> WKWebView? {
         webView.load(navigationAction.request)
         return nil

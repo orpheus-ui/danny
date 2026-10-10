@@ -23,49 +23,10 @@ private final class WindowConfiguratorView: NSView {
     }
 }
 
-struct VisualEffectBackground: NSViewRepresentable {
-    func makeNSView(context _: Context) -> NSVisualEffectView {
-        let view = NSVisualEffectView()
-        view.material = .underWindowBackground
-        view.blendingMode = .behindWindow
-        view.state = .active
-        return view
-    }
-
-    func updateNSView(_: NSVisualEffectView, context _: Context) {}
-}
-
 struct LiquidWindowBackground: View {
     var body: some View {
-        if #available(macOS 26.0, *) {
-            Color.clear
-                .glassEffect(.regular.tint(D.glassTint), in: .rect)
-        } else {
-            VisualEffectBackground()
-                .overlay(D.panelTint)
-        }
-    }
-}
-
-private struct DannyGlassModifier<S: Shape>: ViewModifier {
-    let tint: Color
-    let shape: S
-    let interactive: Bool
-    let fallback: Material
-
-    func body(content: Content) -> some View {
-        if #available(macOS 26.0, *) {
-            let glass: Glass = {
-                let base = Glass.regular.tint(tint)
-                return interactive ? base.interactive() : base
-            }()
-            content.glassEffect(glass, in: shape)
-        } else {
-            content
-                .background(shape.fill(fallback))
-                .background(shape.fill(tint))
-                .overlay(shape.stroke(Color.white.opacity(0.08), lineWidth: 1))
-        }
+        Color.clear
+            .glassEffect(.regular.tint(D.glassTint), in: .rect)
     }
 }
 
@@ -74,8 +35,8 @@ extension View {
         tint: Color = D.glassTint,
         in shape: some Shape,
         interactive: Bool = false,
-        fallback: Material = .ultraThinMaterial,
     ) -> some View {
-        modifier(DannyGlassModifier(tint: tint, shape: shape, interactive: interactive, fallback: fallback))
+        let glass = Glass.regular.tint(tint)
+        return glassEffect(interactive ? glass.interactive() : glass, in: shape)
     }
 }

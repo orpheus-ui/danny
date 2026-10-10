@@ -2,7 +2,6 @@ import SwiftUI
 
 enum D {
     static let ink = Color(red: 26 / 255, green: 22 / 255, blue: 33 / 255)
-    static let panelTint = Color(red: 56 / 255, green: 54 / 255, blue: 60 / 255).opacity(0.55)
     static let glassTint = Color(red: 30 / 255, green: 26 / 255, blue: 38 / 255).opacity(0.35)
     static let windowStroke = Color.white.opacity(0.22)
 

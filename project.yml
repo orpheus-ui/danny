@@ -2,7 +2,7 @@ name: Danny
 options:
   bundleIdPrefix: app.danny
   deploymentTarget:
-    macOS: "14.0"
+    macOS: "26.0"
   createIntermediateGroups: true
 
 settings:
@@ -10,7 +10,7 @@ settings:
     SWIFT_VERSION: "6.0"
     SWIFT_APPROACHABLE_CONCURRENCY: YES
     SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
-    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
     CODE_SIGN_IDENTITY: "-"
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: ""
@@ -33,7 +33,7 @@ targets:
         CFBundleName: Danny
         LSApplicationCategoryType: public.app-category.utilities
         NSHumanReadableCopyright: MIT License. Danny is not affiliated with YouTube, X, or Instagram.
-        LSMinimumSystemVersion: "14.0"
+        LSMinimumSystemVersion: "26.0"
         NSPrincipalClass: NSApplication
         NSHighResolutionCapable: true
         NSSupportsAutomaticGraphicsSwitching: true

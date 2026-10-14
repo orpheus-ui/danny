@@ -17,6 +17,9 @@ on:
     paths:
       - scripts/release.sh
       - scripts/fetch-dependencies.sh
+      - scripts/build-ffmpeg.sh
+      - scripts/check-ffmpeg.sh
+      - Tests/Fixtures/media/**
       - scripts/helper.entitlements
       - .github/workflows/release.yml
       - project.yml
@@ -45,6 +48,8 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # the build number and git-cliff need full history
+          # The job runs ffmpeg's and LAME's own configure/make; keep the token out of reach.
+          persist-credentials: false
 
       - name: Version
         id: version
@@ -56,6 +61,15 @@ jobs:
 
       - name: Tools
         run: brew install xcodegen xcbeautify git-cliff
+
+      # ffmpeg is built from source (scripts/build-ffmpeg.sh). The key is the build
+      # script's hash, so a cached build is always the one the script would make;
+      # the script runs scripts/check-ffmpeg.sh on it either way.
+      - name: Cache the ffmpeg build
+        uses: actions/cache@v4
+        with:
+          path: build/deps
+          key: ffmpeg-${{ hashFiles('scripts/build-ffmpeg.sh') }}
 
       - name: Bundle yt-dlp and ffmpeg (pinned, checksum-verified)
         run: scripts/fetch-dependencies.sh
@@ -107,6 +121,10 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: scripts/release.sh notarize "build/release/Danny-$VERSION.dmg"
+      # LGPL: the exact source of the bundled ffmpeg goes out with every release.
+      - name: Source of the bundled ffmpeg
+        run: cp "$(ls -d build/deps/ffmpeg-*/source | tail -1)"/* build/release/
+
       - name: Checksums and release notes
         run: scripts/release.sh checksums && scripts/release.sh notes
 
@@ -118,6 +136,7 @@ jobs:
             build/release/*.zip
             build/release/SHA256SUMS.txt
             build/release/notes.md
+            build/release/*.tar.*
           retention-days: ${{ github.event_name == 'push' && 30 || 7 }}
           if-no-files-found: error
 
@@ -160,5 +179,6 @@ jobs:
           case "$VERSION" in 0.*) prerelease="--prerelease" ;; esac
           gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --draft $prerelease \
             --target "$GITHUB_SHA" --title "Danny $VERSION" --notes-file release/notes.md \
-            "release/Danny-$VERSION.dmg" "release/Danny-$VERSION.zip" release/SHA256SUMS.txt
+            "release/Danny-$VERSION.dmg" "release/Danny-$VERSION.zip" release/SHA256SUMS.txt \
+            release/*.tar.*
           echo "::notice::Draft release v$VERSION created — review and publish it on GitHub."

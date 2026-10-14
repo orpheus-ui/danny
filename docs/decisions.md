@@ -120,7 +120,31 @@ release workflow) and moves to `homebrew/cask` once both hold. docs/releasing.md
 
 Releases bundle yt-dlp and ffmpeg so Danny works without Homebrew. Both are
 pinned to exact versions and checksum-verified before bundling
-(`scripts/fetch-dependencies.sh`), so a release contains exactly what was reviewed
-and a compromised download fails the build. ffmpeg is a universal binary built
-from native arm64 and x86_64 builds — no Rosetta dependency, which Apple is
-phasing out. Bumps are their own PRs.
+(`scripts/fetch-dependencies.sh`; ffmpeg's source, ADR-013), so a release contains
+exactly what was reviewed and a compromised download fails the build. ffmpeg is a
+universal binary built from native arm64 and x86_64 builds — no Rosetta
+dependency, which Apple is phasing out. Bumps are their own PRs.
+
+## ADR-013 — Bundled ffmpeg: built from source, LGPL only
+
+**2026-10-11 · Accepted**
+
+Danny bundles its own ffmpeg and ffprobe, built by `scripts/build-ffmpeg.sh` from
+the pinned, checksummed source release. The build starts from
+`--disable-everything` and enables only what yt-dlp asks of ffmpeg: stream-copy
+merging and remuxing, the HLS/DASH fixups, MP3 (LAME) and AAC audio extraction,
+thumbnails, subtitles, metadata, and HLS over HTTPS for the streams yt-dlp hands
+to ffmpeg — with TLS from macOS, so there is no TLS library to ship or patch.
+Nothing GPL or nonfree goes in, so the binaries are LGPL-2.1+; their license
+texts and where their source is ship inside the app
+(`Contents/Resources/bin/licenses`), and every GitHub Release carries the exact
+source archives they were built from.
+
+The full static builds available for macOS are GPLv3 and ~160 MB as universal
+binaries. This build does the same jobs at a fraction of the size, with much
+less code exposed to untrusted media. `scripts/check-ffmpeg.sh` runs yt-dlp's
+ffmpeg commands on small synthetic files (`Tests/Fixtures/media`) against every
+build, so a build that can't do one of them never ships.
+
+Would change if yt-dlp needs something the build leaves out: add it to the build
+and a case to the check, never switch to a full build.

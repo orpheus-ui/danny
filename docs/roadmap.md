@@ -51,6 +51,7 @@ The Figma file is the spec. Plan: [plans/2026-10-14-m1-match-the-design.md](plan
 - [x] Release pipeline: universal build, hardened-runtime signing, notarization,
       DMG + zip, checksums, changelog and draft GitHub Release (docs/releasing.md)
 - [x] Bundled yt-dlp and ffmpeg pinned and checksum-verified; ffmpeg native universal
+- [x] Bundled ffmpeg built from source: LGPL only, checked against yt-dlp's commands on every build (ADR-013)
 - [ ] Signed and notarized releases — signing secrets configured (ADR-010)
 - [ ] Sparkle auto-updates with an EdDSA-signed appcast
 - [ ] Homebrew tap `orpheus-ui/homebrew-tap`, bumped by the release workflow (ADR-011)

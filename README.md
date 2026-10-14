@@ -45,11 +45,11 @@ make run         # build and launch
 
 Danny looks for `yt-dlp` and `ffmpeg` in this order:
 
-1. **Bundled** in `Danny.app/Contents/Resources/bin` — run `./scripts/fetch-dependencies.sh` before building to include them
+1. **Bundled** in `Danny.app/Contents/Resources/bin` — run `./scripts/fetch-dependencies.sh` before building to include them (it builds ffmpeg from source the first time, which takes a few minutes)
 2. **Homebrew**: `brew install yt-dlp ffmpeg` (`/opt/homebrew/bin`, `/usr/local/bin`)
 3. Anything on your `PATH`
 
-> `yt-dlp` is public domain (Unlicense). `ffmpeg` is LGPL — review its terms before redistributing bundled builds.
+> `yt-dlp` is public domain (Unlicense). The bundled `ffmpeg` and `ffprobe` are an LGPL build made from source by `scripts/build-ffmpeg.sh`; their license texts ship in `Danny.app/Contents/Resources/bin/licenses`, and each GitHub Release carries the exact source archives.
 
 ## Usage
 

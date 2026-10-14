@@ -16,6 +16,16 @@ Danny is an open-source video downloader for macOS, inspired by [Downie](https:/
 - **Persistent history** — the queue survives relaunches
 - **Native & private** — SwiftUI + Liquid Glass, no telemetry, no accounts, nothing leaves your machine except the video request itself
 
+## Install
+
+Download the latest DMG from [Releases](https://github.com/orpheus-ui/danny/releases),
+open it and drag Danny to Applications. yt-dlp and ffmpeg are included.
+
+Early (0.x) builds aren't notarized yet, so macOS blocks the first launch: open Danny
+once, then **System Settings → Privacy & Security → Open Anyway**
+([details](docs/releasing.md#installing-an-unsigned-build)).
+Homebrew is on the way: `brew install --cask orpheus-ui/tap/danny`.
+
 ## Requirements
 
 - macOS 26 Tahoe or newer — Danny is built on Liquid Glass

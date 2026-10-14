@@ -91,3 +91,36 @@ work measure it. Rules: [engineering.md](engineering.md) §Danny is light.
 The first version was built fast. Rather than a rewrite, every PR leaves what it
 touches cleaner, and larger debt is recorded in [backlog.md](backlog.md) and paid
 down as its own PRs. The M2 core split is the one planned structural change.
+
+## ADR-010 — Ship outside the App Store: Developer ID + notarization, no sandbox
+
+**2026-09-27 · Accepted**
+
+Danny runs child processes it didn't build (yt-dlp, ffmpeg, plugins — ADR-003/004),
+updates yt-dlp on its own schedule, and saves wherever the user points it. The App
+Sandbox forbids or cripples all three, so the Mac App Store is out. Distribution is
+a DMG and zip on GitHub Releases, signed with a Developer ID, hardened runtime,
+notarized and stapled — what Gatekeeper expects from apps outside the store.
+
+Builds made without signing credentials are ad-hoc signed and not notarized, and
+their release notes say so. Signed, notarized releases are required before 1.0.
+
+## ADR-011 — Homebrew: our own tap first, the official cask once notarized
+
+**2026-09-27 · Accepted**
+
+`brew install --cask` is how many Mac developers install apps. The official
+`homebrew/cask` repo requires apps that pass Gatekeeper and projects notable enough
+to meet its criteria, so Danny starts in `orpheus-ui/homebrew-tap` (bumped by the
+release workflow) and moves to `homebrew/cask` once both hold. docs/releasing.md.
+
+## ADR-012 — Bundled tools are pinned, verified and native
+
+**2026-09-27 · Accepted**
+
+Releases bundle yt-dlp and ffmpeg so Danny works without Homebrew. Both are
+pinned to exact versions and checksum-verified before bundling
+(`scripts/fetch-dependencies.sh`), so a release contains exactly what was reviewed
+and a compromised download fails the build. ffmpeg is a universal binary built
+from native arm64 and x86_64 builds — no Rosetta dependency, which Apple is
+phasing out. Bumps are their own PRs.

@@ -48,6 +48,11 @@ The Figma file is the spec. Plan: `plans/` (written when M1 starts).
 
 ## M4 — Release
 
-- [ ] Signing, hardened runtime, notarization
-- [ ] Sparkle updates, Homebrew cask, release notes from the changelog
+- [x] Release pipeline: universal build, hardened-runtime signing, notarization,
+      DMG + zip, checksums, changelog and draft GitHub Release (docs/releasing.md)
+- [x] Bundled yt-dlp and ffmpeg pinned and checksum-verified; ffmpeg native universal
+- [ ] Signed and notarized releases — signing secrets configured (ADR-010)
+- [ ] Sparkle auto-updates with an EdDSA-signed appcast
+- [ ] Homebrew tap `orpheus-ui/homebrew-tap`, bumped by the release workflow (ADR-011)
+- [ ] Official `homebrew/cask` once notarized and notable
 - [ ] `v1.0.0`

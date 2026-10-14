@@ -1,0 +1,52 @@
+name: Bug report
+description: Something doesn't work as it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. A download that fails on one site is often a yt-dlp issue —
+        please include the link so we can check.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: Link (if a download failed)
+      description: The page you tried to download from. Leave out anything private.
+  - type: textarea
+    id: error
+    attributes:
+      label: Error message
+      description: The text on the failed card, if any.
+      render: text
+  - type: input
+    id: danny
+    attributes:
+      label: Danny version
+      description: Danny → About Danny
+      placeholder: "0.1.0 (7)"
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "26.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Installed from
+      options:
+        - GitHub release (DMG)
+        - Homebrew
+        - Built from source
+    validations:
+      required: true

@@ -35,9 +35,10 @@ The Figma file is the spec. Plan: [plans/2026-10-14-m1-match-the-design.md](plan
 
 - [ ] `DannyCore` Swift package: queue, engine, persistence — no SwiftUI
 - [ ] Plugin protocol: out-of-process, JSON over stdin/stdout (ADR-004); `docs/plugins.md`
-- [ ] yt-dlp as plugin #1; site-specific retries move into it
+- [ ] yt-dlp as plugin #1; site-specific workarounds leave the app and live in plugins
 - [ ] Plugin discovery, install and permissions UI
-- [ ] Managed yt-dlp updates
+- [ ] yt-dlp kept current: checked when Danny opens (at most daily, never mid-download),
+      verified against yt-dlp's published checksums, swapped in when the queue is idle
 
 ## M3 — Torrents and streaming
 
@@ -46,7 +47,28 @@ The Figma file is the spec. Plan: [plans/2026-10-14-m1-match-the-design.md](plan
 - [ ] Sequential download + local HTTP stream while downloading
 - [ ] Player on libmpv (MPVKit) — plays MKV/HEVC and friends (ADR-005)
 
-## M4 — Release
+## M4 — Smarter downloads
+
+- [ ] Audio-only downloads (podcasts, music): MP3, M4A or the original audio, with
+      cover art and chapters
+- [ ] Format and quality presets in Settings (max resolution, codec, container,
+      audio bitrate), with a per-download override
+- [ ] Playlists and channels: pick what to download; follow a channel and fetch new
+      episodes when Danny opens
+- [ ] Subtitles, chapters and SponsorBlock segments (skip or mark)
+- [ ] Download a section: start/end time, without fetching the whole video
+- [ ] Send to Danny from anywhere: Share menu, Services, Shortcuts and a
+      `danny://` URL scheme
+- [ ] AI-assisted extraction plugin for sites yt-dlp doesn't support:
+  - providers the user chooses: local models (Ollama, LM Studio), OpenRouter,
+    CheaperInference — local first, nothing sent anywhere without the user's say
+  - asks before each new site: shows what will be sent and to which provider; no
+    automatic switch to a cloud provider, ever
+  - the model only proposes; Danny validates a candidate (media type, origin)
+    before downloading, and saves a working approach so the site needs no AI next time
+  - DRM-protected streams are detected and declined, not attempted
+
+## M5 — Release
 
 - [x] Release pipeline: universal build, hardened-runtime signing, notarization,
       DMG + zip, checksums, changelog and draft GitHub Release (docs/releasing.md)

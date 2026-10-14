@@ -3,7 +3,7 @@
 Milestones are sequential. `docs/roadmap.md` says *what* and *in which order*;
 a plan in [plans/](plans/) says *how* for anything bigger than a PR.
 
-**Current milestone: M0 — Foundation.**
+**Current milestone: M1 — Match the design.**
 
 ---
 
@@ -20,7 +20,7 @@ a plan in [plans/](plans/) says *how* for anything bigger than a PR.
 
 ## M1 — Match the design
 
-The Figma file is the spec. Plan: `plans/` (written when M1 starts).
+The Figma file is the spec. Plan: [plans/2026-10-14-m1-match-the-design.md](plans/2026-10-14-m1-match-the-design.md).
 
 - [ ] Design tokens from Figma into `D` (colors, gradients, radii, type)
 - [ ] **Progress bar rebuilt**: Metal shader for gradient + dot texture, centered

@@ -42,6 +42,6 @@ its own PR, delete it from here when it merges.
 - **App size.** The bundled tools are most of the app: yt-dlp's PyInstaller binary
   (37 MB, universal), and ffmpeg and ffprobe at 17 MB each now that they're built
   for Danny (ADR-013; the old static ffmpeg alone was 161 MB). Options: download
-  yt-dlp on first run instead of bundling it (it needs updating weekly anyway, see
-  above), or one copy of the ffmpeg libraries shared by both tools instead of two
-  static ones.
+  yt-dlp on first run instead of bundling it (it's updated separately anyway,
+  roadmap M2), or one copy of the ffmpeg libraries shared by both tools instead of
+  two static ones.

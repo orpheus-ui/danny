@@ -28,8 +28,9 @@ enum D {
     static let barButtonFill = ink.opacity(0.2)
 
     static let progressTrack = rgb(47, 47, 47).opacity(0.5)
-    /// 1 pt light edge under the track.
+    /// 1 pt light edge under the track, and the shadow inside its top edge.
     static let progressRim = Color.white.opacity(0.1)
+    static let progressInnerShadow = Color.black.opacity(0.2)
     static let progressLabel = Color.white.opacity(0.9)
 
     // MARK: Gradients
@@ -39,31 +40,24 @@ enum D {
         startPoint: .topLeading, endPoint: .bottomTrailing,
     )
 
-    /// Figma's gradient ends at 177% of the fill; this is its color at 100%.
-    static let progressFill = LinearGradient(
-        colors: [accentDeep.opacity(0.6), rgb(104, 70, 255).opacity(0.6)],
-        startPoint: .leading, endPoint: .trailing,
-    )
+    /// Progress fill and its halftone dots. Figma's gradients run to 177% of the
+    /// fill; these are their colors at 100%.
+    static let progressStart = accentDeep.opacity(0.6)
+    static let progressEnd = rgb(104, 70, 255).opacity(0.6)
+    static let progressDotStart = rgb(145, 112, 255)
+    static let progressDotEnd = rgb(155, 133, 254)
 
-    /// The halftone dots drawn over the fill (`#9170FF → #A395FE`, also cut at 100%).
-    static let progressDots = LinearGradient(
-        colors: [rgb(145, 112, 255), rgb(155, 133, 254)],
-        startPoint: .leading, endPoint: .trailing,
-    )
-
-    static let doneFill = LinearGradient(
-        colors: [rgb(16, 215, 76).opacity(0.6), rgb(97, 255, 147).opacity(0.6)],
-        startPoint: .leading, endPoint: .trailing,
-    )
+    /// Done: the dots are the fill's own colors, so they show where they stack.
+    static let doneStart = rgb(16, 215, 76).opacity(0.6)
+    static let doneEnd = rgb(97, 255, 147).opacity(0.6)
 
     /// Not in Figma yet — the Failed state is designed in M1.
-    static let failedFill = LinearGradient(
-        colors: [
-            Color(red: 0.85, green: 0.25, blue: 0.30),
-            Color(red: 0.95, green: 0.42, blue: 0.45),
-        ],
-        startPoint: .leading, endPoint: .trailing,
-    )
+    static let failedStart = Color(red: 0.85, green: 0.25, blue: 0.30).opacity(0.75)
+    static let failedEnd = Color(red: 0.95, green: 0.42, blue: 0.45).opacity(0.75)
+
+    static let progressFill = LinearGradient(horizontalColors: [progressStart, progressEnd])
+    static let doneFill = LinearGradient(horizontalColors: [doneStart, doneEnd])
+    static let failedFill = LinearGradient(horizontalColors: [failedStart, failedEnd])
 
     /// Over the thumbnail, so the title reads on any image.
     static let cardScrim = LinearGradient(
@@ -131,6 +125,10 @@ enum D {
 }
 
 extension LinearGradient {
+    init(horizontalColors colors: [Color]) {
+        self.init(colors: colors, startPoint: .leading, endPoint: .trailing)
+    }
+
     init(horizontalStops stops: [(Color, Double)]) {
         self.init(stops: stops, start: .leading, end: .trailing)
     }

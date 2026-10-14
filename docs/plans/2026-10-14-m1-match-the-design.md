@@ -4,7 +4,7 @@
 |---|---|---|
 | tokens — Figma colors, gradients, radii and type into `D` | in review | orpheus-ui/danny#8 |
 | snapshots — snapshot tests for every card state | not started | — |
-| progress-bar — Metal shader, two-tone label, eased progress | not started | — |
+| progress-bar — Metal shader dots, passing light, eased progress | in review | orpheus-ui/danny#9 |
 | card — full-bleed thumbnail, scrim, title/meta/actions | not started | — |
 | bars — title bar and bottom bar | not started | — |
 | states — Queued, Fetching, Merging, Paused, Failed, empty list | not started | — |
@@ -27,14 +27,14 @@ frame before the PR opens, and the PR shows before/after screenshots.
    agree. Test-only dependency; the choice (a library or `ImageRenderer` plus a
    small comparer) is recorded as an ADR in the same PR.
 3. **progress-bar** — the most visible piece and the riskiest for resource use:
-   - Fill and halftone dot texture drawn by a `[[stitchable]]` Metal shader
-     through SwiftUI's `layerEffect`; no per-frame CPU drawing.
-   - The label is centered and drawn twice, clipped at the fill's edge, so it
-     reads in two tones over fill and track at any percentage.
+   - Fill and halftone dot texture drawn by a `[[stitchable]]` Metal shader,
+     static between progress updates; the dots wrap the capsule's curve.
+   - A light passes through the dots, moved by Core Animation outside the app:
+     one pass every 7 s on a shared clock, so it crosses all bars together;
+     stopped while the window is hidden or Reduce Motion is on.
    - Progress eases toward each new value instead of jumping per yt-dlp line.
-   - The indeterminate (Fetching, Merging) animation runs at ≤30 fps, stops when
-     the window is hidden or occluded, and replaces the 20 fps `TimelineView` in
-     `ProcessingCapsule`. Measured with `/perf-check` before and after.
+   - Replaces the 20 fps `TimelineView` of `ProcessingCapsule`. Measured with
+     `/perf-check` before and after.
 4. **card**, then **bars** — layout, type and actions per Figma. The bars bring
    the title's Space Grotesk (SIL Open Font License, bundled) and the gradient
    backgrounds Figma draws as images.

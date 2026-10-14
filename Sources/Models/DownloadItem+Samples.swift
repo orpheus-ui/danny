@@ -10,7 +10,7 @@
             let states: [(ItemStatus, Double?)] = [
                 (.downloading, 0.54), (.resolving, nil), (.processing, nil),
                 (.finished, 1), (.failed, nil), (.queued, nil),
-            ]
+            ].reversed() // the list shows the newest first
             return states.enumerated().map { index, state in
                 var item = DownloadItem(url: URL(string: "https://www.youtube.com/watch?v=sample\(index)")!)
                 item.title = "Example Thumbnail video long text test how many characters fit"

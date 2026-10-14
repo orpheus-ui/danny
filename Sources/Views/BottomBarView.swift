@@ -16,12 +16,12 @@ struct BottomBarView: View {
             HStack(spacing: 10) {
                 sortMenu
                 Spacer()
-                PillButton(icon: "icon-browser", iconSize: 24, padding: 8) {
+                PillButton(icon: "icon-browser", style: .bar) {
                     onBrowser()
                 }
                 .help("Browser Capture")
 
-                PillMenu(icon: "icon-plus", iconSize: 24, padding: 8) {
+                PillMenu(icon: "icon-plus", style: .bar) {
                     Button("Paste from Clipboard", action: onPaste)
                     Button("Enter URL…", action: onEnterURL)
                 }
@@ -33,7 +33,7 @@ struct BottomBarView: View {
     }
 
     private var sortMenu: some View {
-        PillMenu(icon: "icon-arrows-sort", iconSize: 24, padding: 8) {
+        PillMenu(icon: "icon-arrows-sort", style: .bar) {
             Picker("Sort", selection: $sortOrder) {
                 ForEach(SortOrder.allCases) { order in
                     Text(order.label).tag(order)

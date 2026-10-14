@@ -2,7 +2,7 @@
 
 | Task | Status | PR |
 |---|---|---|
-| tokens — Figma colors, gradients, radii and type into `D` | not started | — |
+| tokens — Figma colors, gradients, radii and type into `D` | in review | orpheus-ui/danny#8 |
 | snapshots — snapshot tests for every card state | not started | — |
 | progress-bar — Metal shader, two-tone label, eased progress | not started | — |
 | card — full-bleed thumbnail, scrim, title/meta/actions | not started | — |
@@ -10,8 +10,9 @@
 | states — Queued, Fetching, Merging, Paused, Failed, empty list | not started | — |
 | debt — clipboard timer, list re-renders, `visibleItems` cache | not started | — |
 
-The Figma file is the spec: main window `1:127` (640×487), cards under `1:139`,
-title bar `1:133`, bottom bar `2:717`. Each UI task compares the build with its
+The Figma file is the spec: main window `519:189` (640×487), cards under `519:190`,
+title bar `519:290`, bottom bar `519:283`. Run a debug build with `-sample-queue`
+to see one card per state. Each UI task compares the build with its
 frame before the PR opens, and the PR shows before/after screenshots.
 
 ## Order and why
@@ -34,7 +35,9 @@ frame before the PR opens, and the PR shows before/after screenshots.
    - The indeterminate (Fetching, Merging) animation runs at ≤30 fps, stops when
      the window is hidden or occluded, and replaces the 20 fps `TimelineView` in
      `ProcessingCapsule`. Measured with `/perf-check` before and after.
-4. **card**, then **bars** — layout, type and actions per Figma.
+4. **card**, then **bars** — layout, type and actions per Figma. The bars bring
+   the title's Space Grotesk (SIL Open Font License, bundled) and the gradient
+   backgrounds Figma draws as images.
 5. **states** — the frames Figma doesn't have yet are drawn in the same language
    (glass, purple accent, halftone, bold white labels), reviewed as images, and
    added to the Figma file once approved, so Figma stays the one spec. Then

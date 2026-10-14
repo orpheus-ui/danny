@@ -18,6 +18,8 @@ final class DownloadManager {
     private var runningTasks: [UUID: Task<Void, Never>] = [:]
     private var fallbackAttempted: Set<UUID> = []
     private var saveDebounce: Task<Void, Never>?
+    /// `-sample-queue` (debug builds): one card per state, in memory only.
+    private var isSampleQueue = false
 
     var activeCount: Int {
         items.filter(\.status.isActive).count
@@ -46,6 +48,13 @@ final class DownloadManager {
     init(settings: AppSettings) {
         self.settings = settings
         binaries = YTDLPClient.locateBinaries()
+        #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("-sample-queue") {
+                items = DownloadItem.samples
+                isSampleQueue = true
+                return
+            }
+        #endif
         let restored = PersistenceStore.load().map { item -> DownloadItem in
             var item = item
             if item.status.isActive {
@@ -128,6 +137,7 @@ final class DownloadManager {
     }
 
     private func pump() {
+        guard !isSampleQueue else { return }
         while activeCount < max(1, settings.maxConcurrentDownloads),
               let next = items.last(where: { $0.status == .queued && runningTasks[$0.id] == nil })
         {
@@ -263,6 +273,7 @@ final class DownloadManager {
     }
 
     private func saveSoon() {
+        guard !isSampleQueue else { return }
         saveDebounce?.cancel()
         saveDebounce = Task { [items] in
             try? await Task.sleep(for: .milliseconds(400))

@@ -52,7 +52,7 @@ struct MainWindow: View {
         @Bindable var manager = manager
         return ZStack(alignment: .bottom) {
             ScrollView(.vertical, showsIndicators: false) {
-                LazyVStack(spacing: 12) {
+                LazyVStack(spacing: D.Spacing.list) {
                     ForEach(manager.visibleItems) { item in
                         DownloadCardView(
                             item: item,
@@ -67,7 +67,7 @@ struct MainWindow: View {
                         emptyState
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, D.Spacing.listInset)
                 .padding(.top, 4)
                 .padding(.bottom, 68)
             }

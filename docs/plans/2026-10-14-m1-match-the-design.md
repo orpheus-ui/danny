@@ -36,15 +36,17 @@ frame before the PR opens, and the PR shows before/after screenshots.
      `ProcessingCapsule`. Measured with `/perf-check` before and after.
 4. **card**, then **bars** — layout, type and actions per Figma.
 5. **states** — the frames Figma doesn't have yet are drawn in the same language
-   (glass, purple accent, halftone, bold white labels) and reviewed as images
-   before they're built. Paused is the visual state only; pausing the engine
+   (glass, purple accent, halftone, bold white labels), reviewed as images, and
+   added to the Figma file once approved, so Figma stays the one spec. Then
+   they're built. Paused is the visual state only; pausing the engine
    lands with the core work in M2.
 6. **debt** — the resource items in `backlog.md` that touch the UI. The list
    re-render fix may come earlier if the progress bar work needs it.
 
 ## Done when
 
-- Every card state has a snapshot test, and each matches its Figma frame.
+- Every card state has a snapshot test, and each matches its Figma frame
+  (including the frames added for states the design didn't have).
 - Idle Danny uses 0% CPU and the progress bar stays within the budget in
   `engineering.md` (ADR-008).
 - The backlog's UI resource items are closed.

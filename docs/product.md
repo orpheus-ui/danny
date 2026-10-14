@@ -8,7 +8,8 @@ progress, get a file. Inspired by Downie; open source.
 Three things make it Danny:
 
 1. **Downloads from almost anywhere** — yt-dlp's 1000+ extractors today, more
-   through plugins, and Browser Capture for sites nothing can extract.
+   through plugins, Browser Capture for sites nothing can extract, and an opt-in
+   AI plugin that works out new sites with a model the user picks (M4).
 2. **Torrents with streaming** — add a magnet or `.torrent` and start watching
    while it downloads (M3).
 3. **Pluggable** — anyone can write an extractor or engine plugin in any
@@ -26,7 +27,8 @@ want a tool that looks and feels like it belongs on macOS, not a terminal.
 - **Light.** Idle means zero CPU. A downloader that spins fans is broken
   ([engineering.md](engineering.md) §Danny is light).
 - **Private.** No accounts, no telemetry. Nothing leaves the Mac except the
-  requests needed to fetch what you asked for.
+  requests needed to fetch what you asked for — and, only after the user agrees,
+  page details sent to the AI provider they chose. Local models come first.
 - **Honest.** Danny downloads; it doesn't host, index or break DRM. Users are
   responsible for respecting copyright and site terms (README §Legal).
 

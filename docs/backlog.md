@@ -35,8 +35,6 @@ its own PR, delete it from here when it merges.
 
 ## Missing
 
-- **yt-dlp updates.** Sites change weekly; Danny should keep its yt-dlp current
-  (bundled copy + update check) instead of asking users to run `brew upgrade`.
 - **Pause/resume** of a download (needs the M1 Paused state and engine support).
 - **UI snapshot tests** for every card state (M1).
 - **App size.** The bundled tools are most of the app: yt-dlp's PyInstaller binary

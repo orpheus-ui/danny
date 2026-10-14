@@ -48,6 +48,8 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # the build number and git-cliff need full history
+          # The job runs ffmpeg's and LAME's own configure/make; keep the token out of reach.
+          persist-credentials: false
 
       - name: Version
         id: version
@@ -119,6 +121,10 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: scripts/release.sh notarize "build/release/Danny-$VERSION.dmg"
+      # LGPL: the exact source of the bundled ffmpeg goes out with every release.
+      - name: Source of the bundled ffmpeg
+        run: cp "$(ls -d build/deps/ffmpeg-*/source | tail -1)"/* build/release/
+
       - name: Checksums and release notes
         run: scripts/release.sh checksums && scripts/release.sh notes
 
@@ -130,6 +136,7 @@ jobs:
             build/release/*.zip
             build/release/SHA256SUMS.txt
             build/release/notes.md
+            build/release/*.tar.*
           retention-days: ${{ github.event_name == 'push' && 30 || 7 }}
           if-no-files-found: error
 
@@ -172,5 +179,6 @@ jobs:
           case "$VERSION" in 0.*) prerelease="--prerelease" ;; esac
           gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --draft $prerelease \
             --target "$GITHUB_SHA" --title "Danny $VERSION" --notes-file release/notes.md \
-            "release/Danny-$VERSION.dmg" "release/Danny-$VERSION.zip" release/SHA256SUMS.txt
+            "release/Danny-$VERSION.dmg" "release/Danny-$VERSION.zip" release/SHA256SUMS.txt \
+            release/*.tar.*
           echo "::notice::Draft release v$VERSION created — review and publish it on GitHub."

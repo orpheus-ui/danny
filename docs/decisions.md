@@ -136,8 +136,9 @@ merging and remuxing, the HLS/DASH fixups, MP3 (LAME) and AAC audio extraction,
 thumbnails, subtitles, metadata, and HLS over HTTPS for the streams yt-dlp hands
 to ffmpeg — with TLS from macOS, so there is no TLS library to ship or patch.
 Nothing GPL or nonfree goes in, so the binaries are LGPL-2.1+; their license
-texts and the exact source they came from ship inside the app
-(`Contents/Resources/bin/licenses`).
+texts and where their source is ship inside the app
+(`Contents/Resources/bin/licenses`), and every GitHub Release carries the exact
+source archives they were built from.
 
 The full static builds available for macOS are GPLv3 and ~160 MB as universal
 binaries. This build does the same jobs at a fraction of the size, with much

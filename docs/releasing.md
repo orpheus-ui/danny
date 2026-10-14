@@ -69,7 +69,8 @@ well, the app and the DMG are notarized and stapled, so they open offline.
   universal, LGPL only, and only the parts yt-dlp uses (ADR-013). A build takes a
   couple of minutes; CI caches it by the script's hash. Every build, cached or not,
   must pass `scripts/check-ffmpeg.sh`, which runs yt-dlp's ffmpeg commands on
-  `Tests/Fixtures/media`. Their license texts and source go in `bin/licenses`.
+  `Tests/Fixtures/media`. Their license texts and source pointer go in `bin/licenses`, and the release
+  workflow attaches the exact source archives to each GitHub Release (LGPL).
 
 Bumping a version is its own PR: change the version and checksum, then `make package`.
 When yt-dlp starts asking ffmpeg for something new, add it to `build-ffmpeg.sh` and a

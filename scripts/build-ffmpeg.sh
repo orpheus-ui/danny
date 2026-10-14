@@ -13,7 +13,8 @@
 # Before a build is handed out, scripts/check-ffmpeg.sh runs each of these on
 # Tests/Fixtures/media and checks the license.
 #
-# Output: build/deps/ffmpeg-<key>/{bin/ffmpeg,bin/ffprobe,licenses/,BUILD-INFO.txt}
+# Output: build/deps/ffmpeg-<key>/{bin/ffmpeg,bin/ffprobe,licenses/,source/,BUILD-INFO.txt}
+# source/ holds the exact archives built from; releases publish them beside the app.
 # where <key> changes whenever this script does, so CI can cache on it.
 # Prints the output directory on its last line. Bump versions in their own PR.
 set -euo pipefail
@@ -126,7 +127,7 @@ for arch in "${ARCHS[@]}"; do build_arch "$arch"; done
 # an interrupted or failing build is never mistaken for a finished one.
 echo "→ Universal binaries" >&2
 STAGE="$OUT.partial"
-rm -rf "$STAGE" && mkdir -p "$STAGE/bin" "$STAGE/licenses"
+rm -rf "$STAGE" && mkdir -p "$STAGE/bin" "$STAGE/licenses" "$STAGE/source"
 for tool in ffmpeg ffprobe; do
   lipo -create "$WORK/prefix-arm64/bin/$tool" "$WORK/prefix-x86_64/bin/$tool" -output "$STAGE/bin/$tool"
   strip -x "$STAGE/bin/$tool"
@@ -135,6 +136,8 @@ done
 cp "$WORK/ffmpeg-arm64/COPYING.LGPLv2.1" "$STAGE/licenses/ffmpeg-LGPL-2.1.txt"
 cp "$WORK/ffmpeg-arm64/LICENSE.md" "$STAGE/licenses/ffmpeg-LICENSE.md"
 cp "$WORK/lame-arm64/COPYING" "$STAGE/licenses/lame-LGPL.txt"
+cp "$WORK/ffmpeg.tar.xz" "$STAGE/source/ffmpeg-$FFMPEG_VERSION.tar.xz"
+cp "$WORK/lame.tar.gz" "$STAGE/source/lame-$LAME_VERSION.tar.gz"
 {
   echo "ffmpeg $FFMPEG_VERSION and ffprobe, built for Danny — LGPL-2.1-or-later"
   echo
@@ -142,6 +145,7 @@ cp "$WORK/lame-arm64/COPYING" "$STAGE/licenses/lame-LGPL.txt"
   echo "  $FFMPEG_URL  (sha256 $FFMPEG_SHA256)"
   echo "  $LAME_URL  (sha256 $LAME_SHA256)"
   echo "Build script: scripts/build-ffmpeg.sh in https://github.com/orpheus-ui/danny"
+  echo "Each Danny release on GitHub carries both archives beside the app."
   echo
   echo "Configuration:"
   "$STAGE/bin/ffmpeg" -hide_banner -buildconf

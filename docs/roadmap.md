@@ -16,7 +16,7 @@ a plan in [plans/](plans/) says *how* for anything bigger than a PR.
 - [x] CI: lint + tests on macOS runners, Conventional Commit PR titles
 - [x] Docs: product, roadmap, decisions, architecture, engineering, backlog, contributing
 - [x] macOS 26 baseline — deployment target raised, `#available` fallbacks removed (ADR-002)
-- [ ] GitHub: branch protection on `main` and `development`, `development` as default branch
+- [x] GitHub: rulesets on `main` and `development` (PRs only, required checks, resolved threads), `development` as default branch
 
 ## M1 — Match the design
 

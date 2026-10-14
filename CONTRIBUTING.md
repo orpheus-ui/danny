@@ -79,6 +79,9 @@ Until then, extractor fixes for sites yt-dlp supports belong upstream in
 - One concern per branch — a fix *and* a rename is two PRs.
 - Never commit secrets, build output or generated projects (`*.xcodeproj` is generated).
 - Never force-push a shared branch, and never use `--no-verify`.
+- `development` and `main` are protected by rulesets: changes land only through PRs
+  (squash into `development`, merge commits into `main`), with the CI checks green and
+  every review thread resolved.
 
 ## If something goes wrong
 

@@ -1,11 +1,12 @@
 name: CI
 
 # Public repo: macOS runners are free, so every PR gets lint + tests.
-# Docs-only changes skip the macOS job.
+# Docs-only changes skip the macOS job. PR titles are checked in pr-title.yml,
+# which is the only workflow that runs when a PR is edited.
 on:
   pull_request:
     branches: [development, main]
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened]
   push:
     branches: [development, main]
   workflow_dispatch:
@@ -18,19 +19,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  pr-title:
-    name: PR title is a Conventional Commit
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    steps:
-      - name: Check
-        env:
-          TITLE: ${{ github.event.pull_request.title }}
-        run: |
-          echo "$TITLE" | grep -Eq '^(feat|fix|refactor|perf|chore|docs|test|ci|build|style|security)(\([a-z0-9-]+\))?!?: .+' \
-            || { echo "::error::PR title must be a Conventional Commit, e.g. 'feat(ui): rebuild the progress bar'"; exit 1; }
-
   changes:
     name: Detect code changes
     runs-on: ubuntu-latest
@@ -52,7 +40,7 @@ jobs:
   check:
     name: Lint and test
     needs: changes
-    if: needs.changes.outputs.code == 'true' && github.event.action != 'edited'
+    if: needs.changes.outputs.code == 'true'
     runs-on: macos-26
     timeout-minutes: 30
     steps:

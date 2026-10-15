@@ -1,5 +1,18 @@
 import Foundation
 
+/// One file of a merged download, as the probe lists it.
+nonisolated struct RequestedFormat: Decodable {
+    var formatID: String
+    var filesize: Int64?
+    var filesizeApprox: Int64?
+
+    enum CodingKeys: String, CodingKey {
+        case formatID = "format_id"
+        case filesize
+        case filesizeApprox = "filesize_approx"
+    }
+}
+
 nonisolated struct VideoMetadata: Decodable {
     var id: String
     var title: String
@@ -10,6 +23,17 @@ nonisolated struct VideoMetadata: Decodable {
     var duration: Double?
     var filesizeApprox: Int64?
     var extractor: String?
+    /// The files a merged download fetches, such as video then audio.
+    var requestedFormats: [RequestedFormat]?
+
+    /// Approximate size of each file the download will fetch, by format id.
+    var plannedFiles: [String: Int64] {
+        var planned: [String: Int64] = [:]
+        for format in requestedFormats ?? [] {
+            planned[format.formatID] = format.filesize ?? format.filesizeApprox
+        }
+        return planned
+    }
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -21,6 +45,7 @@ nonisolated struct VideoMetadata: Decodable {
         case duration
         case filesizeApprox = "filesize_approx"
         case extractor
+        case requestedFormats = "requested_formats"
     }
 
     var resolutionLabel: String? {
@@ -30,7 +55,8 @@ nonisolated struct VideoMetadata: Decodable {
 }
 
 nonisolated enum DownloadEvent: Sendable {
-    case progress(downloaded: Int64, total: Int64?, speedBytesPerSecond: Double?)
+    /// `file` is the format id being fetched; merged downloads fetch one file per format.
+    case progress(downloaded: Int64, total: Int64?, speedBytesPerSecond: Double?, file: String? = nil)
     case outputFile(String)
 }
 
@@ -136,7 +162,9 @@ nonisolated struct YTDLPClient: Sendable {
         let outputTemplate = directory
             .appendingPathComponent("%(title).120B [%(id)s].%(ext)s", isDirectory: false).path
         let progressTemplate =
-            "download:\u{40}P|%(progress.downloaded_bytes)s|%(progress.total_bytes_estimate)s|%(progress._speed_str)s"
+            // The exact size when yt-dlp has it, else its estimate (fragmented streams).
+            "download:\u{40}P|%(progress.downloaded_bytes)s|%(progress.total_bytes,progress.total_bytes_estimate)s"
+            + "|%(progress._speed_str)s|%(info.format_id)s"
 
         var arguments = [
             "--newline", "--no-warnings", "--no-playlist", "--progress",
@@ -204,11 +232,12 @@ nonisolated struct YTDLPClient: Sendable {
     static func parseProgressLine(_ line: some StringProtocol) -> DownloadEvent? {
         guard line.hasPrefix("@P|") else { return nil }
         let fields = line.dropFirst(3).split(separator: "|", omittingEmptySubsequences: false)
-        guard fields.count == 3 else { return nil }
+        guard fields.count == 3 || fields.count == 4 else { return nil }
         let downloaded = Int64(fields[0]) ?? 0
         let total = Int64(fields[1]).flatMap { $0 > 0 ? $0 : nil }
         let speed = parseSpeed(String(fields[2]))
-        return .progress(downloaded: downloaded, total: total, speedBytesPerSecond: speed)
+        let file = fields.count == 4 && !fields[3].isEmpty && fields[3] != "NA" ? String(fields[3]) : nil
+        return .progress(downloaded: downloaded, total: total, speedBytesPerSecond: speed, file: file)
     }
 
     static func parseSpeed(_ raw: String) -> Double? {

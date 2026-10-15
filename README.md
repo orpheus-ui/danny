@@ -56,6 +56,7 @@ Danny looks for `yt-dlp` and `ffmpeg` in this order:
 - **`+`** — paste a link from the clipboard or type a URL
 - **⌘⇧V** — paste and download from anywhere
 - **Browser Capture** (globe icon or ⌘⇧B) — for sites where extraction fails. Browse, play the video, then pick the stream from the sidebar. The first launch asks for your consent
+- **Settings › Accounts** — sign in to YouTube, Instagram, X, Facebook or any site you add, so downloads work as you. Sign-in happens on the site's own page in Danny's browser
 - **⌘N** — enter a URL manually · **⌘, ** — settings (save folder, concurrency, clipboard watching)
 
 ## Contributing

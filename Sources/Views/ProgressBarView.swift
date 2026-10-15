@@ -11,6 +11,8 @@ struct ProgressBarView: View {
     let item: DownloadItem
     var onRetry: (() -> Void)?
     var onBrowserCapture: (() -> Void)?
+    /// Shown instead of Browser Capture when the site wants a signed-in user.
+    var onSignIn: (() -> Void)?
 
     @Environment(\.windowIsVisible) private var windowIsVisible
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -134,7 +136,7 @@ struct ProgressBarView: View {
         case .downloading: downloadingParts
         case .processing: ["Merging…"]
         case .finished: ["Done"]
-        case .failed: ["Failed"]
+        case .failed: [item.asksForSignIn ? "Sign in needed" : "Failed"]
         }
     }
 
@@ -149,10 +151,13 @@ struct ProgressBarView: View {
 
     private var failedActions: some View {
         HStack(spacing: 6) {
+            if item.asksForSignIn, let onSignIn {
+                miniButton(icon: "person.crop.circle", title: "Sign In", action: onSignIn)
+            }
             if let onRetry {
                 miniButton(icon: "arrow.clockwise", title: "Retry", action: onRetry)
             }
-            if let onBrowserCapture {
+            if !item.asksForSignIn, let onBrowserCapture {
                 miniButton(icon: "globe", title: "Browser Capture", action: onBrowserCapture)
             }
         }

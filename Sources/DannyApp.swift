@@ -11,6 +11,7 @@ struct DannyApp: App {
                 .environment(model)
                 .environment(model.settings)
                 .environment(model.manager)
+                .environment(model.sessions)
                 .frame(minWidth: 620, minHeight: 430)
                 .windowTranslucency()
         }
@@ -28,11 +29,25 @@ struct DannyApp: App {
         }
         .defaultSize(width: 980, height: 640)
 
+        WindowGroup("Sign In", id: SignInView.windowID, for: SignInSite.self) { $site in
+            if let site {
+                SignInView(site: site)
+                    .environment(model.sessions)
+                    .frame(minWidth: 460, minHeight: 560)
+                    .windowTranslucency()
+            }
+        }
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 520, height: 680)
+        // A sign-in is a moment, not a place: it isn't reopened on the next launch.
+        .restorationBehavior(.disabled)
+
         Settings {
             SettingsView()
                 .environment(model.settings)
                 .environment(model.manager)
-                .frame(width: 440, height: 300)
+                .environment(model.sessions)
+                .frame(width: 480, height: 560)
         }
     }
 }
@@ -43,6 +58,7 @@ final class AppModel {
     let settings: AppSettings
     let manager: DownloadManager
     let watcher: ClipboardWatcher
+    let sessions = SiteSessions()
     var snifferStartURL: URL?
 
     init() {
@@ -50,6 +66,7 @@ final class AppModel {
         self.settings = settings
         manager = DownloadManager(settings: settings)
         watcher = ClipboardWatcher(settings: settings, manager: manager)
+        manager.sessions = sessions
     }
 }
 

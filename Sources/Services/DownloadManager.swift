@@ -12,6 +12,8 @@ final class DownloadManager {
     private(set) var lastFailureMessage: String?
 
     let settings: AppSettings
+    /// Signed-in sites; a run passes the link's site cookies to yt-dlp when present.
+    var sessions: SiteSessions?
 
     private let client = YTDLPClient()
     private var binaries: YTDLPClient.Binaries = .missing
@@ -169,8 +171,20 @@ final class DownloadManager {
             return
         }
 
+        // The signed-in site's cookies, on disk only while this run lasts; refreshed
+        // ones go back to the browser store afterwards.
+        let cookieFile = await sessions?.cookieFile(for: url)
+        defer {
+            if let cookieFile {
+                Task { [sessions] in
+                    if let sessions { await sessions.finish(cookieFile, for: url) } else { cookieFile.remove() }
+                }
+            }
+        }
+        let cookies = cookieFile?.arguments ?? []
+
         do {
-            let metadata = try await client.probe(url: url, binaries: binaries)
+            let metadata = try await client.probe(url: url, binaries: binaries, extraArguments: cookies)
             guard let index = items.firstIndex(where: { $0.id == itemID }),
                   items[index].status == .resolving else { return }
             items[index].title = metadata.title.isEmpty ? items[index].title : metadata.title
@@ -182,7 +196,7 @@ final class DownloadManager {
             let path: String?
             do {
                 path = try await downloadPhase(
-                    itemID: itemID, url: url, extraArguments: [], planned: metadata.plannedFiles,
+                    itemID: itemID, url: url, extraArguments: cookies, planned: metadata.plannedFiles,
                 )
             } catch let error as YTDLPError
                 where !fallbackAttempted.contains(itemID) && Self.shouldRetryWithFallback(error.message)
@@ -190,7 +204,7 @@ final class DownloadManager {
                 fallbackAttempted.insert(itemID)
                 path = try await downloadPhase(
                     itemID: itemID, url: url,
-                    extraArguments: ["--extractor-args", "youtube:player_client=ios"],
+                    extraArguments: cookies + ["--extractor-args", "youtube:player_client=ios"],
                     planned: metadata.plannedFiles,
                 )
             }
@@ -243,8 +257,10 @@ final class DownloadManager {
     }
 
     private static func hinted(_ message: String, url _: URL) -> String {
+        // The card offers Sign In for these; an update doesn't help.
+        if DownloadItem.asksForSignIn(message) { return message }
         let lowered = message.lowercased()
-        if lowered.contains("403") || lowered.contains("confirm you") {
+        if lowered.contains("403") {
             return message + "\nThis usually means yt-dlp needs an update: run `brew upgrade yt-dlp` and retry."
         }
         return message

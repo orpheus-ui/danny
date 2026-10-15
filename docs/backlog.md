@@ -15,8 +15,10 @@ its own PR, delete it from here when it merges.
   and observe per item. (`DownloadManager.downloadPhase`)
 - **`visibleItems` filters and sorts on every read** from the view body. Cache it
   and recompute when items, query or sort order change. (`DownloadManager.visibleItems`)
-- **Processing animation** uses a 20 fps `TimelineView` with no pause when the
-  window is hidden. Replaced by the M1 progress bar. (`ProgressBarView.ProcessingCapsule`)
+- **Idle wakeups.** An empty, hidden window still wakes ~15 times a second
+  (budget: under 1), and ~30 with six cards — no animation runs then, so it's
+  timers or observation. Profile with `/perf-check` §4; the clipboard timer above
+  is one source.
 
 ## Debt — structure
 

@@ -30,7 +30,7 @@ Homebrew is on the way: `brew install --cask orpheus-ui/tap/danny`.
 
 - macOS 26 Tahoe or newer — Danny is built on Liquid Glass
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [ffmpeg](https://ffmpeg.org) for downloading and merging streams
-- Xcode 26 to build from source
+- Xcode 26 to build from source, with its Metal Toolchain (`xcodebuild -downloadComponent MetalToolchain`)
 
 ## Build
 

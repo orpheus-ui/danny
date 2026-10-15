@@ -20,7 +20,9 @@ make bootstrap   # tools (Homebrew), git hooks, asset catalog, Xcode project
 make run         # build and launch
 ```
 
-You need macOS 26 and Xcode 26. `make help` lists every command.
+You need macOS 26 and Xcode 26 with its Metal Toolchain
+(`xcodebuild -downloadComponent MetalToolchain` — the progress bar is a Metal shader).
+`make help` lists every command.
 
 ## Making a change
 

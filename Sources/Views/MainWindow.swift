@@ -20,6 +20,7 @@ struct MainWindow: View {
             }
         }
         .ignoresSafeArea()
+        .trackingWindowVisibility()
         .alert("Open the capture browser?", isPresented: $showConsentAlert) {
             Button("Open Browser") {
                 settings.browserConsentGiven = true

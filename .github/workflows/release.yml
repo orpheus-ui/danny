@@ -45,7 +45,7 @@ jobs:
       # Notarization takes minutes; PR dry runs skip it, manual runs and releases do it.
       HAS_NOTARY: ${{ github.event_name != 'pull_request' && secrets.NOTARY_KEY_P8_BASE64 != '' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # the build number and git-cliff need full history
           # The job runs ffmpeg's and LAME's own configure/make; keep the token out of reach.
@@ -68,7 +68,7 @@ jobs:
       # script's hash, so a cached build is always the one the script would make;
       # the script runs scripts/check-ffmpeg.sh on it either way.
       - name: Cache the ffmpeg build
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: build/deps
           key: ffmpeg-${{ hashFiles('scripts/build-ffmpeg.sh') }}
@@ -130,7 +130,7 @@ jobs:
       - name: Checksums and release notes
         run: scripts/release.sh checksums && scripts/release.sh notes
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: danny-${{ steps.version.outputs.version }}
           path: |
@@ -168,7 +168,7 @@ jobs:
             echo "::notice::v$VERSION already has a release. Bump the version in a release PR to publish a new one."
           fi
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         if: steps.existing.outputs.skip != 'true'
         with:
           name: danny-${{ needs.build.outputs.version }}

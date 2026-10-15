@@ -104,4 +104,16 @@ struct SignInSiteTests {
         #expect(read.map(\.isHTTPOnly) == [true, false])
         #expect(read.allSatisfy { $0.isSecure && $0.expiresDate == Date(timeIntervalSince1970: TimeInterval(expiry)) })
     }
+
+    @Test
+    func `the cookie file is private and records what it wrote`() throws {
+        let file = try #require(TemporaryCookieFile.write([cookie("SID", domain: ".youtube.com")], generation: 3))
+        defer { file.remove() }
+        let attributes = try FileManager.default.attributesOfItem(atPath: file.url.path)
+        #expect((attributes[.posixPermissions] as? NSNumber)?.intValue == 0o600)
+        #expect(file.written == [".youtube.com\t/\tSID": "v"])
+        #expect(file.generation == 3)
+        file.remove()
+        #expect(!FileManager.default.fileExists(atPath: file.url.path))
+    }
 }

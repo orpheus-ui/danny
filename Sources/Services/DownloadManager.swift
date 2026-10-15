@@ -7,7 +7,7 @@ import Observation
 final class DownloadManager {
     private(set) var items: [DownloadItem] = []
     var sortOrder: SortOrder = .newest
-    var query: String = ""
+    var filter = DownloadFilter()
     var pendingManualAdd = false
     private(set) var lastFailureMessage: String?
 
@@ -26,14 +26,7 @@ final class DownloadManager {
     }
 
     var visibleItems: [DownloadItem] {
-        var result = items
-        if !query.isEmpty {
-            result = result.filter {
-                $0.title.localizedCaseInsensitiveContains(query)
-                    || $0.host.localizedCaseInsensitiveContains(query)
-                    || $0.sourceURL.absoluteString.localizedCaseInsensitiveContains(query)
-            }
-        }
+        var result = filter.isEmpty ? items : items.filter(filter.matches)
         switch sortOrder {
         case .newest: result.sort { $0.addedAt > $1.addedAt }
         case .oldest: result.sort { $0.addedAt < $1.addedAt }

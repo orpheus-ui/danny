@@ -9,12 +9,23 @@ nonisolated struct TemporaryCookieFile: Sendable {
     static let prefix = "danny-cookies-"
 
     let url: URL
-    /// The values written, by cookie identity, so only values the run changed go back.
-    let written: [String: String]
+    /// What was written, by cookie identity, so only what the run changed goes back.
+    let written: [String: Stamp]
     /// The site's sign-out count when written; a sign-out since voids the write-back.
     let generation: Int
 
     var arguments: [String] { ["--cookies", url.path] }
+
+    /// The parts of a cookie a refresh changes.
+    struct Stamp: Equatable {
+        let value: String
+        let expires: Date?
+
+        init(_ cookie: HTTPCookie) {
+            value = cookie.value
+            expires = cookie.expiresDate
+        }
+    }
 
     static func key(_ cookie: HTTPCookie) -> String {
         [cookie.domain, cookie.path, cookie.name].joined(separator: "\t")
@@ -34,7 +45,7 @@ nonisolated struct TemporaryCookieFile: Sendable {
             try? FileManager.default.removeItem(at: url)
             return nil
         }
-        let written = Dictionary(cookies.map { (key($0), $0.value) }, uniquingKeysWith: { _, last in last })
+        let written = Dictionary(cookies.map { (key($0), Stamp($0)) }, uniquingKeysWith: { _, last in last })
         return TemporaryCookieFile(url: url, written: written, generation: generation)
     }
 
@@ -83,39 +94,64 @@ final class SiteSessions: NSObject, WKHTTPCookieStoreObserver {
     }
 
     /// The cookies of the link's site, for one yt-dlp run; nil when the user isn't
-    /// signed in to it. The caller removes the file when the run ends.
+    /// signed in to it. The caller passes the file to `finish` when the run ends.
     func cookieFile(for url: URL) async -> TemporaryCookieFile? {
         guard let site = site(for: url) else { return nil }
-        let cookies = await store.allCookies().filter { site.owns(cookieDomain: $0.domain) }
-        guard site.isSignedIn(with: cookies) else { return nil }
-        return TemporaryCookieFile.write(cookies, generation: signOuts[site.id, default: 0])
+        var file: TemporaryCookieFile?
+        await serialized {
+            let cookies = await self.store.allCookies().filter { site.owns(cookieDomain: $0.domain) }
+            guard site.isSignedIn(with: cookies) else { return }
+            file = TemporaryCookieFile.write(cookies, generation: self.signOuts[site.id, default: 0])
+        }
+        return file
     }
 
-    /// Ends a run: cookies the site refreshed during it (yt-dlp writes them back to
-    /// the file) go into the store, so the session stays current, then the file goes.
-    /// Ends a run: cookies whose values yt-dlp changed (the site refreshed them during
-    /// the run) go into the store, so the session stays current; then the file goes.
-    /// Nothing goes back after a sign-out, and unchanged values never overwrite the
-    /// store, so a parallel run's or a new sign-in's fresher values stay.
+    /// Ends a run: cookies yt-dlp refreshed during it (a new value or a later expiry)
+    /// go into the store, so the session stays current; then the file goes. A cookie
+    /// goes back only if the store still holds what the run started with, so a
+    /// parallel run's or a new sign-in's fresher cookie stays, and nothing goes back
+    /// after a sign-out. Runs, write-backs and sign-outs take turns.
     func finish(_ file: TemporaryCookieFile, for url: URL) async {
         defer { file.remove() }
         guard let site = site(for: url),
-              signOuts[site.id, default: 0] == file.generation,
-              isSignedIn(site),
               let text = try? String(contentsOf: file.url, encoding: .utf8) else { return }
-        for cookie in NetscapeCookies.parse(text) where site.owns(cookieDomain: cookie.domain) {
-            if file.written[TemporaryCookieFile.key(cookie)] != cookie.value {
-                await store.setCookie(cookie)
+        await serialized {
+            guard self.signOuts[site.id, default: 0] == file.generation else { return }
+            var current: [String: TemporaryCookieFile.Stamp] = [:]
+            for cookie in await self.store.allCookies() where site.owns(cookieDomain: cookie.domain) {
+                current[TemporaryCookieFile.key(cookie)] = TemporaryCookieFile.Stamp(cookie)
+            }
+            for cookie in NetscapeCookies.parse(text) where site.owns(cookieDomain: cookie.domain) {
+                let key = TemporaryCookieFile.key(cookie)
+                guard let started = file.written[key], current[key] == started,
+                      TemporaryCookieFile.Stamp(cookie) != started else { continue }
+                await self.store.setCookie(cookie)
             }
         }
     }
 
     func signOut(_ site: SignInSite) async {
-        signOuts[site.id, default: 0] += 1
-        for cookie in await store.allCookies() where site.owns(cookieDomain: cookie.domain) {
-            await store.deleteCookie(cookie)
+        await serialized {
+            self.signOuts[site.id, default: 0] += 1
+            for cookie in await self.store.allCookies() where site.owns(cookieDomain: cookie.domain) {
+                await self.store.deleteCookie(cookie)
+            }
         }
         await refresh()
+    }
+
+    /// Runs cookie operations one at a time, in order, so a sign-out can't land in
+    /// the middle of a read or a write-back.
+    @ObservationIgnored private var lastOperation: Task<Void, Never>?
+
+    private func serialized(_ operation: @escaping @MainActor () async -> Void) async {
+        let previous = lastOperation
+        let task = Task { @MainActor in
+            await previous?.value
+            await operation()
+        }
+        lastOperation = task
+        await task.value
     }
 
     func site(for url: URL) -> SignInSite? { SignInSite.site(for: url, in: sites) }

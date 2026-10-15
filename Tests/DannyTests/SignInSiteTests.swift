@@ -111,7 +111,7 @@ struct SignInSiteTests {
         defer { file.remove() }
         let attributes = try FileManager.default.attributesOfItem(atPath: file.url.path)
         #expect((attributes[.posixPermissions] as? NSNumber)?.intValue == 0o600)
-        #expect(file.written == [".youtube.com\t/\tSID": "v"])
+        #expect(file.written[".youtube.com\t/\tSID"]?.value == "v")
         #expect(file.generation == 3)
         file.remove()
         #expect(!FileManager.default.fileExists(atPath: file.url.path))

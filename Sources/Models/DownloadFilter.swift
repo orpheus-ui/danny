@@ -58,6 +58,13 @@ struct DownloadFilter: Equatable {
             || item.sourceURL.absoluteString.localizedCaseInsensitiveContains(text)
     }
 
+    /// Whether the link in the text is already in the list, whatever the scope and site.
+    func linkIsListed(in items: [DownloadItem]) -> Bool {
+        guard let link else { return false }
+        let target = DownloadManager.normalize(link)
+        return items.contains { DownloadManager.normalize($0.sourceURL) == target }
+    }
+
     /// How many items fall in each scope, ignoring the current scope.
     func counts(in items: [DownloadItem]) -> [Scope: Int] {
         var unscoped = self

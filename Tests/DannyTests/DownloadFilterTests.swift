@@ -40,6 +40,15 @@ struct DownloadFilterTests {
     }
 
     @Test
+    func `a listed link is found whatever the scope and site`() {
+        let items = [item("https://vimeo.com/42", status: .failed)]
+        let filter = DownloadFilter(text: "https://vimeo.com/42#t=1", scope: .done, site: "youtube.com")
+        #expect(filter.linkIsListed(in: items))
+        #expect(!DownloadFilter(text: "https://vimeo.com/43").linkIsListed(in: items))
+        #expect(!DownloadFilter(text: "vimeo").linkIsListed(in: items))
+    }
+
+    @Test
     func `scope and site narrow the list`() {
         let active = item("https://www.youtube.com/1", status: .downloading)
         let failed = item("https://vimeo.com/2", status: .failed)

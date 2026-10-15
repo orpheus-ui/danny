@@ -14,26 +14,8 @@ struct MainWindow: View {
     var body: some View {
         @Bindable var manager = manager
         return ZStack {
-            LiquidWindowBackground()
-            VStack(spacing: 0) {
-                TitleBarView(
-                    filter: $manager.filter,
-                    isSearching: $isSearching,
-                    matchCount: manager.visibleItems.count,
-                    totalCount: manager.items.count,
-                    onDownload: { manager.add(url: $0) },
-                )
-                if isSearching {
-                    SearchScopeBar(
-                        filter: $manager.filter,
-                        counts: manager.filter.counts(in: manager.items),
-                        sites: DownloadFilter.sites(in: manager.items, keeping: manager.filter.site),
-                    )
-                    .padding(.bottom, 6)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                }
-                listArea
-            }
+            WindowBackground()
+            listArea
         }
         .ignoresSafeArea()
         .trackingWindowVisibility()
@@ -72,6 +54,28 @@ struct MainWindow: View {
         }
     }
 
+    private var topBars: some View {
+        @Bindable var manager = manager
+        return VStack(spacing: 0) {
+            TitleBarView(
+                filter: $manager.filter,
+                isSearching: $isSearching,
+                matchCount: manager.visibleItems.count,
+                totalCount: manager.items.count,
+                onDownload: { manager.add(url: $0) },
+            )
+            if isSearching {
+                SearchScopeBar(
+                    filter: $manager.filter,
+                    counts: manager.filter.counts(in: manager.items),
+                    sites: DownloadFilter.sites(in: manager.items, keeping: manager.filter.site),
+                )
+                .padding(.bottom, 6)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+    }
+
     private var listArea: some View {
         @Bindable var manager = manager
         return ZStack(alignment: .bottom) {
@@ -95,6 +99,11 @@ struct MainWindow: View {
                 .padding(.top, 4)
                 .padding(.bottom, 68)
             }
+            // The bars float over the list; cards scroll under them through the
+            // system's soft edge, a blurred fade drawn by the compositor.
+            .safeAreaBar(edge: .top, spacing: 0) { topBars }
+            .scrollEdgeEffectStyle(.soft, for: .top)
+            .defaultScrollAnchor(.top)
 
             BottomBarView(
                 sortOrder: $manager.sortOrder,
@@ -114,7 +123,7 @@ struct MainWindow: View {
             Text(emptyTitle)
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(Color.white.opacity(0.35))
-            if manager.filter.link != nil {
+            if manager.filter.link != nil, !manager.filter.linkIsListed(in: manager.items) {
                 Text("Press Return to download it")
                     .font(.system(size: 11))
                     .foregroundStyle(Color.white.opacity(0.22))
@@ -130,7 +139,10 @@ struct MainWindow: View {
 
     private var emptyTitle: String {
         let filter = manager.filter
-        if filter.link != nil { return "Not in your downloads yet" }
+        if filter.link != nil {
+            return filter.linkIsListed(in: manager.items)
+                ? "No downloads match these filters" : "Not in your downloads yet"
+        }
         if filter.isEmpty { return "Press + to add a video link" }
         let text = filter.text.trimmingCharacters(in: .whitespaces)
         return text.isEmpty ? "Nothing here" : "No downloads match “\(text)”"

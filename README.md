@@ -49,7 +49,7 @@ Danny looks for `yt-dlp` and `ffmpeg` in this order:
 2. **Homebrew**: `brew install yt-dlp ffmpeg` (`/opt/homebrew/bin`, `/usr/local/bin`)
 3. Anything on your `PATH`
 
-> `yt-dlp` is public domain (Unlicense). The bundled `ffmpeg` and `ffprobe` are an LGPL build made from source by `scripts/build-ffmpeg.sh`; their license texts ship in `Danny.app/Contents/Resources/bin/licenses`, and each GitHub Release carries the exact source archives.
+> `yt-dlp` is public domain (Unlicense). The bundled `ffmpeg` and `ffprobe` are an LGPL build made from source by `scripts/build-ffmpeg.sh`; their license texts ship in `Danny.app/Contents/Resources/bin/licenses`, and each GitHub Release carries the exact source archives. The title font, Space Grotesk, is bundled under the SIL Open Font License; its license text ships in `Danny.app/Contents/Resources/Fonts`.
 
 ## Usage
 

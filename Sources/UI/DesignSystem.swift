@@ -1,3 +1,4 @@
+import CoreText
 import SwiftUI
 
 /// Design tokens. Values come from the Figma main window (node `519:189`); values
@@ -35,9 +36,10 @@ enum D {
 
     // MARK: Gradients
 
+    /// Figma: 84.5°, so left to right with a slight rise.
     static let titleGradient = LinearGradient(
         colors: [rgb(246, 240, 250), rgb(168, 155, 255)],
-        startPoint: .topLeading, endPoint: .bottomTrailing,
+        startPoint: UnitPoint(x: 0, y: 0.55), endPoint: UnitPoint(x: 1, y: 0.45),
     )
 
     /// Progress fill and its halftone dots. Figma's gradients run to 177% of the
@@ -62,15 +64,6 @@ enum D {
     /// Over the thumbnail, so the title reads on any image.
     static let cardScrim = LinearGradient(
         horizontalStops: [(Color.black, 0.0), (Color.black.opacity(0.5), 1.0)],
-    )
-
-    /// Figma draws the bar backgrounds as images; these approximate them.
-    static let titlebarFade = LinearGradient(
-        verticalStops: [
-            (Color.black.opacity(0.55), 0.0),
-            (Color.black.opacity(0.25), 0.55),
-            (Color.black.opacity(0), 1.0),
-        ],
     )
 
     /// Matches Figma's bottom bar image (`519:283`): ink, clear at the top to opaque at
@@ -99,6 +92,9 @@ enum D {
         static let barIcon: CGFloat = 24
         static let barIconPadding: CGFloat = 8
         static let toolbarIcon: CGFloat = 20
+        /// The title bar's center line, from the window's top: Figma centers the title
+        /// and toolbar icons here, and the traffic lights are moved onto it.
+        static let titleLine: CGFloat = 22
     }
 
     enum Spacing {
@@ -112,13 +108,24 @@ enum D {
     // MARK: Type
 
     enum Font {
-        /// Figma sets the app name in Space Grotesk Medium, which isn't bundled
-        /// yet; the system font stands in at the same size and weight.
-        static let appTitle = SwiftUI.Font.system(size: 16, weight: .medium)
+        /// Space Grotesk Medium (bundled, OFL) with the stylistic sets Figma turns
+        /// on: `salt` and `ss01`–`ss05`.
+        static let appTitle = SwiftUI.Font(spaceGrotesk(size: 16))
         static let cardTitle = SwiftUI.Font.system(size: 16, weight: .bold)
         /// SF Pro at 80% width.
         static let cardMeta = SwiftUI.Font.system(size: 12, weight: .medium).width(.condensed)
         static let progressLabel = SwiftUI.Font.system(size: 14, weight: .bold)
+    }
+
+    static func spaceGrotesk(size: CGFloat) -> CTFont {
+        let features = ["salt", "ss01", "ss02", "ss03", "ss04", "ss05"].map {
+            [kCTFontOpenTypeFeatureTag: $0, kCTFontOpenTypeFeatureValue: 1] as CFDictionary
+        }
+        let descriptor = CTFontDescriptorCreateWithAttributes([
+            kCTFontNameAttribute: "SpaceGrotesk-Medium",
+            kCTFontFeatureSettingsAttribute: features,
+        ] as CFDictionary)
+        return CTFontCreateWithFontDescriptor(descriptor, size, nil)
     }
 
     private static func rgb(_ red: Double, _ green: Double, _ blue: Double) -> Color {

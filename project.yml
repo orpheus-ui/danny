@@ -26,6 +26,9 @@ targets:
       - path: Resources/bin
         type: folder
         buildPhase: resources
+      - path: Resources/Fonts
+        type: folder
+        buildPhase: resources
     info:
       path: Sources/Support/Info.plist
       properties:
@@ -35,6 +38,8 @@ targets:
         NSHumanReadableCopyright: MIT License. Danny is not affiliated with YouTube, X, or Instagram.
         LSMinimumSystemVersion: "26.0"
         NSPrincipalClass: NSApplication
+        # Bundled fonts, relative to Contents/Resources (Space Grotesk, OFL).
+        ATSApplicationFontsPath: Fonts
         NSHighResolutionCapable: true
         NSSupportsAutomaticGraphicsSwitching: true
         CFBundleShortVersionString: $(MARKETING_VERSION)

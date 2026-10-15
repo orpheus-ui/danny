@@ -14,17 +14,15 @@ struct TitleBarView: View {
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
+        // Everything sits on one line, `D.Size.titleLine` from the top, with the
+        // traffic lights (moved there by `windowTranslucency()`).
         ZStack {
-            D.titlebarFade
-                .frame(height: 60)
-                .allowsHitTesting(false)
-
             HStack(spacing: 8) {
                 Color.clear.frame(width: 64)
                 Spacer()
                 toolbarButtons
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 15)
 
             if isSearching {
                 searchField
@@ -34,7 +32,7 @@ struct TitleBarView: View {
                     .transition(.blurReplace)
             }
         }
-        .frame(height: 60)
+        .frame(height: D.Size.titleLine * 2)
     }
 
     private var titleBlock: some View {

@@ -22,14 +22,30 @@ a plan in [plans/](plans/) says *how* for anything bigger than a PR.
 
 The Figma file is the spec. Plan: [plans/2026-10-14-m1-match-the-design.md](plans/2026-10-14-m1-match-the-design.md).
 
-- [ ] Design tokens from Figma into `D` (colors, gradients, radii, type)
-- [ ] **Progress bar rebuilt**: Metal shader for gradient + dot texture, centered
+- [x] Design tokens from Figma into `D` (colors, gradients, radii, type)
+- [x] **Progress bar rebuilt**: Metal shader for gradient + dot texture, centered
       two-tone label, smooth eased progress, idle-free animation (ADR-008)
 - [ ] Card: full-bleed thumbnail with scrim, title/meta/actions per Figma
 - [ ] Title bar and bottom bar per Figma
 - [ ] Missing states designed and built: Queued, Fetching, Merging, Paused, Failed, empty list
 - [ ] Snapshot tests for every card state
 - [ ] Resource debt from `backlog.md` that touches the UI (clipboard timer, list re-renders)
+- [x] Search that finds and adds: one glass field, scope chips, paste a link to download
+
+## M1.5 — Everyday use
+
+Shorter paths for the things done every day. Plan: [plans/2026-10-16-m1-5-everyday-use.md](plans/2026-10-16-m1-5-everyday-use.md).
+
+- [ ] ⌘V in the window and drag and drop add links
+- [ ] Clipboard toast asks before adding a copied link; no clipboard timer
+- [ ] Finished items: Quick Look (Space), double-click to open, hover actions
+- [ ] Keyboard: arrows select, ⌫ removes, ⌘R retries, Return opens
+- [ ] Dock progress and a notification when a download finishes
+- [ ] Plain-language failures with one suggested fix
+- [ ] List grouped: active first, then Today and Earlier
+- [ ] Optional menu-bar item with progress and Paste to Download
+- [ ] Optional folder per site inside the download folder; filename templates
+- [ ] Download only on Wi-Fi; speed limit
 
 ## M2 — Clean core and plugins
 

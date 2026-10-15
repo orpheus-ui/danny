@@ -62,4 +62,14 @@ struct DownloadProgressTests {
         // A bigger reported size would lower the fraction; it holds instead.
         #expect(progress.update(file: "a", downloaded: 81, total: 1000) == 0.8)
     }
+
+    /// ffmpeg can fetch video and audio in one go, under the joined id.
+    @Test
+    func `a merged download counts once, not on top of its parts`() {
+        var progress = DownloadProgress(planned: ["616": 900, "140": 100])
+        #expect(progress.update(file: "616+140", downloaded: 500, total: nil) == 0.5)
+        _ = progress.update(file: "616+140", downloaded: 1000, total: 1000)
+        #expect(progress.totalBytes == 1000)
+        #expect(progress.fraction == DownloadProgress.ceiling)
+    }
 }

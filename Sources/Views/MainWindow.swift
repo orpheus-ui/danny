@@ -9,13 +9,29 @@ struct MainWindow: View {
     @State private var showConsentAlert = false
     @State private var pendingSnifferURL: URL?
     @State private var manualURL = ""
+    @State private var isSearching = false
 
     var body: some View {
         @Bindable var manager = manager
         return ZStack {
             LiquidWindowBackground()
             VStack(spacing: 0) {
-                TitleBarView(query: $manager.query)
+                TitleBarView(
+                    filter: $manager.filter,
+                    isSearching: $isSearching,
+                    matchCount: manager.visibleItems.count,
+                    totalCount: manager.items.count,
+                    onDownload: { manager.add(url: $0) },
+                )
+                if isSearching {
+                    SearchScopeBar(
+                        filter: $manager.filter,
+                        counts: manager.filter.counts(in: manager.items),
+                        sites: DownloadFilter.sites(in: manager.items, keeping: manager.filter.site),
+                    )
+                    .padding(.bottom, 6)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
                 listArea
             }
         }
@@ -46,6 +62,13 @@ struct MainWindow: View {
         }
         .task {
             model.watcher.start()
+            #if DEBUG
+                // `-sample-search <text>` (debug builds): open the search with this text.
+                if let text = UserDefaults.standard.string(forKey: "sample-search") {
+                    manager.filter.text = text
+                    isSearching = true
+                }
+            #endif
         }
     }
 
@@ -84,14 +107,18 @@ struct MainWindow: View {
 
     private var emptyState: some View {
         VStack(spacing: 8) {
-            Image("icon-plus")
+            Image(manager.filter.isEmpty ? "icon-plus" : "icon-search")
                 .resizable()
                 .frame(width: 28, height: 28)
                 .opacity(0.3)
-            Text(manager.query.isEmpty ? "Press + to add a video link" : "No matches")
+            Text(emptyTitle)
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(Color.white.opacity(0.35))
-            if manager.query.isEmpty {
+            if manager.filter.link != nil {
+                Text("Press Return to download it")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color.white.opacity(0.22))
+            } else if manager.filter.isEmpty {
                 Text("Paste a URL, or use Browser Capture for tricky sites")
                     .font(.system(size: 11))
                     .foregroundStyle(Color.white.opacity(0.22))
@@ -99,6 +126,14 @@ struct MainWindow: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 120)
+    }
+
+    private var emptyTitle: String {
+        let filter = manager.filter
+        if filter.link != nil { return "Not in your downloads yet" }
+        if filter.isEmpty { return "Press + to add a video link" }
+        let text = filter.text.trimmingCharacters(in: .whitespaces)
+        return text.isEmpty ? "Nothing here" : "No downloads match “\(text)”"
     }
 
     private func requestBrowser(url: URL?) {

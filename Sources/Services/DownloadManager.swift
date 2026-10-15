@@ -211,20 +211,16 @@ final class DownloadManager {
         items[index].status = .downloading
         let directory = settings.downloadDirectory.appendingPathComponent("Danny", isDirectory: true)
         var finalPath: String?
+        var progress = DownloadProgress()
         for try await event in client.downloadStream(
             url: url, into: directory, binaries: binaries, extraArguments: extraArguments,
         ) {
             guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
             switch event {
             case let .progress(downloaded, total, speed):
-                if let total {
-                    items[index].totalBytes = max(items[index].totalBytes ?? 0, total)
-                }
-                let denominator = total ?? items[index].totalBytes
-                if let denominator, denominator > 0 {
-                    items[index].fractionCompleted = Double(downloaded) / Double(denominator)
-                } else {
-                    items[index].fractionCompleted = nil
+                items[index].fractionCompleted = progress.update(downloaded: downloaded, total: total)
+                if let totalBytes = progress.totalBytes {
+                    items[index].totalBytes = totalBytes
                 }
                 items[index].speedBytesPerSecond = speed
             case let .outputFile(path):

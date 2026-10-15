@@ -68,13 +68,16 @@ struct DownloadFilter: Equatable {
         })
     }
 
-    /// The most common sites in the list, most first, then by name.
-    static func sites(in items: [DownloadItem], limit: Int = 4) -> [String] {
+    /// The most common sites in the list, most first, then by name. The selected site
+    /// is always kept, so its chip stays on screen to be cleared.
+    static func sites(in items: [DownloadItem], limit: Int = 4, keeping selected: String? = nil) -> [String] {
         let counts = Dictionary(grouping: items, by: site(of:)).mapValues(\.count)
-        return counts
+        let top = counts
             .sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }
             .prefix(limit)
             .map(\.key)
+        guard let selected, !top.contains(selected) else { return top }
+        return top + [selected]
     }
 
     static func site(of item: DownloadItem) -> String {

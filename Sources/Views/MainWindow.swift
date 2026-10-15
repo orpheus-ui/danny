@@ -27,7 +27,7 @@ struct MainWindow: View {
                     SearchScopeBar(
                         filter: $manager.filter,
                         counts: manager.filter.counts(in: manager.items),
-                        sites: DownloadFilter.sites(in: manager.items),
+                        sites: DownloadFilter.sites(in: manager.items, keeping: manager.filter.site),
                     )
                     .padding(.bottom, 6)
                     .transition(.move(edge: .top).combined(with: .opacity))

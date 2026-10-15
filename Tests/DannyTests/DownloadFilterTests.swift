@@ -68,4 +68,11 @@ struct DownloadFilterTests {
         ]
         #expect(DownloadFilter.sites(in: items, limit: 2) == ["youtube.com", "archive.org"])
     }
+
+    @Test
+    func `the selected site stays a chip after it leaves the top`() {
+        let items = [item("https://youtube.com/1"), item("https://youtube.com/2"), item("https://vimeo.com/3")]
+        #expect(DownloadFilter.sites(in: items, limit: 1, keeping: "vimeo.com") == ["youtube.com", "vimeo.com"])
+        #expect(DownloadFilter.sites(in: items, limit: 1, keeping: "youtube.com") == ["youtube.com"])
+    }
 }

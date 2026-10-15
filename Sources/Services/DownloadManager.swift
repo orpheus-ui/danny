@@ -160,16 +160,7 @@ final class DownloadManager {
         guard let index = items.firstIndex(where: { $0.id == itemID }) else { return }
         let url = items[index].sourceURL
 
-        guard binaries.ytdlp.fileExistsAsExecutable else {
-            fail(
-                itemID: itemID,
-                message: """
-                yt-dlp not found. Install with `brew install yt-dlp ffmpeg` \
-                or run scripts/fetch-dependencies.sh.
-                """,
-            )
-            return
-        }
+        guard engineIsInstalled(for: itemID) else { return }
 
         // The signed-in site's cookies, on disk only while this run lasts; refreshed
         // ones go back to the browser store afterwards.
@@ -221,6 +212,19 @@ final class DownloadManager {
             if Task.isCancelled { return }
             fail(itemID: itemID, message: Self.hinted(error.localizedDescription, url: url))
         }
+    }
+
+    /// Fails the item with install steps when yt-dlp can't be found.
+    private func engineIsInstalled(for itemID: UUID) -> Bool {
+        guard !binaries.ytdlp.fileExistsAsExecutable else { return true }
+        fail(
+            itemID: itemID,
+            message: """
+            yt-dlp not found. Install with `brew install yt-dlp ffmpeg` \
+            or run scripts/fetch-dependencies.sh.
+            """,
+        )
+        return false
     }
 
     private func downloadPhase(

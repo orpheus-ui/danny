@@ -181,7 +181,9 @@ final class DownloadManager {
 
             let path: String?
             do {
-                path = try await downloadPhase(itemID: itemID, url: url, extraArguments: [])
+                path = try await downloadPhase(
+                    itemID: itemID, url: url, extraArguments: [], planned: metadata.plannedFiles,
+                )
             } catch let error as YTDLPError
                 where !fallbackAttempted.contains(itemID) && Self.shouldRetryWithFallback(error.message)
             {
@@ -189,6 +191,7 @@ final class DownloadManager {
                 path = try await downloadPhase(
                     itemID: itemID, url: url,
                     extraArguments: ["--extractor-args", "youtube:player_client=ios"],
+                    planned: metadata.plannedFiles,
                 )
             }
 
@@ -206,19 +209,21 @@ final class DownloadManager {
         }
     }
 
-    private func downloadPhase(itemID: UUID, url: URL, extraArguments: [String]) async throws -> String? {
+    private func downloadPhase(
+        itemID: UUID, url: URL, extraArguments: [String], planned: [String: Int64],
+    ) async throws -> String? {
         guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
         items[index].status = .downloading
         let directory = settings.downloadDirectory.appendingPathComponent("Danny", isDirectory: true)
         var finalPath: String?
-        var progress = DownloadProgress()
+        var progress = DownloadProgress(planned: planned)
         for try await event in client.downloadStream(
             url: url, into: directory, binaries: binaries, extraArguments: extraArguments,
         ) {
             guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
             switch event {
-            case let .progress(downloaded, total, speed):
-                items[index].fractionCompleted = progress.update(downloaded: downloaded, total: total)
+            case let .progress(downloaded, total, speed, file):
+                items[index].fractionCompleted = progress.update(file: file, downloaded: downloaded, total: total)
                 if let totalBytes = progress.totalBytes {
                     items[index].totalBytes = totalBytes
                 }

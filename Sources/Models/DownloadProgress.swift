@@ -2,38 +2,47 @@ import Foundation
 
 /// Turns yt-dlp's per-file progress into one fraction for the whole download.
 ///
-/// yt-dlp reports bytes for the file it is fetching now. Sites like YouTube send
-/// video and audio as two files, so the count restarts for the second; and a file
-/// can run past its reported size. The fraction here spans every file, only moves
-/// forward, and stays below 1 until the download is marked finished.
+/// yt-dlp reports bytes for the file it is fetching now, named by its format id.
+/// Sites like YouTube send video and audio as separate files, so the plan — the
+/// files the probe said will be fetched and their approximate sizes — reserves
+/// room for the files still to come. Reported sizes replace the plan's as they
+/// arrive. The fraction only moves forward and stays below 1 until the download
+/// is marked finished.
 struct DownloadProgress {
     /// The highest fraction shown while bytes are still arriving.
     static let ceiling = 0.99
 
     private(set) var fraction: Double?
-    /// Bytes of the files already finished.
-    private var finishedBytes: Int64 = 0
-    private var currentDownloaded: Int64 = 0
-    private var currentTotal: Int64?
+    /// Approximate size of each planned file, by format id.
+    private let planned: [String: Int64]
+    private var downloaded: [String: Int64] = [:]
+    private var reported: [String: Int64] = [:]
 
-    /// Every finished file plus the current one's expected size, when known.
-    var totalBytes: Int64? {
-        currentTotal.map { finishedBytes + max($0, currentDownloaded) }
+    init(planned: [String: Int64] = [:]) {
+        self.planned = planned.filter { $0.value > 0 }
     }
 
-    /// A line with no total keeps the current file's last known size.
-    mutating func update(downloaded: Int64, total: Int64?) -> Double? {
-        if downloaded < currentDownloaded {
-            // The count went back: a new file started.
-            finishedBytes += max(currentTotal ?? 0, currentDownloaded)
-            currentTotal = nil
+    /// Every file's size: reported when known, else planned, never below what
+    /// already arrived. Nil until any size is known.
+    var totalBytes: Int64? {
+        guard !reported.isEmpty || !planned.isEmpty else { return nil }
+        let files = Set(planned.keys).union(reported.keys).union(downloaded.keys)
+        let total = files.reduce(Int64(0)) { sum, file in
+            sum + max(reported[file] ?? planned[file] ?? 0, downloaded[file] ?? 0)
         }
-        currentDownloaded = downloaded
-        if let total, total > 0 { currentTotal = total }
+        return total > 0 ? total : nil
+    }
 
-        guard let expected = totalBytes, expected > 0 else { return fraction }
-        let raw = Double(finishedBytes + downloaded) / Double(expected)
-        fraction = min(max(raw, fraction ?? 0), Self.ceiling)
+    /// `file` is the format id yt-dlp is fetching; a line with no total keeps that
+    /// file's last known size.
+    mutating func update(file: String? = nil, downloaded bytes: Int64, total: Int64?) -> Double? {
+        let file = file ?? ""
+        downloaded[file] = bytes
+        if let total, total > 0 { reported[file] = total }
+
+        guard let expected = totalBytes else { return fraction }
+        let arrived = downloaded.values.reduce(0, +)
+        fraction = min(max(Double(arrived) / Double(expected), fraction ?? 0), Self.ceiling)
         return fraction
     }
 }

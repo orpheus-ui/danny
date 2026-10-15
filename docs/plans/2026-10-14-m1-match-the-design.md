@@ -2,11 +2,12 @@
 
 | Task | Status | PR |
 |---|---|---|
-| tokens — Figma colors, gradients, radii and type into `D` | in review | orpheus-ui/danny#8 |
+| tokens — Figma colors, gradients, radii and type into `D` | done | orpheus-ui/danny#8 |
 | snapshots — snapshot tests for every card state | not started | — |
-| progress-bar — Metal shader dots, passing light, eased progress | in review | orpheus-ui/danny#9 |
+| progress-bar — Metal shader dots, passing light, eased progress | done | orpheus-ui/danny#9 |
 | card — full-bleed thumbnail, scrim, title/meta/actions | not started | — |
-| bars — title bar and bottom bar | not started | — |
+| bars — title bar and bottom bar | in review | orpheus-ui/danny#11 (done), orpheus-ui/danny#13 |
+| search — one field that finds and adds, scope chips | done | orpheus-ui/danny#12 |
 | states — Queued, Fetching, Merging, Paused, Failed, empty list | not started | — |
 | debt — clipboard timer, list re-renders, `visibleItems` cache | not started | — |
 

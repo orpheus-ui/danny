@@ -73,8 +73,10 @@ enum D {
         ],
     )
 
+    /// Matches Figma's bottom bar image (`519:283`): ink, clear at the top to opaque at
+    /// the bottom, over the bar's own height.
     static let bottomFade = LinearGradient(
-        verticalStops: [(Color.black.opacity(0), 0.0), (Color.black.opacity(0.55), 1.0)],
+        verticalStops: [(ink.opacity(0), 0.0), (ink, 1.0)],
     )
 
     // MARK: Shape and size

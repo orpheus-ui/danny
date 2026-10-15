@@ -7,23 +7,24 @@ struct BottomBarView: View {
     var onEnterURL: () -> Void
 
     var body: some View {
-        ZStack(alignment: .top) {
+        ZStack {
             D.bottomFade
-                .frame(height: 80)
-                .offset(y: -24)
                 .allowsHitTesting(false)
 
-            HStack(spacing: 10) {
-                sortMenu
-                Spacer()
-                PillButton(icon: "icon-browser", style: .bar) {
-                    onBrowser()
-                }
-                .help("Browser Capture")
+            // One container, so the bar's glass shares a single backdrop pass.
+            GlassEffectContainer {
+                HStack(spacing: 10) {
+                    sortMenu
+                    Spacer()
+                    PillButton(icon: "icon-browser", style: .bar) {
+                        onBrowser()
+                    }
+                    .help("Browser Capture")
 
-                PillMenu(icon: "icon-plus", style: .bar) {
-                    Button("Paste from Clipboard", action: onPaste)
-                    Button("Enter URL…", action: onEnterURL)
+                    PillMenu(icon: "icon-plus", style: .bar) {
+                        Button("Paste from Clipboard", action: onPaste)
+                        Button("Enter URL…", action: onEnterURL)
+                    }
                 }
             }
             .padding(.horizontal, 10)

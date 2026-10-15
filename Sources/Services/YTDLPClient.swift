@@ -108,10 +108,10 @@ nonisolated struct YTDLPClient: Sendable {
     }
 
     @concurrent
-    func probe(url: URL, binaries: Binaries) async throws -> VideoMetadata {
+    func probe(url: URL, binaries: Binaries, extraArguments: [String] = []) async throws -> VideoMetadata {
         let output = try await runProcess(
             binaries.ytdlp,
-            ["-J", "--no-warnings", "--no-playlist", "--skip-download", url.absoluteString],
+            ["-J", "--no-warnings", "--no-playlist", "--skip-download"] + extraArguments + [url.absoluteString],
         )
         guard let data = output.data(using: .utf8),
               let metadata = try? JSONDecoder().decode(VideoMetadata.self, from: data)
@@ -265,6 +265,12 @@ nonisolated struct YTDLPClient: Sendable {
         return Double(text[text.startIndex ..< end].replacingOccurrences(of: ",", with: "."))
     }
 
+    @concurrent
+    private static func readAll(_ pipe: Pipe) async -> String {
+        let data = (try? pipe.fileHandleForReading.readToEnd()) ?? Data()
+        return String(bytes: data, encoding: .utf8) ?? ""
+    }
+
     private static func meaningfulError(_ lines: [String]) -> String? {
         lines.first?
             .replacingOccurrences(of: "ERROR: ", with: "")
@@ -279,8 +285,9 @@ nonisolated struct YTDLPClient: Sendable {
         process.environment = Self.childProcessEnvironment()
         process.standardInput = FileHandle.nullDevice
         let pipe = Pipe()
+        let errors = Pipe()
         process.standardOutput = pipe
-        process.standardError = FileHandle.nullDevice
+        process.standardError = errors
 
         _ = try await withTaskCancellationHandler {
             try process.run()
@@ -288,14 +295,18 @@ nonisolated struct YTDLPClient: Sendable {
             if process.isRunning { process.terminate() }
         }
 
+        // Read stderr alongside stdout, so neither pipe fills and stalls yt-dlp.
+        async let errorText = Self.readAll(errors)
         var output = ""
         for try await line in pipe.fileHandleForReading.bytes.lines {
             output += line + "\n"
         }
         process.waitUntilExit()
+        let errorLines = await errorText.split(separator: "\n").map(String.init)
 
         guard process.terminationStatus == 0 else {
-            throw YTDLPError(message: "yt-dlp exited with code \(process.terminationStatus).")
+            throw YTDLPError(message: Self.meaningfulError(errorLines.filter { $0.contains("ERROR") })
+                ?? "yt-dlp exited with code \(process.terminationStatus).")
         }
         return output
     }

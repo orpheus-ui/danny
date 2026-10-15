@@ -37,6 +37,8 @@ struct SettingsView: View {
                 )
             }
 
+            AccountsSection()
+
             Section("Clipboard") {
                 Toggle("Watch clipboard for links", isOn: $settings.monitorClipboard)
                 Text("When enabled, copied video links are added to the queue automatically.")

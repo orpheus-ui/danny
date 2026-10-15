@@ -4,6 +4,7 @@ struct MainWindow: View {
     @Environment(AppModel.self) private var model
     @Environment(DownloadManager.self) private var manager
     @Environment(AppSettings.self) private var settings
+    @Environment(SiteSessions.self) private var sessions
     @Environment(\.openWindow) private var openWindow
 
     @State private var showConsentAlert = false
@@ -50,6 +51,12 @@ struct MainWindow: View {
                     manager.filter.text = text
                     isSearching = true
                 }
+                // `-sample-sign-in <site id>` (debug builds): open that site's sign-in window.
+                if let id = UserDefaults.standard.string(forKey: "sample-sign-in"),
+                   let site = sessions.sites.first(where: { $0.id == id })
+                {
+                    openWindow(id: SignInView.windowID, value: site)
+                }
             #endif
         }
     }
@@ -89,6 +96,7 @@ struct MainWindow: View {
                             onRetry: { manager.retry(id: item.id) },
                             onReveal: { manager.revealInFinder(id: item.id) },
                             onBrowserCapture: { requestBrowser(url: item.sourceURL) },
+                            onSignIn: signInAction(for: item),
                         )
                     }
                     if manager.visibleItems.isEmpty {
@@ -146,6 +154,12 @@ struct MainWindow: View {
         if filter.isEmpty { return "Press + to add a video link" }
         let text = filter.text.trimmingCharacters(in: .whitespaces)
         return text.isEmpty ? "Nothing here" : "No downloads match “\(text)”"
+    }
+
+    /// Opens the sign-in window for the item's site; nil when the site is unknown.
+    private func signInAction(for item: DownloadItem) -> (() -> Void)? {
+        guard let site = sessions.site(for: item.sourceURL) else { return nil }
+        return { openWindow(id: SignInView.windowID, value: site) }
     }
 
     private func requestBrowser(url: URL?) {

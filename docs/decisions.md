@@ -148,3 +148,27 @@ build, so a build that can't do one of them never ships.
 
 Would change if yt-dlp needs something the build leaves out: add it to the build
 and a case to the check, never switch to a full build.
+
+## ADR-014 — Site sign-in: sessions stay in WebKit, cookies reach yt-dlp per run
+
+**2026-10-16 · Accepted**
+
+Some videos need a signed-in user, and YouTube asks yt-dlp to sign in when it
+suspects a bot. Danny signs in through the site's own login page in its built-in
+browser (WebKit's default store, shared with Browser Capture). The password goes
+to the site; Danny only sees the session cookies it leaves behind.
+
+The sessions stay in WebKit's store and Danny keeps no copy. yt-dlp's `--cookies`
+reads a file, so for each run Danny writes only the link's site cookies to a file
+in the user's private temporary folder (mode 0600), and removes it when the run
+ends. Cookies the site refreshed during the run are read back into the store
+first, so the session doesn't go stale. Leftover files from a crash are removed
+at launch. With no session for the link's site, no file is written.
+
+`--cookies-from-browser` was the alternative: it reads the user's own browser,
+which needs Full Disk Access for Safari or a keychain prompt for Chrome, and
+hands yt-dlp every cookie the browser has. Sites are data (`SignInSite`), so a
+new built-in site is one entry, and users add others by address.
+
+Would change if yt-dlp reads cookies from a pipe or stdin: then nothing touches
+the disk at all.

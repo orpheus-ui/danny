@@ -7,6 +7,7 @@ struct DownloadCardView: View {
     let onRetry: () -> Void
     let onReveal: () -> Void
     let onBrowserCapture: () -> Void
+    var onSignIn: (() -> Void)?
 
     @State private var hovering = false
     @State private var showingSource = false
@@ -53,7 +54,9 @@ struct DownloadCardView: View {
                 item: item,
                 onRetry: onRetry,
                 onBrowserCapture: onBrowserCapture,
+                onSignIn: onSignIn,
             )
+            .help(item.status == .failed ? item.errorMessage ?? "" : "")
         }
     }
 

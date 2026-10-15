@@ -58,8 +58,15 @@ struct TitleBarView: View {
                     .opacity(isSearching ? 1 : 0.9)
             }
             .buttonStyle(.plain)
-            .keyboardShortcut("f", modifiers: .command)
             .help("Search or add a link (⌘F)")
+            .background {
+                // ⌘F opens the search, or focuses it when open; only the button closes it.
+                Button("Search", action: openSearch)
+                    .keyboardShortcut("f", modifiers: .command)
+                    .opacity(0)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
 
             Button {
                 openSettings()
@@ -136,6 +143,14 @@ struct TitleBarView: View {
     }
 
     // MARK: Actions
+
+    private func openSearch() {
+        if isSearching {
+            fieldFocused = true
+        } else {
+            withAnimation(.smooth(duration: 0.25)) { isSearching = true }
+        }
+    }
 
     private func toggleSearch() {
         withAnimation(.smooth(duration: 0.25)) {

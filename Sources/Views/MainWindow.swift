@@ -123,7 +123,7 @@ struct MainWindow: View {
             Text(emptyTitle)
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(Color.white.opacity(0.35))
-            if manager.filter.link != nil {
+            if manager.filter.link != nil, !manager.filter.linkIsListed(in: manager.items) {
                 Text("Press Return to download it")
                     .font(.system(size: 11))
                     .foregroundStyle(Color.white.opacity(0.22))
@@ -139,7 +139,10 @@ struct MainWindow: View {
 
     private var emptyTitle: String {
         let filter = manager.filter
-        if filter.link != nil { return "Not in your downloads yet" }
+        if filter.link != nil {
+            return filter.linkIsListed(in: manager.items)
+                ? "No downloads match these filters" : "Not in your downloads yet"
+        }
         if filter.isEmpty { return "Press + to add a video link" }
         let text = filter.text.trimmingCharacters(in: .whitespaces)
         return text.isEmpty ? "Nothing here" : "No downloads match “\(text)”"

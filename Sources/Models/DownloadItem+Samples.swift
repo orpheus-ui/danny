@@ -8,7 +8,7 @@
                 .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
                 .appendingPathComponent("Resources/Images/sample-thumbnail.png")
             let states: [(ItemStatus, Double?)] = [
-                (.downloading, 0.54), (.resolving, nil), (.processing, nil),
+                (.downloading, 0.54), (.choosing, nil), (.resolving, nil), (.processing, nil),
                 (.finished, 1), (.failed, nil), (.queued, nil),
             ].reversed() // the list shows the newest first
             return states.enumerated().map { index, state in
@@ -22,6 +22,15 @@
                 item.fractionCompleted = state.1
                 item.speedBytesPerSecond = state.0 == .downloading ? 80_000_000 : nil
                 item.errorMessage = state.0 == .failed ? "Unsupported URL" : nil
+                if state.0 == .choosing {
+                    item.qualityOptions = [
+                        QualityOption(choice: .video(maxHeight: 1080), label: "1080p", bytes: 340_000_000),
+                        QualityOption(choice: .video(maxHeight: 720), label: "720p", bytes: 150_000_000),
+                        QualityOption(choice: .video(maxHeight: 480), label: "480p", bytes: 70_000_000),
+                        QualityOption(choice: .audio, label: "Audio", bytes: 9_000_000),
+                    ]
+                    item.choiceDeadline = Date().addingTimeInterval(8)
+                }
                 return item
             }
         }

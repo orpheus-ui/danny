@@ -29,6 +29,8 @@ final class AppSettings {
         static let monitorClipboard = "monitorClipboard"
         static let maxConcurrent = "maxConcurrentDownloads"
         static let browserConsent = "browserConsentGiven"
+        static let quality = "quality"
+        static let format = "format"
     }
 
     var downloadDirectory: URL {
@@ -47,9 +49,19 @@ final class AppSettings {
         didSet { defaults.set(browserConsentGiven, forKey: Key.browserConsent) }
     }
 
+    var quality: QualityPreference {
+        didSet { defaults.set(quality.rawValue, forKey: Key.quality) }
+    }
+
+    var format: FormatPreference {
+        didSet { defaults.set(format.rawValue, forKey: Key.format) }
+    }
+
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
+        quality = defaults.string(forKey: Key.quality).flatMap(QualityPreference.init(rawValue:)) ?? .best
+        format = defaults.string(forKey: Key.format).flatMap(FormatPreference.init(rawValue:)) ?? .compatible
         self.defaults = defaults
         let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser

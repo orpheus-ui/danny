@@ -97,6 +97,7 @@ struct MainWindow: View {
                             onReveal: { manager.revealInFinder(id: item.id) },
                             onBrowserCapture: { requestBrowser(url: item.sourceURL) },
                             onSignIn: signInAction(for: item),
+                            onChoose: { manager.choose(id: item.id, choice: $0) },
                         )
                     }
                     if manager.visibleItems.isEmpty {

@@ -3,6 +3,8 @@ import Foundation
 enum ItemStatus: String, Codable, Comparable {
     case queued
     case resolving
+    /// Waiting for the user to pick a quality on the card.
+    case choosing
     case downloading
     case processing
     case finished
@@ -10,7 +12,7 @@ enum ItemStatus: String, Codable, Comparable {
 
     var isActive: Bool {
         switch self {
-        case .queued, .resolving, .downloading, .processing: true
+        case .queued, .resolving, .choosing, .downloading, .processing: true
         case .finished, .failed: false
         }
     }
@@ -19,10 +21,11 @@ enum ItemStatus: String, Codable, Comparable {
         switch self {
         case .downloading: 0
         case .processing: 1
-        case .resolving: 2
-        case .queued: 3
-        case .failed: 4
-        case .finished: 5
+        case .choosing: 2
+        case .resolving: 3
+        case .queued: 4
+        case .failed: 5
+        case .finished: 6
         }
     }
 
@@ -44,6 +47,11 @@ struct DownloadItem: Identifiable, Codable, Hashable {
     var filePath: String?
     var errorMessage: String?
     var addedAt: Date
+    /// The quality picked for this item; nil follows the setting.
+    var quality: QualityChoice?
+    /// While choosing: the options on the card, and when the default starts.
+    var qualityOptions: [QualityOption]?
+    var choiceDeadline: Date?
 
     init(url: URL) {
         id = UUID()

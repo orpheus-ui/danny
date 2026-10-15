@@ -8,6 +8,7 @@ struct DownloadCardView: View {
     let onReveal: () -> Void
     let onBrowserCapture: () -> Void
     var onSignIn: (() -> Void)?
+    var onChoose: ((QualityChoice) -> Void)?
 
     @State private var hovering = false
     @State private var showingSource = false
@@ -50,13 +51,17 @@ struct DownloadCardView: View {
         VStack(alignment: .leading, spacing: 8) {
             headerRow
             Spacer(minLength: 0)
-            ProgressBarView(
-                item: item,
-                onRetry: onRetry,
-                onBrowserCapture: onBrowserCapture,
-                onSignIn: onSignIn,
-            )
-            .help(item.status == .failed ? item.errorMessage ?? "" : "")
+            if item.status == .choosing, let options = item.qualityOptions, let onChoose {
+                QualityChips(options: options, deadline: item.choiceDeadline, onChoose: onChoose)
+            } else {
+                ProgressBarView(
+                    item: item,
+                    onRetry: onRetry,
+                    onBrowserCapture: onBrowserCapture,
+                    onSignIn: onSignIn,
+                )
+                .help(item.status == .failed ? item.errorMessage ?? "" : "")
+            }
         }
     }
 

@@ -29,7 +29,7 @@ struct TitleBarView: View {
     private var titleBlock: some View {
         HStack(alignment: .center, spacing: 2) {
             Text("Danny")
-                .font(.system(size: 14, weight: .semibold))
+                .font(D.Font.appTitle)
                 .foregroundStyle(D.titleGradient)
             Ellipse()
                 .fill(D.accent)
@@ -41,7 +41,7 @@ struct TitleBarView: View {
     }
 
     private var toolbarButtons: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: D.Spacing.toolbar) {
             Button {
                 withAnimation(.easeOut(duration: 0.18)) {
                     if searchActive { query = "" }
@@ -50,7 +50,7 @@ struct TitleBarView: View {
             } label: {
                 Image("icon-search")
                     .resizable()
-                    .frame(width: 20, height: 20)
+                    .frame(width: D.Size.toolbarIcon, height: D.Size.toolbarIcon)
                     .opacity(searchActive ? 1 : 0.9)
             }
             .buttonStyle(.plain)
@@ -61,7 +61,7 @@ struct TitleBarView: View {
             } label: {
                 Image("icon-settings")
                     .resizable()
-                    .frame(width: 20, height: 20)
+                    .frame(width: D.Size.toolbarIcon, height: D.Size.toolbarIcon)
             }
             .buttonStyle(.plain)
             .help("Settings")

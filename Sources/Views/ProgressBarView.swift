@@ -4,7 +4,7 @@ struct ProgressBarView: View {
     let item: DownloadItem
     var onRetry: (() -> Void)?
     var onBrowserCapture: (() -> Void)?
-    var barHeight: CGFloat = 20
+    var barHeight: CGFloat = D.Size.progressHeight
 
     var body: some View {
         GeometryReader { geo in
@@ -30,10 +30,8 @@ struct ProgressBarView: View {
 
     private var track: some View {
         Capsule()
-            .fill(Color.white.opacity(0.08))
-            .overlay {
-                Capsule().strokeBorder(Color.white.opacity(0.07), lineWidth: 1)
-            }
+            .fill(D.progressTrack)
+            .shadow(color: D.progressRim, radius: 0, y: 1)
     }
 
     @ViewBuilder
@@ -128,8 +126,8 @@ struct ProgressBarView: View {
 
     private func labelText(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 14, weight: .bold))
-            .foregroundStyle(Color.white.opacity(0.92))
+            .font(D.Font.progressLabel)
+            .foregroundStyle(D.progressLabel)
             .lineLimit(1)
             .fixedSize()
     }

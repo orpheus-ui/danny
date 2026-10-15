@@ -1,37 +1,62 @@
 import SwiftUI
 
+/// Design tokens. Values come from the Figma main window (node `519:189`); values
+/// Figma doesn't define yet say so. Views use these instead of literals.
 enum D {
-    static let ink = Color(red: 26 / 255, green: 22 / 255, blue: 33 / 255)
-    static let glassTint = Color(red: 30 / 255, green: 26 / 255, blue: 38 / 255).opacity(0.35)
-    static let windowStroke = Color.white.opacity(0.22)
+    // MARK: Colors
 
-    static let accent = Color(red: 118 / 255, green: 98 / 255, blue: 1)
-    static let accentDeep = Color(red: 86 / 255, green: 35 / 255, blue: 1)
+    static let ink = rgb(26, 22, 33)
+    /// Window background: 75% over a backdrop blur.
+    static let windowTint = rgb(17, 15, 22).opacity(0.75)
+    static let windowStroke = Color.white.opacity(0.24)
+
+    static let accent = rgb(118, 97, 255)
+    static let accentDeep = rgb(86, 35, 255)
+
+    static let textPrimary = Color.white
+    static let textSecondary = Color.white.opacity(0.5)
+
+    /// Card outline (2 pt).
+    static let cardStroke = Color.black.opacity(0.8)
+    /// Behind the thumbnail, and where there is none.
+    static let cardBackdrop = Color.black
+
+    /// Round icon buttons on cards: dots, trash.
+    static let pillFill = ink.opacity(0.8)
+    static let pillStroke = Color.white.opacity(0.12)
+    /// Round icon buttons in the bottom bar: sort, add.
+    static let barButtonFill = ink.opacity(0.2)
+
+    static let progressTrack = rgb(47, 47, 47).opacity(0.5)
+    /// 1 pt light edge under the track.
+    static let progressRim = Color.white.opacity(0.1)
+    static let progressLabel = Color.white.opacity(0.9)
+
+    // MARK: Gradients
 
     static let titleGradient = LinearGradient(
-        colors: [
-            Color(red: 246 / 255, green: 240 / 255, blue: 250 / 255),
-            Color(red: 168 / 255, green: 155 / 255, blue: 1),
-        ],
+        colors: [rgb(246, 240, 250), rgb(168, 155, 255)],
         startPoint: .topLeading, endPoint: .bottomTrailing,
     )
 
+    /// Figma's gradient ends at 177% of the fill; this is its color at 100%.
     static let progressFill = LinearGradient(
-        colors: [
-            Color(red: 0.40, green: 0.30, blue: 1),
-            Color(red: 0.58, green: 0.50, blue: 1),
-        ],
+        colors: [accentDeep.opacity(0.6), rgb(104, 70, 255).opacity(0.6)],
+        startPoint: .leading, endPoint: .trailing,
+    )
+
+    /// The halftone dots drawn over the fill (`#9170FF → #A395FE`, also cut at 100%).
+    static let progressDots = LinearGradient(
+        colors: [rgb(145, 112, 255), rgb(155, 133, 254)],
         startPoint: .leading, endPoint: .trailing,
     )
 
     static let doneFill = LinearGradient(
-        colors: [
-            Color(red: 22 / 255, green: 166 / 255, blue: 99 / 255),
-            Color(red: 22 / 255, green: 219 / 255, blue: 160 / 255),
-        ],
+        colors: [rgb(16, 215, 76).opacity(0.6), rgb(97, 255, 147).opacity(0.6)],
         startPoint: .leading, endPoint: .trailing,
     )
 
+    /// Not in Figma yet — the Failed state is designed in M1.
     static let failedFill = LinearGradient(
         colors: [
             Color(red: 0.85, green: 0.25, blue: 0.30),
@@ -40,10 +65,12 @@ enum D {
         startPoint: .leading, endPoint: .trailing,
     )
 
-    static let cardShade = LinearGradient(
-        horizontalStops: [(Color.black.opacity(0.92), 0.0), (Color.black.opacity(0.45), 1.0)],
+    /// Over the thumbnail, so the title reads on any image.
+    static let cardScrim = LinearGradient(
+        horizontalStops: [(Color.black, 0.0), (Color.black.opacity(0.5), 1.0)],
     )
 
+    /// Figma draws the bar backgrounds as images; these approximate them.
     static let titlebarFade = LinearGradient(
         verticalStops: [
             (Color.black.opacity(0.55), 0.0),
@@ -55,6 +82,52 @@ enum D {
     static let bottomFade = LinearGradient(
         verticalStops: [(Color.black.opacity(0), 0.0), (Color.black.opacity(0.55), 1.0)],
     )
+
+    // MARK: Shape and size
+
+    enum Radius {
+        static let window: CGFloat = 24
+        static let card: CGFloat = 12
+    }
+
+    enum Stroke {
+        static let window: CGFloat = 1.5
+        static let card: CGFloat = 2
+    }
+
+    enum Size {
+        static let cardHeight: CGFloat = 105
+        static let progressHeight: CGFloat = 20
+        static let cardIcon: CGFloat = 18
+        static let cardIconPadding: CGFloat = 6
+        static let barIcon: CGFloat = 24
+        static let barIconPadding: CGFloat = 8
+        static let toolbarIcon: CGFloat = 20
+    }
+
+    enum Spacing {
+        static let list: CGFloat = 12
+        static let listInset: CGFloat = 16
+        static let cardPadding: CGFloat = 10
+        static let cardActions: CGFloat = 10
+        static let toolbar: CGFloat = 8
+    }
+
+    // MARK: Type
+
+    enum Font {
+        /// Figma sets the app name in Space Grotesk Medium, which isn't bundled
+        /// yet; the system font stands in at the same size and weight.
+        static let appTitle = SwiftUI.Font.system(size: 16, weight: .medium)
+        static let cardTitle = SwiftUI.Font.system(size: 16, weight: .bold)
+        /// SF Pro at 80% width.
+        static let cardMeta = SwiftUI.Font.system(size: 12, weight: .medium).width(.condensed)
+        static let progressLabel = SwiftUI.Font.system(size: 14, weight: .bold)
+    }
+
+    private static func rgb(_ red: Double, _ green: Double, _ blue: Double) -> Color {
+        Color(red: red / 255, green: green / 255, blue: blue / 255)
+    }
 }
 
 extension LinearGradient {

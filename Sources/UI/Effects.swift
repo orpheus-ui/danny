@@ -26,13 +26,13 @@ private final class WindowConfiguratorView: NSView {
 struct LiquidWindowBackground: View {
     var body: some View {
         Color.clear
-            .glassEffect(.regular.tint(D.glassTint), in: .rect)
+            .glassEffect(.regular.tint(D.windowTint), in: .rect)
     }
 }
 
 extension View {
     func dannyGlass(
-        tint: Color = D.glassTint,
+        tint: Color = D.windowTint,
         in shape: some Shape,
         interactive: Bool = false,
     ) -> some View {

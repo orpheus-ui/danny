@@ -13,20 +13,15 @@ struct DownloadCardView: View {
 
     var body: some View {
         content
-            .padding(10)
-            .frame(maxWidth: .infinity, minHeight: 104, maxHeight: 104, alignment: .top)
-            .background { D.cardShade.allowsHitTesting(false) }
+            .padding(D.Spacing.cardPadding)
+            .frame(maxWidth: .infinity, minHeight: D.Size.cardHeight, maxHeight: D.Size.cardHeight, alignment: .top)
+            .background { D.cardScrim.allowsHitTesting(false) }
             .background { thumbnailLayer }
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: D.Radius.card, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(Color.white.opacity(hovering ? 0.16 : 0.09), lineWidth: 1)
+                RoundedRectangle(cornerRadius: D.Radius.card, style: .continuous)
+                    .strokeBorder(D.cardStroke, lineWidth: D.Stroke.card)
             }
-            .background {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .dannyGlass(tint: Color.black.opacity(0.30), in: .rect(cornerRadius: 12))
-            }
-            .shadow(color: .black.opacity(0.25), radius: 6, y: 2)
             .onHover { hovering in
                 self.hovering = hovering
             }
@@ -35,7 +30,7 @@ struct DownloadCardView: View {
 
     private var thumbnailLayer: some View {
         ZStack {
-            Color(red: 0.07, green: 0.06, blue: 0.09)
+            D.cardBackdrop
             if let url = item.thumbnailURL {
                 AsyncImage(url: url) { phase in
                     if let image = phase.image {
@@ -47,7 +42,6 @@ struct DownloadCardView: View {
             }
         }
         .clipped()
-        .opacity(0.9)
         .allowsHitTesting(false)
     }
 
@@ -68,8 +62,8 @@ struct DownloadCardView: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(item.title)
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(.white)
+                        .font(D.Font.cardTitle)
+                        .foregroundStyle(D.textPrimary)
                         .lineLimit(1)
                         .truncationMode(.tail)
                     if hovering {
@@ -78,7 +72,7 @@ struct DownloadCardView: View {
                         } label: {
                             Image("icon-search")
                                 .resizable()
-                                .frame(width: 16, height: 16)
+                                .frame(width: D.Size.cardIcon, height: D.Size.cardIcon)
                         }
                         .buttonStyle(.plain)
                         .transition(.opacity)
@@ -129,17 +123,17 @@ struct DownloadCardView: View {
                 Text(size)
             }
         }
-        .font(.system(size: 12, weight: .medium))
-        .foregroundStyle(Color.white.opacity(0.55))
+        .font(D.Font.cardMeta)
+        .foregroundStyle(D.textSecondary)
         .lineLimit(1)
     }
 
     private var separatorDot: some View {
-        Circle().frame(width: 3, height: 3).foregroundStyle(Color.white.opacity(0.4))
+        Circle().frame(width: 3, height: 3).foregroundStyle(D.textSecondary)
     }
 
     private var actionPills: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: D.Spacing.cardActions) {
             PillMenu(icon: "icon-dots") {
                 if item.status.isActive {
                     Button("Cancel", action: onCancel)

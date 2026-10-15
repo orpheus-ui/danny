@@ -47,18 +47,35 @@ struct ProgressBarView: View {
     }
 
     private func fill(_ style: FillStyle, width: CGFloat, track: CGFloat) -> some View {
-        Capsule()
-            .fill(style.gradient)
-            .colorEffect(ShaderLibrary.progressFill(
-                .float2(width, D.Size.progressHeight),
-                .color(style.dotStart), .color(style.dotEnd),
-            ))
+        DottedFill(width: width, style: style)
             .overlay(alignment: .leading) {
                 ProgressLight(trackWidth: track, isRunning: sweeps)
             }
             .clipShape(Capsule())
-            .frame(width: width)
             .animation(.easeOut(duration: 0.45), value: width)
+    }
+
+    /// The fill and its shader take the same animated width: a `Shader.Argument` isn't
+    /// interpolated, so passing the target width while the frame animates would lay the
+    /// dots out for the wrong size until the animation ends.
+    private struct DottedFill: View, Animatable {
+        var width: CGFloat
+        let style: FillStyle
+
+        var animatableData: CGFloat {
+            get { width }
+            set { width = newValue }
+        }
+
+        var body: some View {
+            Capsule()
+                .fill(style.gradient)
+                .colorEffect(ShaderLibrary.progressFill(
+                    .float2(width, D.Size.progressHeight),
+                    .color(style.dotStart), .color(style.dotEnd),
+                ))
+                .frame(width: width)
+        }
     }
 
     private func fillWidth(in total: CGFloat) -> CGFloat {

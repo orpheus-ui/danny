@@ -62,7 +62,7 @@ jobs:
       - name: Tools
         run: |
           brew install xcodegen xcbeautify git-cliff
-          xcrun -f metal > /dev/null 2>&1 || xcodebuild -downloadComponent MetalToolchain
+          xcrun metal --version > /dev/null 2>&1 || xcodebuild -downloadComponent MetalToolchain
 
       # ffmpeg is built from source (scripts/build-ffmpeg.sh). The key is the build
       # script's hash, so a cached build is always the one the script would make;

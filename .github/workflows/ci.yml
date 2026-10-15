@@ -48,7 +48,7 @@ jobs:
       - name: Tools
         run: brew install xcodegen swiftformat swiftlint xcbeautify
       - name: Metal toolchain
-        run: xcrun -f metal > /dev/null 2>&1 || xcodebuild -downloadComponent MetalToolchain
+        run: xcrun metal --version > /dev/null 2>&1 || xcodebuild -downloadComponent MetalToolchain
       - name: Lint
         run: make lint
       - name: Test

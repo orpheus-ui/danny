@@ -292,8 +292,14 @@ nonisolated struct YTDLPClient: Sendable {
     private static func running<T>(_ process: Process, _ body: () async throws -> T) async throws -> T {
         try Task.checkCancellation()
         try process.run()
-        return try await withTaskCancellationHandler(operation: body) {
+        do {
+            return try await withTaskCancellationHandler(operation: body) {
+                if process.isRunning { process.terminate() }
+            }
+        } catch {
+            // A failed read leaves no one to wait for the process.
             if process.isRunning { process.terminate() }
+            throw error
         }
     }
 

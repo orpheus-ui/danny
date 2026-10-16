@@ -24,4 +24,18 @@ struct EngineArgumentsTests {
     @Test func `signed-out retry uses the iOS client`() {
         #expect(DownloadManager.fallbackArguments(signedIn: false) == ["--extractor-args", "youtube:player_client=ios"])
     }
+
+    @Test func `goes signed out first on YouTube`() throws {
+        let cookies = ["--cookies", "/tmp/c.txt"]
+        let watch = try #require(URL(string: "https://www.youtube.com/watch?v=x"))
+        let short = try #require(URL(string: "https://youtu.be/x"))
+        #expect(DownloadManager.firstTryCookies(for: watch, signedIn: cookies).isEmpty)
+        #expect(DownloadManager.firstTryCookies(for: short, signedIn: cookies).isEmpty)
+    }
+
+    @Test func `other signed-in sites send their cookies from the start`() throws {
+        let cookies = ["--cookies", "/tmp/c.txt"]
+        let link = try #require(URL(string: "https://www.instagram.com/reel/x"))
+        #expect(DownloadManager.firstTryCookies(for: link, signedIn: cookies) == cookies)
+    }
 }

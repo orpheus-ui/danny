@@ -18,6 +18,11 @@ struct SignInSite: Identifiable, Hashable, Sendable, Codable {
 
     var isCustom: Bool { id.hasPrefix(Self.customPrefix) }
 
+    /// Downloads go signed out first and use the session only when the site asks.
+    /// YouTube serves some signed-in accounts only SABR streams, which yt-dlp can't
+    /// read, so signed in they'd get 360p where signed out gets every quality.
+    var signsInOnlyWhenAsked: Bool { id == Self.youtube.id }
+
     static let builtIn: [SignInSite] = [youtube, instagram, x, facebook]
 
     static let youtube = SignInSite(

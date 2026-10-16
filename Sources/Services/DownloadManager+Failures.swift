@@ -8,6 +8,11 @@ extension DownloadManager {
         ["--extractor-args", "youtube:player_client=" + (signedIn ? "tv,mweb" : "ios")]
     }
 
+    /// The cookies a run tries first: none for a site that signs in only when asked.
+    static func firstTryCookies(for url: URL, signedIn cookies: [String]) -> [String] {
+        SignInSite.site(for: url)?.signsInOnlyWhenAsked == true ? [] : cookies
+    }
+
     static func shouldRetryWithFallback(_ message: String) -> Bool {
         let lowered = message.lowercased()
         return lowered.contains("403")

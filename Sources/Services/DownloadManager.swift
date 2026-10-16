@@ -184,10 +184,10 @@ final class DownloadManager {
                 }
             }
         }
-        let cookies = cookieFile?.arguments ?? []
+        var cookies = cookieFile?.arguments ?? []
 
         do {
-            guard let metadata = try await probe(itemID: itemID, url: url, cookies: cookies) else { return }
+            guard let metadata = try await probe(itemID: itemID, url: url, signedIn: &cookies) else { return }
 
             guard let choice = qualityChoice(for: itemID, metadata: metadata) else { return }
             let quality = QualitySelection.arguments(for: choice, format: settings.format)
@@ -231,6 +231,19 @@ final class DownloadManager {
     /// Reads the link's details and puts them on the card. With the quality known,
     /// the probe lists the very files the download fetches. Nil when the card was
     /// cancelled or removed meanwhile.
+    /// Probes signed out first where the site prefers it, and again signed in when the
+    /// link asks for it. `cookies` ends as the set the download uses.
+    private func probe(itemID: UUID, url: URL, signedIn cookies: inout [String]) async throws -> VideoMetadata? {
+        let signedIn = cookies
+        cookies = Self.firstTryCookies(for: url, signedIn: signedIn)
+        do {
+            return try await probe(itemID: itemID, url: url, cookies: cookies)
+        } catch let error as YTDLPError where cookies != signedIn && DownloadItem.asksForSignIn(error.message) {
+            cookies = signedIn
+            return try await probe(itemID: itemID, url: url, cookies: cookies)
+        }
+    }
+
     private func probe(itemID: UUID, url: URL, cookies: [String]) async throws -> VideoMetadata? {
         let preset = items.first(where: { $0.id == itemID })?.quality ?? settings.quality.choice
         let presetArguments = preset.map { QualitySelection.arguments(for: $0, format: settings.format) } ?? []

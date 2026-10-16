@@ -24,4 +24,40 @@ struct EngineArgumentsTests {
     @Test func `signed-out retry uses the iOS client`() {
         #expect(DownloadManager.fallbackArguments(signedIn: false) == ["--extractor-args", "youtube:player_client=ios"])
     }
+
+    @Test func `goes signed out first on YouTube`() throws {
+        let cookies = ["--cookies", "/tmp/c.txt"]
+        let watch = try #require(URL(string: "https://www.youtube.com/watch?v=x"))
+        let short = try #require(URL(string: "https://youtu.be/x"))
+        #expect(DownloadManager.firstTryCookies(for: watch, signedIn: cookies).isEmpty)
+        #expect(DownloadManager.firstTryCookies(for: short, signedIn: cookies).isEmpty)
+    }
+
+    @Test func `other signed-in sites send their cookies from the start`() throws {
+        let cookies = ["--cookies", "/tmp/c.txt"]
+        let link = try #require(URL(string: "https://www.instagram.com/reel/x"))
+        #expect(DownloadManager.firstTryCookies(for: link, signedIn: cookies) == cookies)
+    }
+
+    @Test func `a signed-out download asked to sign in retries with the session`() {
+        let session = ["--cookies", "/tmp/c.txt"]
+        let retry = DownloadManager.retryArguments(
+            after: "Sign in to confirm you're not a bot", tried: ["-f", "best"], signedIn: session,
+        )
+        #expect(retry == session + ["-f", "best"] + DownloadManager.fallbackArguments(signedIn: true))
+    }
+
+    @Test func `a refused download without a sign-in prompt stays signed out`() {
+        let retry = DownloadManager.retryArguments(
+            after: "HTTP Error 403: Forbidden", tried: ["-f", "best"], signedIn: ["--cookies", "/tmp/c.txt"],
+        )
+        #expect(retry == ["-f", "best"] + DownloadManager.fallbackArguments(signedIn: false))
+    }
+
+    @Test func `any sign-in prompt to a signed-out download is retried when signed in`() {
+        let session = ["--cookies", "/tmp/c.txt"]
+        #expect(DownloadManager.shouldRetry(after: "This video requires login required", tried: [], signedIn: session))
+        #expect(!DownloadManager.shouldRetry(after: "login required", tried: [], signedIn: []))
+        #expect(!DownloadManager.shouldRetry(after: "login required", tried: session, signedIn: session))
+    }
 }

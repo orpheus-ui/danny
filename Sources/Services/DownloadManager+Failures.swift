@@ -8,6 +8,26 @@ extension DownloadManager {
         ["--extractor-args", "youtube:player_client=" + (signedIn ? "tv,mweb" : "ios")]
     }
 
+    /// The cookies a run tries first: none for a site that signs in only when asked.
+    static func firstTryCookies(for url: URL, signedIn cookies: [String]) -> [String] {
+        SignInSite.site(for: url)?.signsInOnlyWhenAsked == true ? [] : cookies
+    }
+
+    /// The retry's arguments: other YouTube clients, plus the session's cookies when a
+    /// signed-out try was asked to sign in.
+    static func retryArguments(after message: String, tried: [String], signedIn: [String]) -> [String] {
+        let wasSignedOut = !tried.contains("--cookies")
+        let retry = (wasSignedOut && DownloadItem.asksForSignIn(message) ? signedIn : []) + tried
+        return retry + fallbackArguments(signedIn: retry.contains("--cookies"))
+    }
+
+    /// Retries refusals other clients may get past, and any sign-in prompt a signed-out
+    /// try got while the session's cookies are at hand.
+    static func shouldRetry(after message: String, tried: [String], signedIn: [String]) -> Bool {
+        shouldRetryWithFallback(message)
+            || (!tried.contains("--cookies") && !signedIn.isEmpty && DownloadItem.asksForSignIn(message))
+    }
+
     static func shouldRetryWithFallback(_ message: String) -> Bool {
         let lowered = message.lowercased()
         return lowered.contains("403")

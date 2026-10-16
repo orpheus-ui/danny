@@ -48,6 +48,11 @@ ADR-016), which yt-dlp needs to read YouTube's player. When the first try is ref
 the retry asks for other YouTube clients: iOS when signed out, `tv` and `mweb` when
 signed in, because yt-dlp drops clients that can't send cookies.
 
+YouTube links go signed out first (`SignInSite.signsInOnlyWhenAsked`): YouTube serves
+some signed-in accounts only SABR streams, which yt-dlp can't read, so those
+accounts would get 360p. The session's cookies are used when the probe says the
+link needs a sign-in (age-restricted, members-only, private).
+
 ## Where it's heading
 
 | Milestone | Change |

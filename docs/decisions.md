@@ -165,6 +165,10 @@ ends. Cookies the site refreshed during the run are read back into the store
 first, so the session doesn't go stale. Leftover files from a crash are removed
 at launch. With no session for the link's site, no file is written.
 
+YouTube is the exception to "signed in means cookies on every run": its links go
+signed out first and use the session only when the link asks for a sign-in,
+because some signed-in accounts get SABR-only streams capped at 360p.
+
 `--cookies-from-browser` was the alternative: it reads the user's own browser,
 which needs Full Disk Access for Safari or a keychain prompt for Chrome, and
 hands yt-dlp every cookie the browser has. Sites are data (`SignInSite`), so a

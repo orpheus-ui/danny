@@ -279,7 +279,7 @@ final class DownloadManager {
     private func downloadPhase(
         itemID: UUID, url: URL, extraArguments: [String], planned: [String: Int64],
     ) async throws -> String? {
-        guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
+        guard !Task.isCancelled, let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
         items[index].status = .downloading
         let directory = settings.downloadDirectory.appendingPathComponent("Danny", isDirectory: true)
         var finalPath: String?

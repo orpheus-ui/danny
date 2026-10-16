@@ -210,7 +210,7 @@ final class DownloadManager {
         }
     }
 
-    /// Downloads, retrying once with YouTube's iOS client when the first try is refused.
+    /// Downloads, retrying once with other YouTube clients when the first try is refused.
     private func download(
         itemID: UUID, url: URL, arguments: [String], planned: [String: Int64],
     ) async throws -> String? {
@@ -222,7 +222,7 @@ final class DownloadManager {
             fallbackAttempted.insert(itemID)
             return try await downloadPhase(
                 itemID: itemID, url: url,
-                extraArguments: arguments + ["--extractor-args", "youtube:player_client=ios"],
+                extraArguments: arguments + Self.fallbackArguments(signedIn: arguments.contains("--cookies")),
                 planned: planned,
             )
         }
@@ -284,27 +284,6 @@ final class DownloadManager {
             }
         }
         return finalPath
-    }
-
-    private static func shouldRetryWithFallback(_ message: String) -> Bool {
-        let lowered = message.lowercased()
-        return lowered.contains("403")
-            || lowered.contains("confirm you")
-            || lowered.contains("sign in to confirm")
-    }
-
-    /// `updates`: whether Danny fetches the latest yt-dlp when it opens.
-    static func hinted(_ message: String, updates: Bool) -> String {
-        // The card offers Sign In for these; an update doesn't help.
-        if DownloadItem.asksForSignIn(message) { return message }
-        let lowered = message.lowercased()
-        if lowered.contains("403") {
-            let fix = updates
-                ? "reopen Danny to get the latest"
-                : "turn on Keep yt-dlp up to date in Settings › Engine and reopen Danny"
-            return message + "\nThis usually means yt-dlp needs an update: \(fix), then retry."
-        }
-        return message
     }
 
     func toolVersions() async -> String {

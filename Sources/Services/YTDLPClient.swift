@@ -75,8 +75,17 @@ nonisolated struct YTDLPClient: Sendable {
     struct Binaries: Sendable {
         let ytdlp: URL
         let ffmpegDirectory: URL?
+        /// The bundled QuickJS-ng, which yt-dlp needs to read YouTube's player (ADR-016).
+        var jsRuntime: URL?
 
         static let missing = Binaries(ytdlp: URL(fileURLWithPath: "/usr/bin/false"), ffmpegDirectory: nil)
+
+        /// Pins yt-dlp to the bundled runtime, so a run never depends on what else is
+        /// installed. Without one, yt-dlp keeps its own default.
+        var runtimeArguments: [String] {
+            guard let jsRuntime else { return [] }
+            return ["--no-js-runtimes", "--js-runtimes", "quickjs:\(jsRuntime.path)"]
+        }
     }
 
     static func childProcessEnvironment() -> [String: String] {
@@ -93,7 +102,9 @@ nonisolated struct YTDLPClient: Sendable {
         // Danny brought a newer one.
         let managed = YTDLPUpdater.managed(YTDLPUpdater.managedBinary, unlessOlderThan: bundled("yt-dlp"))
         guard let ytdlp = managed ?? locate("yt-dlp") else { return .missing }
-        return Binaries(ytdlp: ytdlp, ffmpegDirectory: locate("ffmpeg")?.deletingLastPathComponent())
+        return Binaries(
+            ytdlp: ytdlp, ffmpegDirectory: locate("ffmpeg")?.deletingLastPathComponent(), jsRuntime: bundled("qjs"),
+        )
     }
 
     private static func bundled(_ name: String) -> URL? {
@@ -124,7 +135,8 @@ nonisolated struct YTDLPClient: Sendable {
     func probe(url: URL, binaries: Binaries, extraArguments: [String] = []) async throws -> VideoMetadata {
         let output = try await runProcess(
             binaries.ytdlp,
-            ["-J", "--no-warnings", "--no-playlist", "--skip-download"] + extraArguments + [url.absoluteString],
+            ["-J", "--no-playlist", "--skip-download"] + binaries.runtimeArguments + extraArguments
+                + [url.absoluteString],
         )
         guard let data = output.data(using: .utf8),
               let metadata = try? JSONDecoder().decode(VideoMetadata.self, from: data)
@@ -187,7 +199,7 @@ nonisolated struct YTDLPClient: Sendable {
         if let ffmpeg = binaries.ffmpegDirectory {
             arguments += ["--ffmpeg-location", ffmpeg.path]
         }
-        arguments += extraArguments
+        arguments += binaries.runtimeArguments + extraArguments
         arguments.append(url.absoluteString)
 
         let process = Process()
@@ -320,6 +332,9 @@ nonisolated struct YTDLPClient: Sendable {
         }
         process.waitUntilExit()
         let errorLines = errorText.split(separator: "\n").map(String.init)
+        for line in errorLines where line.hasPrefix("WARNING") {
+            Self.log.warning("\(line, privacy: .public)")
+        }
 
         guard process.terminationStatus == 0 else {
             throw YTDLPError(message: Self.meaningfulError(errorLines.filter { $0.contains("ERROR") })

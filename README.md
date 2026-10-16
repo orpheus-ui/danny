@@ -19,7 +19,7 @@ Danny is an open-source video downloader for macOS, inspired by [Downie](https:/
 ## Install
 
 Download the latest DMG from [Releases](https://github.com/orpheus-ui/danny/releases),
-open it and drag Danny to Applications. yt-dlp and ffmpeg are included.
+open it and drag Danny to Applications. yt-dlp, ffmpeg and a small JavaScript runtime (QuickJS-ng) are included.
 
 Early (0.x) builds aren't notarized yet, so macOS blocks the first launch: open Danny
 once, then **System Settings → Privacy & Security → Open Anyway**
@@ -30,6 +30,7 @@ Homebrew is on the way: `brew install --cask orpheus-ui/tap/danny`.
 
 - macOS 26 Tahoe or newer — Danny is built on Liquid Glass
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [ffmpeg](https://ffmpeg.org) for downloading and merging streams
+- [QuickJS-ng](https://github.com/quickjs-ng/quickjs), the JavaScript runtime yt-dlp reads YouTube's player with
 - Xcode 26 to build from source, with its Metal Toolchain (`xcodebuild -downloadComponent MetalToolchain`)
 
 ## Build
@@ -50,7 +51,7 @@ Danny looks for `yt-dlp` and `ffmpeg` in this order:
 3. **Homebrew**: `brew install yt-dlp ffmpeg` (`/opt/homebrew/bin`, `/usr/local/bin`)
 4. Anything on your `PATH`
 
-> `yt-dlp` is public domain (Unlicense). The bundled `ffmpeg` and `ffprobe` are an LGPL build made from source by `scripts/build-ffmpeg.sh`; their license texts ship in `Danny.app/Contents/Resources/bin/licenses`, and each GitHub Release carries the exact source archives. The title font, Space Grotesk, is bundled under the SIL Open Font License; its license text ships in `Danny.app/Contents/Resources/Fonts`.
+> `yt-dlp` is public domain (Unlicense). The bundled QuickJS-ng (`qjs`) is MIT licensed. The bundled `ffmpeg` and `ffprobe` are an LGPL build made from source by `scripts/build-ffmpeg.sh`; their license texts ship in `Danny.app/Contents/Resources/bin/licenses`, and each GitHub Release carries the exact source archives. The title font, Space Grotesk, is bundled under the SIL Open Font License; its license text ships in `Danny.app/Contents/Resources/Fonts`.
 
 ## Usage
 

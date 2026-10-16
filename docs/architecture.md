@@ -43,6 +43,11 @@ sees (`<video>` sources, network requests matching media patterns) through a
 environment. yt-dlp runs off the main actor (`@concurrent`) and reports back
 through an `AsyncThrowingStream`.
 
+Every yt-dlp run is pinned to the bundled QuickJS-ng (`Binaries.runtimeArguments`,
+ADR-016), which yt-dlp needs to read YouTube's player. When the first try is refused,
+the retry asks for other YouTube clients: iOS when signed out, `tv` and `mweb` when
+signed in, because yt-dlp drops clients that can't send cookies.
+
 ## Where it's heading
 
 | Milestone | Change |

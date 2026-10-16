@@ -10,6 +10,8 @@ final class DownloadManager {
     var filter = DownloadFilter()
     var pendingManualAdd = false
     private(set) var lastFailureMessage: String?
+    /// The launch update check, for Settings: nil until it has run.
+    private(set) var engineUpdate: YTDLPUpdater.Outcome?
 
     let settings: AppSettings
     /// Signed-in sites; a run passes the link's site cookies to yt-dlp when present.
@@ -296,7 +298,7 @@ final class DownloadManager {
         if DownloadItem.asksForSignIn(message) { return message }
         let lowered = message.lowercased()
         if lowered.contains("403") {
-            return message + "\nThis usually means yt-dlp needs an update: run `brew upgrade yt-dlp` and retry."
+            return message + "\nThis usually means yt-dlp needs an update: reopen Danny to get the latest, then retry."
         }
         return message
     }
@@ -376,5 +378,19 @@ extension DownloadManager {
         items[index].status = .queued
         saveSoon()
         pump()
+    }
+}
+
+// MARK: - Engine updates
+
+extension DownloadManager {
+    /// Fetches the latest yt-dlp when the setting allows. Runs once per launch; a
+    /// new copy is used from the next download on, running ones keep theirs.
+    func updateEngine(with updater: YTDLPUpdater = YTDLPUpdater()) async {
+        guard settings.keepsEngineCurrent, !isSampleQueue else { return }
+        let installed = await client.version(binaries: binaries)
+        let outcome = await updater.update(from: installed)
+        if case .updated = outcome { refreshBinaries() }
+        engineUpdate = outcome
     }
 }

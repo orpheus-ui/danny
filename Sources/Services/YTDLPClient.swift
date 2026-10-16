@@ -89,7 +89,10 @@ nonisolated struct YTDLPClient: Sendable {
     static func locateBinaries() -> Binaries {
         // yt-dlp only: the progress template, format sorting and remux rules don't
         // exist in youtube-dl.
-        guard let ytdlp = locate("yt-dlp") else { return .missing }
+        // The copy Danny keeps current comes first (YTDLPUpdater).
+        let managed = YTDLPUpdater.managedBinary
+        let current = FileManager.default.isExecutableFile(atPath: managed.path) ? managed : nil
+        guard let ytdlp = current ?? locate("yt-dlp") else { return .missing }
         return Binaries(ytdlp: ytdlp, ffmpegDirectory: locate("ffmpeg")?.deletingLastPathComponent())
     }
 

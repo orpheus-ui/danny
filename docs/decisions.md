@@ -201,3 +201,27 @@ yt-dlp's signing key, bundled with Danny, closes it (backlog).
 Would change if yt-dlp becomes a plugin (M2): the plugin host updates plugins,
 and this moves there.
 
+## ADR-016 — QuickJS-ng is the JavaScript runtime yt-dlp uses
+
+**2026-10-17 · Accepted**
+
+yt-dlp needs a JavaScript runtime to read YouTube's player; without one it falls
+back to a single client and a thin format list. A Mac has no runtime of its own,
+so Danny bundles one and pins yt-dlp to it (`--no-js-runtimes --js-runtimes
+quickjs:<path>`), so a run never depends on what else is installed.
+
+yt-dlp supports Deno, Node, Bun and QuickJS. QuickJS-ng wins on weight: one
+2.4 MB universal binary against 100 MB or more for Deno or Node. Bun is deprecated
+by yt-dlp's solver and capped at 1.3.14. Deno's runtime is in a maintenance-only
+period with an announced end of development. Measured on a real player with
+yt-dlp's own solver, QuickJS-ng takes about 2 s the first time it sees a player
+version and about 0.2 s afterwards, since yt-dlp caches the processed player;
+Deno takes 0.3 s. The runtime runs only while a link is read, never while idle
+(ADR-008), so the extra seconds on a new player version are the whole cost.
+
+QuickJS-ng releases publish no checksums, so `scripts/fetch-dependencies.sh` pins
+the SHA-256 of each architecture's binary, recorded when the version is bumped.
+It is MIT licensed; the license text ships in `Resources/bin/licenses`.
+
+Would change if QuickJS-ng becomes too slow for YouTube's player, or if a
+YouTube token provider needs a specific runtime.

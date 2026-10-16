@@ -206,7 +206,7 @@ final class DownloadManager {
             return
         } catch {
             if Task.isCancelled { return }
-            fail(itemID: itemID, message: Self.hinted(error.localizedDescription, url: url))
+            fail(itemID: itemID, message: Self.hinted(error.localizedDescription, updates: settings.keepsEngineCurrent))
         }
     }
 
@@ -293,12 +293,16 @@ final class DownloadManager {
             || lowered.contains("sign in to confirm")
     }
 
-    private static func hinted(_ message: String, url _: URL) -> String {
+    /// `updates`: whether Danny fetches the latest yt-dlp when it opens.
+    static func hinted(_ message: String, updates: Bool) -> String {
         // The card offers Sign In for these; an update doesn't help.
         if DownloadItem.asksForSignIn(message) { return message }
         let lowered = message.lowercased()
         if lowered.contains("403") {
-            return message + "\nThis usually means yt-dlp needs an update: reopen Danny to get the latest, then retry."
+            let fix = updates
+                ? "reopen Danny to get the latest"
+                : "turn on Keep yt-dlp up to date in Settings › Engine and reopen Danny"
+            return message + "\nThis usually means yt-dlp needs an update: \(fix), then retry."
         }
         return message
     }

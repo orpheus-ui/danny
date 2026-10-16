@@ -88,6 +88,27 @@ nonisolated struct YTDLPUpdater: Sendable {
         guard rename(staged.path, target.path) == 0 else {
             throw YTDLPError(message: "Couldn't install yt-dlp \(release): \(String(cString: strerror(errno))).")
         }
+        try Data(release.utf8).write(to: Self.versionFile(of: target), options: .atomic)
+    }
+
+    /// `managed` when it is installed and not older than `bundled`. Each copy's
+    /// version sits beside it in `yt-dlp.version`: the updater writes the managed
+    /// one, `scripts/fetch-dependencies.sh` the bundled one. Reading them spares
+    /// launching both binaries at startup.
+    static func managed(_ managed: URL, unlessOlderThan bundled: URL?) -> URL? {
+        guard FileManager.default.isExecutableFile(atPath: managed.path) else { return nil }
+        guard let bundled, let bundledVersion = version(beside: bundled) else { return managed }
+        guard let managedVersion = version(beside: managed) else { return nil }
+        return isNewer(bundledVersion, than: managedVersion) ? nil : managed
+    }
+
+    static func versionFile(of binary: URL) -> URL {
+        binary.deletingLastPathComponent().appendingPathComponent(binary.lastPathComponent + ".version")
+    }
+
+    private static func version(beside binary: URL) -> String? {
+        (try? String(contentsOf: versionFile(of: binary), encoding: .utf8))?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Helpers

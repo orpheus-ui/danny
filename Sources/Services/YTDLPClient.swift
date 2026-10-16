@@ -89,19 +89,21 @@ nonisolated struct YTDLPClient: Sendable {
     static func locateBinaries() -> Binaries {
         // yt-dlp only: the progress template, format sorting and remux rules don't
         // exist in youtube-dl.
-        // The copy Danny keeps current comes first (YTDLPUpdater).
-        let managed = YTDLPUpdater.managedBinary
-        let current = FileManager.default.isExecutableFile(atPath: managed.path) ? managed : nil
-        guard let ytdlp = current ?? locate("yt-dlp") else { return .missing }
+        // The copy Danny keeps current comes first (YTDLPUpdater), unless a newer
+        // Danny brought a newer one.
+        let managed = YTDLPUpdater.managed(YTDLPUpdater.managedBinary, unlessOlderThan: bundled("yt-dlp"))
+        guard let ytdlp = managed ?? locate("yt-dlp") else { return .missing }
         return Binaries(ytdlp: ytdlp, ffmpegDirectory: locate("ffmpeg")?.deletingLastPathComponent())
     }
 
+    private static func bundled(_ name: String) -> URL? {
+        guard let url = Bundle.main.url(forResource: name, withExtension: nil, subdirectory: "bin"),
+              FileManager.default.isExecutableFile(atPath: url.path) else { return nil }
+        return url
+    }
+
     private static func locate(_ name: String) -> URL? {
-        if let bundled = Bundle.main.url(forResource: name, withExtension: nil, subdirectory: "bin"),
-           FileManager.default.isExecutableFile(atPath: bundled.path)
-        {
-            return bundled
-        }
+        if let bundled = bundled(name) { return bundled }
         let candidates = [
             "/opt/homebrew/bin/\(name)",
             "/usr/local/bin/\(name)",

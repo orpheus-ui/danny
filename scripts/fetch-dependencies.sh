@@ -29,6 +29,8 @@ curl -fsSL -o "$WORK/yt-dlp_macos" "$base/yt-dlp_macos"
 curl -fsSL -o "$WORK/SHA2-256SUMS" "$base/SHA2-256SUMS"
 verify "$WORK/yt-dlp_macos" "$(awk '$2 == "yt-dlp_macos" { print $1 }' "$WORK/SHA2-256SUMS")"
 install -m 755 "$WORK/yt-dlp_macos" yt-dlp
+# Read at launch to pick the newer of this and the copy Danny keeps current.
+echo "$YTDLP_VERSION" > yt-dlp.version
 
 echo "→ ffmpeg and ffprobe, built from source"
 ffmpeg_build=$("$ROOT/scripts/build-ffmpeg.sh" | tail -1)

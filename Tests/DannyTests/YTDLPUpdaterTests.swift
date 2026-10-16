@@ -39,7 +39,10 @@ struct YTDLPUpdaterTests {
         let installed = directory.appendingPathComponent("yt-dlp")
         #expect(try Data(contentsOf: installed) == binary)
         #expect(FileManager.default.isExecutableFile(atPath: installed.path))
-        #expect(try FileManager.default.contentsOfDirectory(atPath: directory.path) == ["yt-dlp"])
+        #expect(try FileManager.default.contentsOfDirectory(atPath: directory.path).sorted()
+            == ["yt-dlp", "yt-dlp.version"])
+        #expect(try String(contentsOf: directory.appendingPathComponent("yt-dlp.version"), encoding: .utf8)
+            == "2026.09.01")
     }
 
     @Test
@@ -84,5 +87,35 @@ struct YTDLPUpdaterTests {
         #expect(YTDLPUpdater.checksum(of: "yt-dlp_macos", in: sums) == "bbb")
         #expect(YTDLPUpdater.checksum(of: "yt-dlp_linux", in: sums) == "ccc")
         #expect(YTDLPUpdater.checksum(of: "yt-dlp_macos_legacy", in: sums) == nil)
+    }
+
+    /// Writes an executable `yt-dlp` and its version file into a new folder.
+    private func copy(version: String?) throws -> URL {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let binary = folder.appendingPathComponent("yt-dlp")
+        try self.binary.write(to: binary)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: binary.path)
+        if let version { try Data(version.utf8).write(to: YTDLPUpdater.versionFile(of: binary)) }
+        return binary
+    }
+
+    @Test
+    func `the kept copy is used unless the bundled one is newer`() throws {
+        let managed = try copy(version: "2026.09.01")
+        #expect(try YTDLPUpdater.managed(managed, unlessOlderThan: copy(version: "2026.08.19")) == managed)
+        #expect(try YTDLPUpdater.managed(managed, unlessOlderThan: copy(version: "2026.09.01")) == managed)
+        #expect(try YTDLPUpdater.managed(managed, unlessOlderThan: copy(version: "2026.10.02")) == nil)
+        #expect(try YTDLPUpdater.managed(managed, unlessOlderThan: copy(version: nil)) == managed)
+        #expect(YTDLPUpdater.managed(managed, unlessOlderThan: nil) == managed)
+        let missing = managed.deletingLastPathComponent().appendingPathComponent("none")
+        #expect(YTDLPUpdater.managed(missing, unlessOlderThan: nil) == nil)
+    }
+
+    @Test
+    func `the 403 hint fits the update setting`() {
+        #expect(DownloadManager.hinted("HTTP Error 403", updates: true).contains("reopen Danny to get the latest"))
+        #expect(DownloadManager.hinted("HTTP Error 403", updates: false).contains("Keep yt-dlp up to date"))
+        #expect(DownloadManager.hinted("Unsupported URL", updates: false) == "Unsupported URL")
     }
 }

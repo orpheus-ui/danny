@@ -5,9 +5,11 @@ import Testing
 /// Removing a card stops its yt-dlp at once, even while yt-dlp prints nothing
 /// (reading the page and player can take half a minute without a line).
 struct CancellationTests {
+    private let scratch = TestScratch()
+
     /// A fake yt-dlp that prints one line, goes quiet, then leaves a file behind.
     private func silentEngine() throws -> (YTDLPClient.Binaries, URL) {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let directory = scratch.folder()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let marker = directory.appendingPathComponent("finished")
         let script = directory.appendingPathComponent("yt-dlp")

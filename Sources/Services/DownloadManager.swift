@@ -26,6 +26,8 @@ final class DownloadManager {
     private var isSampleQueue = false
     /// False in tests: the queue neither loads nor saves the history file.
     private let persists: Bool
+    /// Replace's way to drop the old file; tests delete their own file instead.
+    var moveToTrash: (URL) throws -> Void = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) }
 
     var activeCount: Int {
         items.filter(\.status.isActive).count
@@ -130,18 +132,23 @@ final class DownloadManager {
         pump()
     }
 
+    /// Removes the card; an unfinished one takes its partial files with it.
     func remove(id: UUID) {
+        let item = items.first { $0.id == id }
+        let run = runningTasks[id]
         cancel(id: id)
         items.removeAll { $0.id == id }
         saveSoon()
+        if let item, item.status != .finished { removePartials(of: item, after: run) }
     }
 
     func clearFinished() {
-        for item in items where !item.status.isActive {
-            cancel(id: item.id)
-        }
+        let failed = items.filter { $0.status == .failed }
         items.removeAll { !$0.status.isActive }
         saveSoon()
+        for item in failed {
+            removePartials(of: item, after: nil)
+        }
     }
 
     func revealInFinder(id: UUID) {
@@ -260,6 +267,7 @@ final class DownloadManager {
         guard let index = items.firstIndex(where: { $0.id == itemID }),
               items[index].status == .resolving else { return nil }
         items[index].title = metadata.title.isEmpty ? items[index].title : metadata.title
+        items[index].videoID = metadata.id
         items[index].resolution = metadata.resolutionLabel
         items[index].totalBytes = metadata.filesizeApprox
         items[index].thumbnailURL = metadata.thumbnail.flatMap(URL.init(string:))

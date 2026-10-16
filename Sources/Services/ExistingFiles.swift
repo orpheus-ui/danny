@@ -35,14 +35,25 @@ nonisolated enum ExistingFiles {
         return "\(Int(size.width))x\(Int(size.height))"
     }
 
+    /// An unfinished download's files: more than one extension after the id, as in
+    /// `… [id].mp4.part`, `… [id].f137.mp4` or `… [id].mp4.ytdl`.
+    static func partials(id: String, in directory: URL) -> [URL] {
+        matching(marker(id) + #"(?: \(\d+\))?\.[^.]+\.[^/]+$"#, in: directory)
+    }
+
     private static func files(for id: String, in directory: URL) -> [URL] {
-        let contents = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil))
-            ?? []
         // The id ends the name, before any Keep Both number: a title that merely
         // contains "[id]" doesn't match, nor do merge parts (`… [id].f137.mp4`).
-        let pattern = NSRegularExpression.escapedPattern(for: "[\(id)]") + #"(?: \(\d+\))?$"#
-        return contents.filter {
-            $0.deletingPathExtension().lastPathComponent.range(of: pattern, options: .regularExpression) != nil
-        }
+        matching(marker(id) + #"(?: \(\d+\))?\.[^.]+$"#, in: directory)
+    }
+
+    private static func marker(_ id: String) -> String {
+        NSRegularExpression.escapedPattern(for: "[\(id)]")
+    }
+
+    private static func matching(_ pattern: String, in directory: URL) -> [URL] {
+        let contents = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil))
+            ?? []
+        return contents.filter { $0.lastPathComponent.range(of: pattern, options: .regularExpression) != nil }
     }
 }

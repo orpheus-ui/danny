@@ -67,6 +67,8 @@ big-bang rewrites.
 
 - Swift Testing (`import Testing`) in `Tests/DannyTests/`, one file per type under test.
 - New behavior ships with tests. A bug fix starts with a test that fails on the old code.
+- Tests leave nothing on the machine: temporary folders and settings come from
+  `TestScratch`, which removes them, and nothing opens Finder or uses the Trash.
 - Pure logic (parsers, formatters, the queue) gets unit tests; UI states get
   snapshot tests from M1.
 - The bundled ffmpeg has its own check: `scripts/check-ffmpeg.sh` runs the commands

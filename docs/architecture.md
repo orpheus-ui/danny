@@ -38,7 +38,9 @@ Tests/DannyTests/       Swift Testing unit tests
    leads to the same question when the check misses a file.
 5. `YTDLPClient.downloadStream` runs yt-dlp with a progress template and streams
    `DownloadEvent`s (progress, output file) back to the manager, which updates the item.
-6. The item becomes `.finished` or `.failed`; history is saved (debounced) to `history.json`.
+6. Removing an unfinished card deletes its partial files (`.part`, merge parts)
+   once yt-dlp has stopped; finished files are never touched.
+7. The item becomes `.finished` or `.failed`; history is saved (debounced) to `history.json`.
 
 Browser Capture injects a script into the page that reports every media URL it
 sees (`<video>` sources, network requests matching media patterns) through a

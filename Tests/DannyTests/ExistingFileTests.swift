@@ -47,16 +47,16 @@ struct ExistingFileTests {
         var calledSuffixes: [String] { suffixes.withLock { $0 } }
     }
 
+    private let scratch = TestScratch()
     private let folder: URL
 
     init() throws {
-        folder = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString).appendingPathComponent("Danny")
+        folder = scratch.folder().appendingPathComponent("Danny")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     }
 
     private func manager(_ engine: FakeEngine, policy: ExistingFilePolicy = .ask) throws -> DownloadManager {
-        let settings = try AppSettings(defaults: #require(UserDefaults(suiteName: UUID().uuidString)))
+        let settings = AppSettings(defaults: scratch.defaults())
         settings.downloadDirectory = folder.deletingLastPathComponent()
         settings.existingFiles = policy
         let binaries = YTDLPClient.Binaries(ytdlp: URL(fileURLWithPath: "/bin/sh"), ffmpegDirectory: nil)
@@ -128,6 +128,7 @@ struct ExistingFileTests {
         let old = try file("Clip [abc].webm")
         let engine = FakeEngine()
         let manager = try manager(engine, policy: .replace)
+        manager.moveToTrash = { try FileManager.default.removeItem(at: $0) }
         try add(manager)
         _ = try await settle(manager, until: .finished)
         #expect(!FileManager.default.fileExists(atPath: old.path))
@@ -151,6 +152,24 @@ struct ExistingFileTests {
         try add(manager)
         let item = try await settle(manager, until: .existing)
         #expect(item.existingFile?.path == path)
+    }
+
+    @Test func `removing an unfinished card deletes its partial files only`() async throws {
+        let finished = try file("Clip [abc].mp4")
+        let partials = try [
+            file("Clip [abc] (2).f137.mp4.part"), file("Clip [abc] (2).f251.webm"), file("Clip [abc] (2).mp4.ytdl"),
+        ]
+        let other = try file("Other [xyz].mp4.part")
+        let manager = try manager(FakeEngine())
+        try add(manager)
+        let item = try await settle(manager, until: .existing)
+        manager.remove(id: item.id)
+        for _ in 0 ..< 200 where partials.contains(where: { FileManager.default.fileExists(atPath: $0.path) }) {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(partials.allSatisfy { !FileManager.default.fileExists(atPath: $0.path) })
+        #expect(FileManager.default.fileExists(atPath: finished.path))
+        #expect(FileManager.default.fileExists(atPath: other.path))
     }
 
     @Test func `reads yt-dlp's already-downloaded line`() {

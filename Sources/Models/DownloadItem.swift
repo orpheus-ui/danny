@@ -49,6 +49,8 @@ struct DownloadItem: Identifiable, Codable, Hashable {
     var filePath: String?
     var errorMessage: String?
     var addedAt: Date
+    /// The site's id for the video, from the probe; names its files `… [id].ext`.
+    var videoID: String?
     /// The quality picked for this item; nil follows the setting.
     var quality: QualityChoice?
     /// While choosing: the options on the card, and when the default starts.

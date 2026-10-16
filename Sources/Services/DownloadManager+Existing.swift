@@ -13,7 +13,7 @@ extension DownloadManager {
         switch item.existingFilePolicy ?? settings.existingFiles {
         case .replace:
             do {
-                try FileManager.default.trashItem(at: existing, resultingItemURL: nil)
+                try moveToTrash(existing)
             } catch {
                 throw YTDLPError(message: "Danny couldn't move the old file to the Trash.")
             }
@@ -70,7 +70,25 @@ extension DownloadManager {
         saveSoon()
     }
 
-    /// Keeps the file already there: the card ends on it and Finder shows it.
+    /// Deletes what an unfinished download left: `.part` files and merge parts. The
+    /// card's run is stopped first; yt-dlp gets a moment to exit before its files go.
+    func removePartials(of item: DownloadItem, after run: Task<Void, Never>?) {
+        guard let videoID = item.videoID else { return }
+        let directory = outputDirectory
+        Task {
+            if let run {
+                await run.value
+                try? await Task.sleep(for: .seconds(1))
+            }
+            // Another card for the same video (another link to it) may be using them.
+            guard !items.contains(where: { $0.videoID == videoID && $0.status.isActive }) else { return }
+            for file in ExistingFiles.partials(id: videoID, in: directory) {
+                try? FileManager.default.removeItem(at: file)
+            }
+        }
+    }
+
+    /// Keeps the file already there: the card ends on it.
     func keepExisting(id: UUID) {
         guard let existing = items.first(where: { $0.id == id && $0.status == .existing })?.existingFile
         else { return }
@@ -82,6 +100,5 @@ extension DownloadManager {
             $0.existingFile = nil
         }
         saveSoon()
-        revealInFinder(id: id)
     }
 }

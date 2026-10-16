@@ -94,6 +94,14 @@ final class DownloadManager {
         runningTasks[id]?.cancel()
         runningTasks[id] = nil
         if let index = items.firstIndex(where: { $0.id == id }), items[index].status.isActive {
+            if items[index].status == .choosing {
+                // No run is left to resume a card waiting for its pick: stop it
+                // where Retry can start it again.
+                items[index].qualityOptions = nil
+                items[index].choiceDeadline = nil
+                fail(itemID: id, message: "Cancelled")
+                return
+            }
             items[index].status = .queued
             items[index].speedBytesPerSecond = nil
             saveSoon()
@@ -133,7 +141,9 @@ final class DownloadManager {
 
     private func pump() {
         guard !isSampleQueue else { return }
-        while activeCount < max(1, settings.maxConcurrentDownloads),
+        // Running downloads only: queued cards and cards waiting for a pick don't
+        // hold a slot.
+        while runningTasks.count < max(1, settings.maxConcurrentDownloads),
               let next = items.last(where: { $0.status == .queued && runningTasks[$0.id] == nil })
         {
             start(item: next)
@@ -175,30 +185,14 @@ final class DownloadManager {
         let cookies = cookieFile?.arguments ?? []
 
         do {
-            let metadata = try await client.probe(url: url, binaries: binaries, extraArguments: cookies)
-            guard let index = items.firstIndex(where: { $0.id == itemID }),
-                  items[index].status == .resolving else { return }
-            items[index].title = metadata.title.isEmpty ? items[index].title : metadata.title
-            items[index].resolution = metadata.resolutionLabel
-            items[index].totalBytes = metadata.filesizeApprox
-            items[index].thumbnailURL = metadata.thumbnail.flatMap(URL.init(string:))
-            saveSoon()
+            guard let metadata = try await probe(itemID: itemID, url: url, cookies: cookies) else { return }
 
-            let path: String?
-            do {
-                path = try await downloadPhase(
-                    itemID: itemID, url: url, extraArguments: cookies, planned: metadata.plannedFiles,
-                )
-            } catch let error as YTDLPError
-                where !fallbackAttempted.contains(itemID) && Self.shouldRetryWithFallback(error.message)
-            {
-                fallbackAttempted.insert(itemID)
-                path = try await downloadPhase(
-                    itemID: itemID, url: url,
-                    extraArguments: cookies + ["--extractor-args", "youtube:player_client=ios"],
-                    planned: metadata.plannedFiles,
-                )
-            }
+            guard let choice = qualityChoice(for: itemID, metadata: metadata) else { return }
+            let quality = QualitySelection.arguments(for: choice, format: settings.format)
+
+            let path = try await download(
+                itemID: itemID, url: url, arguments: cookies + quality, planned: metadata.plannedFiles,
+            )
 
             guard let index = items.firstIndex(where: { $0.id == itemID }) else { return }
             items[index].status = .finished
@@ -213,6 +207,43 @@ final class DownloadManager {
             fail(itemID: itemID, message: Self.hinted(error.localizedDescription, url: url))
         }
     }
+
+    /// Downloads, retrying once with YouTube's iOS client when the first try is refused.
+    private func download(
+        itemID: UUID, url: URL, arguments: [String], planned: [String: Int64],
+    ) async throws -> String? {
+        do {
+            return try await downloadPhase(itemID: itemID, url: url, extraArguments: arguments, planned: planned)
+        } catch let error as YTDLPError
+            where !fallbackAttempted.contains(itemID) && Self.shouldRetryWithFallback(error.message)
+        {
+            fallbackAttempted.insert(itemID)
+            return try await downloadPhase(
+                itemID: itemID, url: url,
+                extraArguments: arguments + ["--extractor-args", "youtube:player_client=ios"],
+                planned: planned,
+            )
+        }
+    }
+
+    /// Reads the link's details and puts them on the card. With the quality known,
+    /// the probe lists the very files the download fetches. Nil when the card was
+    /// cancelled or removed meanwhile.
+    private func probe(itemID: UUID, url: URL, cookies: [String]) async throws -> VideoMetadata? {
+        let preset = items.first(where: { $0.id == itemID })?.quality ?? settings.quality.choice
+        let presetArguments = preset.map { QualitySelection.arguments(for: $0, format: settings.format) } ?? []
+        let metadata = try await client.probe(url: url, binaries: binaries, extraArguments: cookies + presetArguments)
+        guard let index = items.firstIndex(where: { $0.id == itemID }),
+              items[index].status == .resolving else { return nil }
+        items[index].title = metadata.title.isEmpty ? items[index].title : metadata.title
+        items[index].resolution = metadata.resolutionLabel
+        items[index].totalBytes = metadata.filesizeApprox
+        items[index].thumbnailURL = metadata.thumbnail.flatMap(URL.init(string:))
+        saveSoon()
+        return metadata
+    }
+
+    // MARK: Quality
 
     /// Fails the item with install steps when yt-dlp can't be found.
     private func engineIsInstalled(for itemID: UUID) -> Bool {
@@ -300,5 +331,50 @@ final class DownloadManager {
 extension URL {
     var fileExistsAsExecutable: Bool {
         FileManager.default.isExecutableFile(atPath: path)
+    }
+}
+
+// MARK: - Quality pick
+
+extension DownloadManager {
+    /// The quality for this run: the card's pick, else the setting's. With "Ask each
+    /// time", the card shows the options and nil comes back: the run ends, freeing
+    /// its slot, and `choose` queues the item again.
+    private func qualityChoice(for itemID: UUID, metadata: VideoMetadata) -> QualityChoice? {
+        guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
+        if let picked = items[index].quality { return picked }
+        if let preset = settings.quality.choice { return preset }
+
+        let options = QualitySelection.options(from: metadata.formats ?? [], format: settings.format)
+        guard options.count > 1, let first = options.first else {
+            return options.first?.choice ?? .video(maxHeight: nil)
+        }
+        items[index].status = .choosing
+        items[index].qualityOptions = options
+        let deadline = Date().addingTimeInterval(Self.choiceWait)
+        items[index].choiceDeadline = deadline
+        saveSoon()
+        // Unanswered, the first option (the best the format setting allows) starts.
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(Self.choiceWait))
+            // Only this prompt's timer: a retried card asks again with a new deadline.
+            guard let self, let item = items.first(where: { $0.id == itemID }),
+                  item.status == .choosing, item.choiceDeadline == deadline else { return }
+            choose(id: itemID, choice: first.choice)
+        }
+        return nil
+    }
+
+    static let choiceWait: TimeInterval = 10
+
+    /// Starts a card that is waiting for its quality.
+    func choose(id: UUID, choice: QualityChoice) {
+        guard let index = items.firstIndex(where: { $0.id == id }), items[index].status == .choosing else { return }
+        items[index].quality = choice
+        items[index].qualityOptions = nil
+        items[index].choiceDeadline = nil
+        items[index].status = .queued
+        saveSoon()
+        pump()
     }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 /// One file of a merged download, as the probe lists it.
 nonisolated struct RequestedFormat: Decodable {
@@ -35,6 +36,9 @@ nonisolated struct VideoMetadata: Decodable {
         return planned
     }
 
+    /// Every format the site offers, for the quality options.
+    var formats: [FormatInfo]?
+
     enum CodingKeys: String, CodingKey {
         case id
         case title
@@ -46,6 +50,7 @@ nonisolated struct VideoMetadata: Decodable {
         case filesizeApprox = "filesize_approx"
         case extractor
         case requestedFormats = "requested_formats"
+        case formats
     }
 
     var resolutionLabel: String? {
@@ -66,6 +71,7 @@ struct YTDLPError: LocalizedError {
 }
 
 nonisolated struct YTDLPClient: Sendable {
+    private static let log = Logger(subsystem: "app.danny.desktop", category: "yt-dlp")
     struct Binaries: Sendable {
         let ytdlp: URL
         let ffmpegDirectory: URL?
@@ -81,7 +87,9 @@ nonisolated struct YTDLPClient: Sendable {
     }
 
     static func locateBinaries() -> Binaries {
-        guard let ytdlp = locate("yt-dlp") ?? locate("youtube-dl") else { return .missing }
+        // yt-dlp only: the progress template, format sorting and remux rules don't
+        // exist in youtube-dl.
+        guard let ytdlp = locate("yt-dlp") else { return .missing }
         return Binaries(ytdlp: ytdlp, ffmpegDirectory: locate("ffmpeg")?.deletingLastPathComponent())
     }
 
@@ -167,11 +175,9 @@ nonisolated struct YTDLPClient: Sendable {
             + "|%(progress._speed_str)s|%(info.format_id)s"
 
         var arguments = [
-            "--newline", "--no-warnings", "--no-playlist", "--progress",
+            "--newline", "--no-playlist", "--progress",
             "--print", "after_move:FILE:%(filepath)s",
             "--progress-template", progressTemplate,
-            "-f", "bv*+ba/b",
-            "--merge-output-format", "mp4",
             "-o", outputTemplate,
         ]
         if let ffmpeg = binaries.ffmpegDirectory {
@@ -214,6 +220,10 @@ nonisolated struct YTDLPClient: Sendable {
                 onEvent(event)
             } else if line.contains("ERROR") {
                 failureLines.append(line)
+            } else if line.hasPrefix("WARNING") {
+                // Kept in the system log: they explain thin format lists (`log show
+                // --predicate 'subsystem == "app.danny.desktop"'`).
+                Self.log.warning("\(line, privacy: .public)")
             }
         }
 

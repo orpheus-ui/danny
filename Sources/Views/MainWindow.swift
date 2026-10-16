@@ -98,6 +98,8 @@ struct MainWindow: View {
                             onBrowserCapture: { requestBrowser(url: item.sourceURL) },
                             onSignIn: signInAction(for: item),
                             onChoose: { manager.choose(id: item.id, choice: $0) },
+                            onResolveExisting: { manager.resolveExisting(id: item.id, with: $0) },
+                            onKeepExisting: { manager.keepExisting(id: item.id) },
                         )
                     }
                     if manager.visibleItems.isEmpty {

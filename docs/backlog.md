@@ -41,6 +41,9 @@ its own PR, delete it from here when it merges.
   matches WebKit's signature and only allows everything — delete it.
 - **Small dead code:** `_ = existing` in `DownloadManager.add`; unused `url`
   parameter in `DownloadManager.hinted`; `if manager.add(url:) {}` in `ClipboardWatcher.poll`.
+- **The signed-out-then-signed-in retry has no manager test.** `DownloadEngine` now
+  lets tests fake yt-dlp; a test still needs a stand-in for `SiteSessions` to check
+  that a probe asking for a sign-in is retried with cookies.
 - **User-facing strings are hardcoded.** Move to a String Catalog before any localization.
 
 ## Missing

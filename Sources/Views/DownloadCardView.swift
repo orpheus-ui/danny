@@ -9,6 +9,8 @@ struct DownloadCardView: View {
     let onBrowserCapture: () -> Void
     var onSignIn: (() -> Void)?
     var onChoose: ((QualityChoice) -> Void)?
+    var onResolveExisting: ((ExistingFilePolicy) -> Void)?
+    var onKeepExisting: (() -> Void)?
 
     @State private var hovering = false
     @State private var showingSource = false
@@ -53,6 +55,10 @@ struct DownloadCardView: View {
             Spacer(minLength: 0)
             if item.status == .choosing, let options = item.qualityOptions, let onChoose {
                 QualityChips(options: options, deadline: item.choiceDeadline, onChoose: onChoose)
+            } else if item.status == .existing, let existing = item.existingFile,
+                      let onResolveExisting, let onKeepExisting
+            {
+                ExistingFileChoices(existing: existing, onResolve: onResolveExisting, onKeep: onKeepExisting)
             } else {
                 ProgressBarView(
                     item: item,

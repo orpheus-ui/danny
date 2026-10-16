@@ -8,7 +8,7 @@
                 .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
                 .appendingPathComponent("Resources/Images/sample-thumbnail.png")
             let states: [(ItemStatus, Double?)] = [
-                (.downloading, 0.54), (.choosing, nil), (.resolving, nil), (.processing, nil),
+                (.downloading, 0.54), (.choosing, nil), (.existing, nil), (.resolving, nil), (.processing, nil),
                 (.finished, 1), (.failed, nil), (.queued, nil),
             ].reversed() // the list shows the newest first
             return states.enumerated().map { index, state in
@@ -30,6 +30,9 @@
                         QualityOption(choice: .audio, label: "Audio", bytes: 9_000_000),
                     ]
                     item.choiceDeadline = Date().addingTimeInterval(8)
+                }
+                if state.0 == .existing {
+                    item.existingFile = ExistingFile(path: "/tmp/sample.mp4", resolution: "640x360")
                 }
                 return item
             }

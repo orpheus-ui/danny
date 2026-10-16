@@ -32,6 +32,7 @@ final class AppSettings {
         static let quality = "quality"
         static let format = "format"
         static let keepsEngineCurrent = "keepsEngineCurrent"
+        static let existingFiles = "existingFiles"
     }
 
     var downloadDirectory: URL {
@@ -63,11 +64,17 @@ final class AppSettings {
         didSet { defaults.set(keepsEngineCurrent, forKey: Key.keepsEngineCurrent) }
     }
 
+    /// When the video is already in the folder.
+    var existingFiles: ExistingFilePolicy {
+        didSet { defaults.set(existingFiles.rawValue, forKey: Key.existingFiles) }
+    }
+
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
         quality = defaults.string(forKey: Key.quality).flatMap(QualityPreference.init(rawValue:)) ?? .best
         format = defaults.string(forKey: Key.format).flatMap(FormatPreference.init(rawValue:)) ?? .compatible
+        existingFiles = defaults.string(forKey: Key.existingFiles).flatMap(ExistingFilePolicy.init(rawValue:)) ?? .ask
         self.defaults = defaults
         let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser

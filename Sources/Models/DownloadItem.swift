@@ -5,6 +5,8 @@ enum ItemStatus: String, Codable, Comparable {
     case resolving
     /// Waiting for the user to pick a quality on the card.
     case choosing
+    /// Waiting for the user: a file of this video is already in the folder.
+    case existing
     case downloading
     case processing
     case finished
@@ -12,7 +14,7 @@ enum ItemStatus: String, Codable, Comparable {
 
     var isActive: Bool {
         switch self {
-        case .queued, .resolving, .choosing, .downloading, .processing: true
+        case .queued, .resolving, .choosing, .existing, .downloading, .processing: true
         case .finished, .failed: false
         }
     }
@@ -21,7 +23,7 @@ enum ItemStatus: String, Codable, Comparable {
         switch self {
         case .downloading: 0
         case .processing: 1
-        case .choosing: 2
+        case .choosing, .existing: 2
         case .resolving: 3
         case .queued: 4
         case .failed: 5
@@ -52,6 +54,10 @@ struct DownloadItem: Identifiable, Codable, Hashable {
     /// While choosing: the options on the card, and when the default starts.
     var qualityOptions: [QualityOption]?
     var choiceDeadline: Date?
+    /// What to do when the file is already there; nil follows the setting.
+    var existingFilePolicy: ExistingFilePolicy?
+    /// While `.existing`: the file found and its resolution, when known.
+    var existingFile: ExistingFile?
 
     init(url: URL) {
         id = UUID()
@@ -69,4 +75,24 @@ struct DownloadItem: Identifiable, Codable, Hashable {
         errorMessage = nil
         addedAt = Date()
     }
+}
+
+/// What a download does when a file of the same video is already in the folder.
+enum ExistingFilePolicy: String, CaseIterable, Identifiable, Codable {
+    case ask, replace, keepBoth
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .ask: "Ask"
+        case .replace: "Always Replace"
+        case .keepBoth: "Always Keep Both"
+        }
+    }
+}
+
+struct ExistingFile: Codable, Hashable {
+    var path: String
+    var resolution: String?
 }

@@ -351,12 +351,15 @@ extension DownloadManager {
         }
         items[index].status = .choosing
         items[index].qualityOptions = options
-        items[index].choiceDeadline = Date().addingTimeInterval(Self.choiceWait)
+        let deadline = Date().addingTimeInterval(Self.choiceWait)
+        items[index].choiceDeadline = deadline
         saveSoon()
         // Unanswered, the first option (the best the format setting allows) starts.
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(Self.choiceWait))
-            guard let self, items.first(where: { $0.id == itemID })?.status == .choosing else { return }
+            // Only this prompt's timer: a retried card asks again with a new deadline.
+            guard let self, let item = items.first(where: { $0.id == itemID }),
+                  item.status == .choosing, item.choiceDeadline == deadline else { return }
             choose(id: itemID, choice: first.choice)
         }
         return nil

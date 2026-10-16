@@ -41,10 +41,6 @@ its own PR, delete it from here when it merges.
   matches WebKit's signature and only allows everything — delete it.
 - **Small dead code:** `_ = existing` in `DownloadManager.add`; unused `url`
   parameter in `DownloadManager.hinted`; `if manager.add(url:) {}` in `ClipboardWatcher.poll`.
-- **Downloads land in `Danny/Danny`.** The default folder is already
-  `~/Downloads/Danny` (`AppSettings`), and `DownloadManager.outputDirectory` adds
-  another `Danny`. Pick one; files already in the nested folder should still be found
-  by the existing-file check (or be moved once).
 - **The signed-out-then-signed-in retry has no manager test.** `DownloadEngine` now
   lets tests fake yt-dlp; a test still needs a stand-in for `SiteSessions` to check
   that a probe asking for a sign-in is retried with cookies.

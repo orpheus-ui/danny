@@ -323,9 +323,7 @@ final class DownloadManager {
         body(&items[index])
     }
 
-    var outputDirectory: URL {
-        settings.downloadDirectory.appendingPathComponent("Danny", isDirectory: true)
-    }
+    var outputDirectory: URL { settings.downloadDirectory }
 
     func toolVersions() async -> String {
         async let ytdlpVersion = client.version(binaries: binaries)

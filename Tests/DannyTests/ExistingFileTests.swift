@@ -54,13 +54,13 @@ struct ExistingFileTests {
     private let folder: URL
 
     init() throws {
-        folder = scratch.folder().appendingPathComponent("Danny")
+        folder = scratch.folder()
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     }
 
     private func manager(_ engine: FakeEngine, policy: ExistingFilePolicy = .ask) throws -> DownloadManager {
         let settings = AppSettings(defaults: scratch.defaults())
-        settings.downloadDirectory = folder.deletingLastPathComponent()
+        settings.downloadDirectory = folder
         settings.existingFiles = policy
         let binaries = YTDLPClient.Binaries(ytdlp: URL(fileURLWithPath: "/bin/sh"), ffmpegDirectory: nil)
         return DownloadManager(settings: settings, client: engine, binaries: binaries, persists: false)
@@ -99,6 +99,24 @@ struct ExistingFileTests {
         let item = try await settle(manager, until: .existing)
         #expect(same(item.existingFile?.path, old))
         #expect(engine.calledSuffixes.isEmpty)
+    }
+
+    @Test func `downloads into the chosen folder, not a Danny folder inside it`() async throws {
+        let manager = try manager(FakeEngine())
+        try add(manager)
+        let done = try await settle(manager, until: .finished)
+        #expect(same(done.filePath, folder.appendingPathComponent("Clip [abc].mp4")))
+    }
+
+    @Test func `finds a file left in the Danny folder earlier versions made`() async throws {
+        let nested = folder.appendingPathComponent("Danny")
+        try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+        let old = nested.appendingPathComponent("Clip [abc].mp4")
+        try Data().write(to: old)
+        let manager = try manager(FakeEngine())
+        try add(manager)
+        let item = try await settle(manager, until: .existing)
+        #expect(same(item.existingFile?.path, old))
     }
 
     @Test func `downloads as usual when the folder has only other files`() async throws {

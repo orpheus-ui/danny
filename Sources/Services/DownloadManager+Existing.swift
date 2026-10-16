@@ -8,7 +8,7 @@ extension DownloadManager {
     /// card now asks what to do with the file already in the folder.
     func existingFileCheck(for itemID: UUID, videoID: String, choice: QualityChoice) async throws -> [String]? {
         guard let item = items.first(where: { $0.id == itemID }),
-              let existing = ExistingFiles.find(id: videoID, audio: choice == .audio, in: outputDirectory)
+              let existing = existingFile(id: videoID, audio: choice == .audio)
         else { return [] }
         switch item.existingFilePolicy ?? settings.existingFiles {
         case .replace:
@@ -25,6 +25,13 @@ extension DownloadManager {
             await askAboutExisting(itemID, file: existing)
             return nil
         }
+    }
+
+    /// The file already downloaded for this video, also looking in the Danny folder
+    /// that earlier builds made inside the chosen one.
+    func existingFile(id: String, audio: Bool) -> URL? {
+        ExistingFiles.find(id: id, audio: audio, in: outputDirectory)
+            ?? ExistingFiles.find(id: id, audio: audio, in: outputDirectory.appendingPathComponent("Danny"))
     }
 
     /// Puts the card in `.existing`, showing the file found. Like a quality pick, the

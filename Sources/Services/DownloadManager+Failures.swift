@@ -21,6 +21,13 @@ extension DownloadManager {
         return retry + fallbackArguments(signedIn: retry.contains("--cookies"))
     }
 
+    /// Retries refusals other clients may get past, and any sign-in prompt a signed-out
+    /// try got while the session's cookies are at hand.
+    static func shouldRetry(after message: String, tried: [String], signedIn: [String]) -> Bool {
+        shouldRetryWithFallback(message)
+            || (!tried.contains("--cookies") && !signedIn.isEmpty && DownloadItem.asksForSignIn(message))
+    }
+
     static func shouldRetryWithFallback(_ message: String) -> Bool {
         let lowered = message.lowercased()
         return lowered.contains("403")

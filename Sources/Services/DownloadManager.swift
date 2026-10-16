@@ -220,7 +220,8 @@ final class DownloadManager {
         do {
             return try await downloadPhase(itemID: itemID, url: url, extraArguments: arguments, planned: planned)
         } catch let error as YTDLPError
-            where !fallbackAttempted.contains(itemID) && Self.shouldRetryWithFallback(error.message)
+            where !fallbackAttempted.contains(itemID)
+            && Self.shouldRetry(after: error.message, tried: arguments, signedIn: signedIn)
         {
             fallbackAttempted.insert(itemID)
             return try await downloadPhase(

@@ -53,4 +53,11 @@ struct EngineArgumentsTests {
         )
         #expect(retry == ["-f", "best"] + DownloadManager.fallbackArguments(signedIn: false))
     }
+
+    @Test func `any sign-in prompt to a signed-out download is retried when signed in`() {
+        let session = ["--cookies", "/tmp/c.txt"]
+        #expect(DownloadManager.shouldRetry(after: "This video requires login required", tried: [], signedIn: session))
+        #expect(!DownloadManager.shouldRetry(after: "login required", tried: [], signedIn: []))
+        #expect(!DownloadManager.shouldRetry(after: "login required", tried: session, signedIn: session))
+    }
 }

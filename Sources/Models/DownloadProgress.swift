@@ -26,11 +26,31 @@ struct DownloadProgress {
     /// already arrived. Nil until any size is known.
     var totalBytes: Int64? {
         guard !reported.isEmpty || !planned.isEmpty else { return nil }
-        let files = Set(planned.keys).union(reported.keys).union(downloaded.keys)
         let total = files.reduce(Int64(0)) { sum, file in
-            sum + max(reported[file] ?? planned[file] ?? 0, downloaded[file] ?? 0)
+            sum + max(reported[file] ?? plannedSize(of: file) ?? 0, downloaded[file] ?? 0)
         }
         return total > 0 ? total : nil
+    }
+
+    /// The files the download is made of. ffmpeg can fetch a merged download in one
+    /// go, reported as "616+140": that file stands for its planned parts, which then
+    /// aren't counted again, even if one of them reported first.
+    private var files: Set<String> {
+        let seen = Set(reported.keys).union(downloaded.keys)
+        let merged = Set(seen.flatMap(parts(of:)))
+        return seen.union(planned.keys).subtracting(merged)
+    }
+
+    /// The planned parts a merged id joins; empty for a single file.
+    private func parts(of file: String) -> [String] {
+        let parts = file.split(separator: "+").map(String.init)
+        return parts.count > 1 && parts.allSatisfy { planned[$0] != nil } ? parts : []
+    }
+
+    private func plannedSize(of file: String) -> Int64? {
+        if let size = planned[file] { return size }
+        let parts = parts(of: file)
+        return parts.isEmpty ? nil : parts.compactMap { planned[$0] }.reduce(0, +)
     }
 
     /// `file` is the format id yt-dlp is fetching; a line with no total keeps that
@@ -41,7 +61,7 @@ struct DownloadProgress {
         if let total, total > 0 { reported[file] = total }
 
         guard let expected = totalBytes else { return fraction }
-        let arrived = downloaded.values.reduce(0, +)
+        let arrived = files.reduce(Int64(0)) { $0 + (downloaded[$1] ?? 0) }
         fraction = min(max(Double(arrived) / Double(expected), fraction ?? 0), Self.ceiling)
         return fraction
     }

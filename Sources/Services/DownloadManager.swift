@@ -184,7 +184,8 @@ final class DownloadManager {
                 }
             }
         }
-        var cookies = cookieFile?.arguments ?? []
+        let signedIn = cookieFile?.arguments ?? []
+        var cookies = signedIn
 
         do {
             guard let metadata = try await probe(itemID: itemID, url: url, signedIn: &cookies) else { return }
@@ -193,7 +194,8 @@ final class DownloadManager {
             let quality = QualitySelection.arguments(for: choice, format: settings.format)
 
             let path = try await download(
-                itemID: itemID, url: url, arguments: cookies + quality, planned: metadata.plannedFiles,
+                itemID: itemID, url: url, arguments: cookies + quality, signedIn: signedIn,
+                planned: metadata.plannedFiles,
             )
 
             guard let index = items.firstIndex(where: { $0.id == itemID }) else { return }
@@ -210,9 +212,10 @@ final class DownloadManager {
         }
     }
 
-    /// Downloads, retrying once with other YouTube clients when the first try is refused.
+    /// Downloads, retrying once with other YouTube clients when the first try is refused,
+    /// and with the session's `signedIn` cookies when a signed-out try asks for a sign-in.
     private func download(
-        itemID: UUID, url: URL, arguments: [String], planned: [String: Int64],
+        itemID: UUID, url: URL, arguments: [String], signedIn: [String], planned: [String: Int64],
     ) async throws -> String? {
         do {
             return try await downloadPhase(itemID: itemID, url: url, extraArguments: arguments, planned: planned)
@@ -222,15 +225,12 @@ final class DownloadManager {
             fallbackAttempted.insert(itemID)
             return try await downloadPhase(
                 itemID: itemID, url: url,
-                extraArguments: arguments + Self.fallbackArguments(signedIn: arguments.contains("--cookies")),
+                extraArguments: Self.retryArguments(after: error.message, tried: arguments, signedIn: signedIn),
                 planned: planned,
             )
         }
     }
 
-    /// Reads the link's details and puts them on the card. With the quality known,
-    /// the probe lists the very files the download fetches. Nil when the card was
-    /// cancelled or removed meanwhile.
     /// Probes signed out first where the site prefers it, and again signed in when the
     /// link asks for it. `cookies` ends as the set the download uses.
     private func probe(itemID: UUID, url: URL, signedIn cookies: inout [String]) async throws -> VideoMetadata? {
@@ -244,6 +244,9 @@ final class DownloadManager {
         }
     }
 
+    /// Reads the link's details and puts them on the card. With the quality known,
+    /// the probe lists the very files the download fetches. Nil when the card was
+    /// cancelled or removed meanwhile.
     private func probe(itemID: UUID, url: URL, cookies: [String]) async throws -> VideoMetadata? {
         let preset = items.first(where: { $0.id == itemID })?.quality ?? settings.quality.choice
         let presetArguments = preset.map { QualitySelection.arguments(for: $0, format: settings.format) } ?? []

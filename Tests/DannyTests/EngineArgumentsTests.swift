@@ -38,4 +38,19 @@ struct EngineArgumentsTests {
         let link = try #require(URL(string: "https://www.instagram.com/reel/x"))
         #expect(DownloadManager.firstTryCookies(for: link, signedIn: cookies) == cookies)
     }
+
+    @Test func `a signed-out download asked to sign in retries with the session`() {
+        let session = ["--cookies", "/tmp/c.txt"]
+        let retry = DownloadManager.retryArguments(
+            after: "Sign in to confirm you're not a bot", tried: ["-f", "best"], signedIn: session,
+        )
+        #expect(retry == session + ["-f", "best"] + DownloadManager.fallbackArguments(signedIn: true))
+    }
+
+    @Test func `a refused download without a sign-in prompt stays signed out`() {
+        let retry = DownloadManager.retryArguments(
+            after: "HTTP Error 403: Forbidden", tried: ["-f", "best"], signedIn: ["--cookies", "/tmp/c.txt"],
+        )
+        #expect(retry == ["-f", "best"] + DownloadManager.fallbackArguments(signedIn: false))
+    }
 }

@@ -43,9 +43,18 @@ struct QualityTests {
         let arguments = QualitySelection.arguments(for: .video(maxHeight: 1080), format: .compatible)
         let selector = arguments[1]
         #expect(arguments[0] == "-f")
-        #expect(selector.hasPrefix("bv*[vcodec~='^(avc1|h264|hvc1|hev1|h265)'][height<=1080]+ba[acodec^=mp4a]"))
+        #expect(selector.hasPrefix("bv[vcodec~='^(avc1|h264|hvc1|hev1|h265)'][height<=1080]+ba[acodec^=mp4a]/"
+                + "b[vcodec~='^(avc1|h264|hvc1|hev1|h265)'][height<=1080][acodec^=mp4a]/"))
         #expect(selector.hasSuffix("/bv*+ba/b"))
-        #expect(arguments.suffix(2) == ["--merge-output-format", "mp4/mkv"])
+        #expect(arguments.dropFirst(2).prefix(2) == ["--merge-output-format", "mp4/mkv"])
+        #expect(arguments.contains("--remux-video"))
+    }
+
+    /// With nothing under the cap, the closest height above it wins, not the largest.
+    @Test
+    func `a height cap sorts the fallback by closeness to the cap`() {
+        let arguments = QualitySelection.arguments(for: .video(maxHeight: 480), format: .highest)
+        #expect(arguments.suffix(2) == ["-S", "res:480"])
     }
 
     @Test

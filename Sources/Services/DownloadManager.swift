@@ -94,6 +94,14 @@ final class DownloadManager {
         runningTasks[id]?.cancel()
         runningTasks[id] = nil
         if let index = items.firstIndex(where: { $0.id == id }), items[index].status.isActive {
+            if items[index].status == .choosing {
+                // No run is left to resume a card waiting for its pick: stop it
+                // where Retry can start it again.
+                items[index].qualityOptions = nil
+                items[index].choiceDeadline = nil
+                fail(itemID: id, message: "Cancelled")
+                return
+            }
             items[index].status = .queued
             items[index].speedBytesPerSecond = nil
             saveSoon()
@@ -237,44 +245,6 @@ final class DownloadManager {
 
     // MARK: Quality
 
-    /// The quality for this run: the card's pick, else the setting's. With "Ask each
-    /// time", the card shows the options and nil comes back: the run ends, freeing
-    /// its slot, and `choose` queues the item again.
-    private func qualityChoice(for itemID: UUID, metadata: VideoMetadata) -> QualityChoice? {
-        guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
-        if let picked = items[index].quality { return picked }
-        if let preset = settings.quality.choice { return preset }
-
-        let options = QualitySelection.options(from: metadata.formats ?? [], format: settings.format)
-        guard options.count > 1, let first = options.first else {
-            return options.first?.choice ?? .video(maxHeight: nil)
-        }
-        items[index].status = .choosing
-        items[index].qualityOptions = options
-        items[index].choiceDeadline = Date().addingTimeInterval(Self.choiceWait)
-        saveSoon()
-        // Unanswered, the first option (the best the format setting allows) starts.
-        Task { [weak self] in
-            try? await Task.sleep(for: .seconds(Self.choiceWait))
-            guard let self, items.first(where: { $0.id == itemID })?.status == .choosing else { return }
-            choose(id: itemID, choice: first.choice)
-        }
-        return nil
-    }
-
-    static let choiceWait: TimeInterval = 10
-
-    /// Starts a card that is waiting for its quality.
-    func choose(id: UUID, choice: QualityChoice) {
-        guard let index = items.firstIndex(where: { $0.id == id }), items[index].status == .choosing else { return }
-        items[index].quality = choice
-        items[index].qualityOptions = nil
-        items[index].choiceDeadline = nil
-        items[index].status = .queued
-        saveSoon()
-        pump()
-    }
-
     /// Fails the item with install steps when yt-dlp can't be found.
     private func engineIsInstalled(for itemID: UUID) -> Bool {
         guard !binaries.ytdlp.fileExistsAsExecutable else { return true }
@@ -361,5 +331,47 @@ final class DownloadManager {
 extension URL {
     var fileExistsAsExecutable: Bool {
         FileManager.default.isExecutableFile(atPath: path)
+    }
+}
+
+// MARK: - Quality pick
+
+extension DownloadManager {
+    /// The quality for this run: the card's pick, else the setting's. With "Ask each
+    /// time", the card shows the options and nil comes back: the run ends, freeing
+    /// its slot, and `choose` queues the item again.
+    private func qualityChoice(for itemID: UUID, metadata: VideoMetadata) -> QualityChoice? {
+        guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
+        if let picked = items[index].quality { return picked }
+        if let preset = settings.quality.choice { return preset }
+
+        let options = QualitySelection.options(from: metadata.formats ?? [], format: settings.format)
+        guard options.count > 1, let first = options.first else {
+            return options.first?.choice ?? .video(maxHeight: nil)
+        }
+        items[index].status = .choosing
+        items[index].qualityOptions = options
+        items[index].choiceDeadline = Date().addingTimeInterval(Self.choiceWait)
+        saveSoon()
+        // Unanswered, the first option (the best the format setting allows) starts.
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(Self.choiceWait))
+            guard let self, items.first(where: { $0.id == itemID })?.status == .choosing else { return }
+            choose(id: itemID, choice: first.choice)
+        }
+        return nil
+    }
+
+    static let choiceWait: TimeInterval = 10
+
+    /// Starts a card that is waiting for its quality.
+    func choose(id: UUID, choice: QualityChoice) {
+        guard let index = items.firstIndex(where: { $0.id == id }), items[index].status == .choosing else { return }
+        items[index].quality = choice
+        items[index].qualityOptions = nil
+        items[index].choiceDeadline = nil
+        items[index].status = .queued
+        saveSoon()
+        pump()
     }
 }

@@ -102,15 +102,31 @@ nonisolated enum QualitySelection {
             let height = maxHeight.map { "[height<=\($0)]" } ?? ""
             var choices: [String] = []
             if format == .compatible {
-                // Compatible codecs first.
-                choices += ["bv*\(compatibleVideo)\(height)+ba[acodec^=mp4a]", "b\(compatibleVideo)\(height)"]
+                // Compatible codecs first: a video-only stream with AAC, or one file
+                // that already has both. `bv*` could bring its own non-AAC audio.
+                choices += [
+                    "bv\(compatibleVideo)\(height)+ba[acodec^=mp4a]",
+                    "b\(compatibleVideo)\(height)[acodec^=mp4a]",
+                ]
             }
-            // Then any codec under the cap, then anything at all rather than failing.
+            // Then any codec under the cap, then anything rather than failing.
             choices += ["bv*\(height)+ba", "b\(height)", "bv*+ba", "b"]
             var seen = Set<String>()
             let selector = choices.filter { seen.insert($0).inserted }.joined(separator: "/")
             // MP4 when the codecs allow it, else MKV.
-            return ["-f", selector, "--merge-output-format", "mp4/mkv"]
+            var arguments = ["-f", selector, "--merge-output-format", "mp4/mkv"]
+            if let maxHeight {
+                // When nothing is under the cap, the uncapped fallback takes the
+                // smallest height above it, not the largest.
+                arguments += ["-S", "res:\(maxHeight)"]
+            }
+            if format == .compatible {
+                // A single file needs no merge, so it is remuxed to MP4 instead;
+                // WebM and MKV keep their container, since MP4 can't promise to
+                // play their codecs.
+                arguments += ["--remux-video", "webm>webm/mkv>mkv/mp4"]
+            }
+            return arguments
         case .audio:
             switch format {
             case .compatible: return ["-f", "ba[acodec^=mp4a]/ba", "-x", "--audio-format", "m4a"]

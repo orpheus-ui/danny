@@ -79,8 +79,8 @@ struct SettingsView: View {
     private var formatNote: String {
         switch settings.format {
         case .compatible:
-            "MP4 with H.264 or HEVC: plays in QuickTime, Photos, on iPhone and in editors. "
-                + "Some sites offer their sharpest video only in other codecs."
+            "Prefers MP4 with H.264 or HEVC: plays in QuickTime, Photos, on iPhone and in editors. "
+                + "When a site has neither, Danny takes another codec rather than failing."
         case .highest:
             "The best the site has, in any codec. 4K and up are often VP9 or AV1, saved as MKV "
                 + "when MP4 can't hold them; QuickTime may not play those."

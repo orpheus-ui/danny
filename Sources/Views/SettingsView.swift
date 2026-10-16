@@ -11,12 +11,10 @@ struct SettingsView: View {
         return Form {
             Section("Engine") {
                 LabeledContent("Download engine", value: engineStatus)
-                Text("""
-                YouTube and other sites change constantly. If downloads fail with HTTP 403, \
-                update yt-dlp: `brew upgrade yt-dlp`.
-                """)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                Toggle("Keep yt-dlp up to date", isOn: $settings.keepsEngineCurrent)
+                Text(engineNote)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section("Downloads") {
@@ -71,9 +69,17 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .navigationTitle("Settings")
-        .task {
+        .task(id: manager.engineUpdate) {
             engineStatus = await manager.toolVersions()
         }
+    }
+
+    private var engineNote: String {
+        if case let .failed(reason) = manager.engineUpdate { return "The last check didn't finish: \(reason)" }
+        return settings.keepsEngineCurrent
+            ? "Sites change often and yt-dlp follows them. Danny fetches its latest release each time it opens, "
+            + "and installs it only when it matches yt-dlp's published checksum."
+            : "Danny keeps the yt-dlp it has now and won't check for a newer one."
     }
 
     private var formatNote: String {

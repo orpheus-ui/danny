@@ -31,6 +31,7 @@ final class AppSettings {
         static let browserConsent = "browserConsentGiven"
         static let quality = "quality"
         static let format = "format"
+        static let keepsEngineCurrent = "keepsEngineCurrent"
     }
 
     var downloadDirectory: URL {
@@ -57,6 +58,11 @@ final class AppSettings {
         didSet { defaults.set(format.rawValue, forKey: Key.format) }
     }
 
+    /// Fetch the latest yt-dlp each time Danny opens.
+    var keepsEngineCurrent: Bool {
+        didSet { defaults.set(keepsEngineCurrent, forKey: Key.keepsEngineCurrent) }
+    }
+
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
@@ -74,5 +80,6 @@ final class AppSettings {
         monitorClipboard = defaults.object(forKey: Key.monitorClipboard) as? Bool ?? false
         maxConcurrentDownloads = defaults.object(forKey: Key.maxConcurrent) as? Int ?? 3
         browserConsentGiven = defaults.bool(forKey: Key.browserConsent)
+        keepsEngineCurrent = defaults.object(forKey: Key.keepsEngineCurrent) as? Bool ?? true
     }
 }

@@ -172,3 +172,32 @@ new built-in site is one entry, and users add others by address.
 
 Would change if yt-dlp reads cookies from a pipe or stdin: then nothing touches
 the disk at all.
+
+## ADR-015 — yt-dlp keeps itself current, outside the app bundle
+
+**2026-10-16 · Accepted**
+
+Sites change weekly and yt-dlp follows them; a yt-dlp bundled with a release
+(ADR-012) ages until the next one, and an old yt-dlp is the most common cause of
+failed downloads. Each time Danny opens, `YTDLPUpdater` asks GitHub for yt-dlp's
+latest release and, when it is newer than the copy in use, downloads
+`yt-dlp_macos`, checks it against the release's `SHA2-256SUMS`, runs it once to
+confirm the version, and renames it into `~/Library/Application Support/Danny/bin`.
+That copy is found before the bundled or Homebrew one, unless a newer Danny
+bundled a newer yt-dlp: each copy's version sits beside it in `yt-dlp.version`,
+so the choice at launch reads two small files instead of running two binaries.
+
+The signed app bundle is never modified. The rename is atomic, so a download
+already running keeps the old binary and the next one uses the new. One request
+at launch and nothing while idle (ADR-008). Settings › Engine turns it off.
+
+Accepted risk: the checksum file comes from the same GitHub release as the
+binary, so it proves the download is intact, not who made it. Someone able to
+change yt-dlp's releases could ship a binary that passes, and Danny runs it
+(the version check) before installing it. Users who install yt-dlp from GitHub
+or Homebrew take the same trust today. Verifying `SHA2-256SUMS.sig` against
+yt-dlp's signing key, bundled with Danny, closes it (backlog).
+
+Would change if yt-dlp becomes a plugin (M2): the plugin host updates plugins,
+and this moves there.
+

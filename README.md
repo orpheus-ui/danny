@@ -14,7 +14,7 @@ Danny is an open-source video downloader for macOS, inspired by [Downie](https:/
 - **Smart queue** — configurable concurrent downloads, retry, cancel, per-item actions
 - **Clipboard-friendly** — paste from the `+` menu, or enable clipboard watching in Settings
 - **Persistent history** — the queue survives relaunches
-- **Native & private** — SwiftUI + Liquid Glass, no telemetry, no accounts, nothing leaves your machine except the video request itself
+- **Native & private** — SwiftUI + Liquid Glass, no telemetry, no accounts; what leaves your machine is the video request itself and, each time Danny opens, a check of GitHub for a newer yt-dlp (off in Settings › Engine)
 
 ## Install
 
@@ -45,9 +45,10 @@ make run         # build and launch
 
 Danny looks for `yt-dlp` and `ffmpeg` in this order:
 
-1. **Bundled** in `Danny.app/Contents/Resources/bin` — run `./scripts/fetch-dependencies.sh` before building to include them (it builds ffmpeg from source the first time, which takes a few minutes)
-2. **Homebrew**: `brew install yt-dlp ffmpeg` (`/opt/homebrew/bin`, `/usr/local/bin`)
-3. Anything on your `PATH`
+1. **Kept current** (yt-dlp only): each time Danny opens it fetches yt-dlp's latest release, checks it against the published checksums and keeps it in `~/Library/Application Support/Danny/bin`. Turn it off in Settings › Engine.
+2. **Bundled** in `Danny.app/Contents/Resources/bin` — run `./scripts/fetch-dependencies.sh` before building to include them (it builds ffmpeg from source the first time, which takes a few minutes)
+3. **Homebrew**: `brew install yt-dlp ffmpeg` (`/opt/homebrew/bin`, `/usr/local/bin`)
+4. Anything on your `PATH`
 
 > `yt-dlp` is public domain (Unlicense). The bundled `ffmpeg` and `ffprobe` are an LGPL build made from source by `scripts/build-ffmpeg.sh`; their license texts ship in `Danny.app/Contents/Resources/bin/licenses`, and each GitHub Release carries the exact source archives. The title font, Space Grotesk, is bundled under the SIL Open Font License; its license text ships in `Danny.app/Contents/Resources/Fonts`.
 

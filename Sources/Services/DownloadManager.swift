@@ -10,6 +10,8 @@ final class DownloadManager {
     var filter = DownloadFilter()
     var pendingManualAdd = false
     private(set) var lastFailureMessage: String?
+    /// The launch update check, for Settings: nil until it has run.
+    private(set) var engineUpdate: YTDLPUpdater.Outcome?
 
     let settings: AppSettings
     /// Signed-in sites; a run passes the link's site cookies to yt-dlp when present.
@@ -204,7 +206,7 @@ final class DownloadManager {
             return
         } catch {
             if Task.isCancelled { return }
-            fail(itemID: itemID, message: Self.hinted(error.localizedDescription, url: url))
+            fail(itemID: itemID, message: Self.hinted(error.localizedDescription, updates: settings.keepsEngineCurrent))
         }
     }
 
@@ -291,12 +293,16 @@ final class DownloadManager {
             || lowered.contains("sign in to confirm")
     }
 
-    private static func hinted(_ message: String, url _: URL) -> String {
+    /// `updates`: whether Danny fetches the latest yt-dlp when it opens.
+    static func hinted(_ message: String, updates: Bool) -> String {
         // The card offers Sign In for these; an update doesn't help.
         if DownloadItem.asksForSignIn(message) { return message }
         let lowered = message.lowercased()
         if lowered.contains("403") {
-            return message + "\nThis usually means yt-dlp needs an update: run `brew upgrade yt-dlp` and retry."
+            let fix = updates
+                ? "reopen Danny to get the latest"
+                : "turn on Keep yt-dlp up to date in Settings › Engine and reopen Danny"
+            return message + "\nThis usually means yt-dlp needs an update: \(fix), then retry."
         }
         return message
     }
@@ -376,5 +382,19 @@ extension DownloadManager {
         items[index].status = .queued
         saveSoon()
         pump()
+    }
+}
+
+// MARK: - Engine updates
+
+extension DownloadManager {
+    /// Fetches the latest yt-dlp when the setting allows. Runs once per launch; a
+    /// new copy is used from the next download on, running ones keep theirs.
+    func updateEngine(with updater: YTDLPUpdater = YTDLPUpdater()) async {
+        guard settings.keepsEngineCurrent, !isSampleQueue else { return }
+        let installed = await client.version(binaries: binaries)
+        let outcome = await updater.update(from: installed)
+        if case .updated = outcome { refreshBinaries() }
+        engineUpdate = outcome
     }
 }

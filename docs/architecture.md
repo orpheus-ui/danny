@@ -14,6 +14,7 @@ Sources/
   Services/
     DownloadManager     the queue: add/cancel/retry/remove, concurrency, runs downloads
     YTDLPClient         runs yt-dlp as a child process, parses its progress output
+    YTDLPUpdater        at launch, installs the latest verified yt-dlp in Application Support
     PersistenceStore    history.json in ~/Library/Application Support/Danny
     AppSettings         UserDefaults-backed settings
     ClipboardWatcher    optional: queues links you copy

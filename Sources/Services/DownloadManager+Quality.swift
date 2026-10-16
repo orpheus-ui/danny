@@ -7,18 +7,20 @@ extension DownloadManager {
     /// time", the card shows the options and nil comes back: the run ends, freeing
     /// its slot, and `choose` queues the item again.
     func qualityChoice(for itemID: UUID, metadata: VideoMetadata) -> QualityChoice? {
-        guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
-        if let picked = items[index].quality { return picked }
+        guard let item = items.first(where: { $0.id == itemID }) else { return nil }
+        if let picked = item.quality { return picked }
         if let preset = settings.quality.choice { return preset }
 
         let options = QualitySelection.options(from: metadata.formats ?? [], format: settings.format)
         guard options.count > 1, let first = options.first else {
             return options.first?.choice ?? .video(maxHeight: nil)
         }
-        items[index].status = .choosing
-        items[index].qualityOptions = options
         let deadline = Date().addingTimeInterval(Self.choiceWait)
-        items[index].choiceDeadline = deadline
+        updateItem(itemID) {
+            $0.status = .choosing
+            $0.qualityOptions = options
+            $0.choiceDeadline = deadline
+        }
         saveSoon()
         // Unanswered, the first option (the best the format setting allows) starts.
         Task { [weak self] in
@@ -35,11 +37,13 @@ extension DownloadManager {
 
     /// Starts a card that is waiting for its quality.
     func choose(id: UUID, choice: QualityChoice) {
-        guard let index = items.firstIndex(where: { $0.id == id }), items[index].status == .choosing else { return }
-        items[index].quality = choice
-        items[index].qualityOptions = nil
-        items[index].choiceDeadline = nil
-        items[index].status = .queued
+        guard items.contains(where: { $0.id == id && $0.status == .choosing }) else { return }
+        updateItem(id) {
+            $0.quality = choice
+            $0.qualityOptions = nil
+            $0.choiceDeadline = nil
+            $0.status = .queued
+        }
         saveSoon()
         pump()
     }

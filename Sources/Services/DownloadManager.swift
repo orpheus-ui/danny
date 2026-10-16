@@ -5,8 +5,7 @@ import Observation
 @Observable
 @MainActor
 final class DownloadManager {
-    /// Written only by the manager and its extensions (+Quality, +Existing).
-    var items: [DownloadItem] = []
+    private(set) var items: [DownloadItem] = []
     var sortOrder: SortOrder = .newest
     var filter = DownloadFilter()
     var pendingManualAdd = false
@@ -308,6 +307,12 @@ final class DownloadManager {
             }
         }
         return finalPath
+    }
+
+    /// Changes one item in place; how the manager's extensions in other files write.
+    func updateItem(_ id: UUID, _ body: (inout DownloadItem) -> Void) {
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        body(&items[index])
     }
 
     var outputDirectory: URL {

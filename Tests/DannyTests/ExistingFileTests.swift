@@ -103,6 +103,7 @@ struct ExistingFileTests {
         try file("Clip [abc].f137.mp4")
         try file("Clip [abc].mp4.part")
         try file("Other [xyz].mp4")
+        try file("Reaction to [abc] by someone [xyz].mp4")
         let engine = FakeEngine()
         let manager = try manager(engine)
         try add(manager)

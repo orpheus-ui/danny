@@ -12,7 +12,7 @@ nonisolated enum ExistingFiles {
     static func find(id: String, audio: Bool, in directory: URL) -> URL? {
         let kinds = audio ? audioExtensions : videoExtensions
         return files(for: id, in: directory)
-            .filter { kinds.contains($0.pathExtension.lowercased()) && !isIntermediate($0) }
+            .filter { kinds.contains($0.pathExtension.lowercased()) }
             .min { $0.lastPathComponent.count < $1.lastPathComponent.count }
     }
 
@@ -38,11 +38,11 @@ nonisolated enum ExistingFiles {
     private static func files(for id: String, in directory: URL) -> [URL] {
         let contents = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil))
             ?? []
-        return contents.filter { $0.lastPathComponent.contains("[\(id)]") }
-    }
-
-    /// A merge's parts (`… [id].f137.mp4`) are not a finished download.
-    private static func isIntermediate(_ file: URL) -> Bool {
-        file.deletingPathExtension().pathExtension.range(of: #"^f\d+"#, options: .regularExpression) != nil
+        // The id ends the name, before any Keep Both number: a title that merely
+        // contains "[id]" doesn't match, nor do merge parts (`… [id].f137.mp4`).
+        let pattern = NSRegularExpression.escapedPattern(for: "[\(id)]") + #"(?: \(\d+\))?$"#
+        return contents.filter {
+            $0.deletingPathExtension().lastPathComponent.range(of: pattern, options: .regularExpression) != nil
+        }
     }
 }

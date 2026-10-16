@@ -165,7 +165,6 @@ nonisolated struct YTDLPClient: Sendable {
 
     /// Split when yt-dlp moves behind the plugin protocol (M2; docs/backlog.md).
     @concurrent
-    // swiftlint:disable:next cyclomatic_complexity
     private func runDownload(
         url: URL, into directory: URL, binaries: Binaries, extraArguments: [String],
         onEvent: @escaping @Sendable (DownloadEvent) -> Void,
@@ -201,12 +200,6 @@ nonisolated struct YTDLPClient: Sendable {
         process.standardError = stdout
         process.standardInput = FileHandle.nullDevice
 
-        _ = try await withTaskCancellationHandler {
-            try process.run()
-        } onCancel: {
-            if process.isRunning { process.terminate() }
-        }
-
         defer {
             if process.isRunning { process.terminate() }
         }
@@ -214,21 +207,22 @@ nonisolated struct YTDLPClient: Sendable {
         var failureLines: [String] = []
         var outputPath: String?
 
-        for try await line in stdout.fileHandleForReading.bytes.lines {
-            if Task.isCancelled { break }
-            if line.hasPrefix("FILE:") {
-                let path = String(line.dropFirst(5))
-                if !path.isEmpty { outputPath = path }
-                continue
-            }
-            if let event = Self.parseProgressLine(line) {
-                onEvent(event)
-            } else if line.contains("ERROR") {
-                failureLines.append(line)
-            } else if line.hasPrefix("WARNING") {
-                // Kept in the system log: they explain thin format lists (`log show
-                // --predicate 'subsystem == "app.danny.desktop"'`).
-                Self.log.warning("\(line, privacy: .public)")
+        try await Self.running(process) {
+            for try await line in stdout.fileHandleForReading.bytes.lines {
+                if line.hasPrefix("FILE:") {
+                    let path = String(line.dropFirst(5))
+                    if !path.isEmpty { outputPath = path }
+                    continue
+                }
+                if let event = Self.parseProgressLine(line) {
+                    onEvent(event)
+                } else if line.contains("ERROR") {
+                    failureLines.append(line)
+                } else if line.hasPrefix("WARNING") {
+                    // Kept in the system log: they explain thin format lists (`log show
+                    // --predicate 'subsystem == "app.danny.desktop"'`).
+                    Self.log.warning("\(line, privacy: .public)")
+                }
             }
         }
 
@@ -280,6 +274,17 @@ nonisolated struct YTDLPClient: Sendable {
         return Double(text[text.startIndex ..< end].replacingOccurrences(of: ",", with: "."))
     }
 
+    /// Launches `process` and runs `body` while it lives. Cancelling terminates it at
+    /// once, not at its next line: yt-dlp can stay quiet for half a minute while it
+    /// reads a page, and a removed card's download would otherwise finish anyway.
+    private static func running<T>(_ process: Process, _ body: () async throws -> T) async throws -> T {
+        try Task.checkCancellation()
+        try process.run()
+        return try await withTaskCancellationHandler(operation: body) {
+            if process.isRunning { process.terminate() }
+        }
+    }
+
     @concurrent
     private static func readAll(_ pipe: Pipe) async -> String {
         let data = (try? pipe.fileHandleForReading.readToEnd()) ?? Data()
@@ -304,20 +309,17 @@ nonisolated struct YTDLPClient: Sendable {
         process.standardOutput = pipe
         process.standardError = errors
 
-        _ = try await withTaskCancellationHandler {
-            try process.run()
-        } onCancel: {
-            if process.isRunning { process.terminate() }
-        }
-
         // Read stderr alongside stdout, so neither pipe fills and stalls yt-dlp.
-        async let errorText = Self.readAll(errors)
         var output = ""
-        for try await line in pipe.fileHandleForReading.bytes.lines {
-            output += line + "\n"
+        let errorText = try await Self.running(process) {
+            async let errorText = Self.readAll(errors)
+            for try await line in pipe.fileHandleForReading.bytes.lines {
+                output += line + "\n"
+            }
+            return await errorText
         }
         process.waitUntilExit()
-        let errorLines = await errorText.split(separator: "\n").map(String.init)
+        let errorLines = errorText.split(separator: "\n").map(String.init)
 
         guard process.terminationStatus == 0 else {
             throw YTDLPError(message: Self.meaningfulError(errorLines.filter { $0.contains("ERROR") })

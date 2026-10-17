@@ -158,11 +158,6 @@ final class DownloadManager {
         }
     }
 
-    func revealInFinder(id: UUID) {
-        guard let path = items.first(where: { $0.id == id })?.filePath else { return }
-        NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: (path as NSString).deletingLastPathComponent)
-    }
-
     func pump() {
         guard !isSampleQueue else { return }
         // Running downloads only: queued cards and cards waiting for a pick don't

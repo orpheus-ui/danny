@@ -1,3 +1,4 @@
+import QuickLook
 import SwiftUI
 
 struct MainWindow: View {
@@ -12,6 +13,10 @@ struct MainWindow: View {
     @State private var manualURL = ""
     @State private var isSearching = false
     @State private var isDropTargeted = false
+    /// The last clicked card, so Space knows what to preview. Clicks only: arrow keys are the keyboard task.
+    @State private var selection: DownloadItem.ID?
+    @State private var previewURL: URL?
+    @FocusState private var listFocused: Bool
 
     var body: some View {
         @Bindable var manager = manager
@@ -105,6 +110,14 @@ struct MainWindow: View {
                             onRetry: { manager.retry(id: item.id) },
                             onReveal: { manager.revealInFinder(id: item.id) },
                             onBrowserCapture: { requestBrowser(url: item.sourceURL) },
+                            onOpen: { manager.open(id: item.id) },
+                            onQuickLook: {
+                                selection = item.id
+                                previewURL = item.fileURL
+                            },
+                            onCopyLink: { model.watcher.copy(item.sourceURL) },
+                            onOpenPage: { manager.openOriginalPage(id: item.id) },
+                            isSelected: selection == item.id,
                             onSignIn: signInAction(for: item),
                             onChoose: { manager.choose(id: item.id, choice: $0) },
                             onResolveExisting: { manager.resolveExisting(id: item.id, with: $0) },
@@ -113,13 +126,18 @@ struct MainWindow: View {
                                 manager.revealInFinder(id: item.id)
                             },
                         )
+                        .onTapGesture(count: 2) { manager.open(id: item.id) }
+                        .simultaneousGesture(TapGesture().onEnded {
+                            selection = item.id
+                            listFocused = true
+                        })
                     }
                     if manager.visibleItems.isEmpty {
                         emptyState
                     }
                 }
                 .padding(.horizontal, D.Spacing.listInset)
-                .padding(.top, 4)
+                .padding(.top, D.Spacing.listTop)
                 .padding(.bottom, 68)
             }
             .overlay {
@@ -136,6 +154,16 @@ struct MainWindow: View {
             // ⌘V with no text field focused adds the clipboard's link.
             .focusable()
             .focusEffectDisabled()
+            .focused($listFocused)
+            .onKeyPress(.space) {
+                if previewURL != nil {
+                    previewURL = nil
+                    return .handled
+                }
+                previewURL = manager.visibleItems.previewURL(selection: selection)
+                return previewURL == nil ? .ignored : .handled
+            }
+            .quickLookPreview($previewURL)
             .onPasteCommand(of: [.url, .plainText]) { _ in pasteFromClipboard() }
             .dropDestination(for: DroppedLink.self) { links, _ in
                 for link in links {

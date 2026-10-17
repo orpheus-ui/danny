@@ -7,13 +7,18 @@ struct DownloadCardView: View {
     let onRetry: () -> Void
     let onReveal: () -> Void
     let onBrowserCapture: () -> Void
+    let onOpen: () -> Void
+    let onQuickLook: () -> Void
+    let onCopyLink: () -> Void
+    let onOpenPage: () -> Void
+    var isSelected = false
     var onSignIn: (() -> Void)?
     var onChoose: ((QualityChoice) -> Void)?
     var onResolveExisting: ((ExistingFilePolicy) -> Void)?
     var onKeepExisting: (() -> Void)?
 
     @State private var hovering = false
-    @State private var showingSource = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showingError = false
 
     var body: some View {
@@ -23,14 +28,33 @@ struct DownloadCardView: View {
             .background { D.cardScrim.allowsHitTesting(false) }
             .background { thumbnailLayer }
             .clipShape(RoundedRectangle(cornerRadius: D.Radius.card, style: .continuous))
+            // The whole card takes clicks, not just its text: select, double-click to open.
+            .contentShape(.interaction, RoundedRectangle(cornerRadius: D.Radius.card, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: D.Radius.card, style: .continuous)
-                    .strokeBorder(D.cardStroke, lineWidth: D.Stroke.card)
+                    .strokeBorder(isSelected ? D.accent : D.cardStroke, lineWidth: D.Stroke.card)
             }
             .onHover { hovering in
                 self.hovering = hovering
             }
-            .animation(.easeInOut(duration: 0.15), value: hovering)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: hovering)
+            // The bar's chips are drawn only while hovered; VoiceOver reaches them here.
+            .accessibilityActions {
+                ForEach(fileActions, id: \.title) { action in
+                    Button(action.title, action: action.action)
+                }
+            }
+    }
+
+    /// A finished file's actions: chips on the Done bar while hovered, and accessibility actions.
+    private var fileActions: [ProgressBarView.Chip] {
+        guard item.fileURL != nil else { return [] }
+        return [
+            .init(icon: "play.fill", title: "Play", action: onOpen),
+            .init(icon: "folder", title: "Show in Finder", action: onReveal),
+            .init(icon: "link", title: "Copy Link", action: onCopyLink),
+            .init(icon: "eye", title: "Quick Look", action: onQuickLook),
+        ]
     }
 
     private var thumbnailLayer: some View {
@@ -66,6 +90,8 @@ struct DownloadCardView: View {
                     onRetry: onRetry,
                     onBrowserCapture: onBrowserCapture,
                     onSignIn: onSignIn,
+                    // Drawn only for the hovered card (ADR-008), never for every card at rest.
+                    finishedActions: hovering ? fileActions : [],
                 )
                 .help(item.status == .failed ? item.errorMessage ?? "" : "")
                 .popover(isPresented: $showingError, arrowEdge: .top) { errorPopover }
@@ -76,55 +102,17 @@ struct DownloadCardView: View {
     private var headerRow: some View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(item.title)
-                        .font(D.Font.cardTitle)
-                        .foregroundStyle(D.textPrimary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                    if hovering {
-                        Button {
-                            showingSource.toggle()
-                        } label: {
-                            Image("icon-search")
-                                .resizable()
-                                .frame(width: D.Size.cardIcon, height: D.Size.cardIcon)
-                        }
-                        .buttonStyle(.plain)
-                        .transition(.opacity)
-                        .help(item.sourceURL.absoluteString)
-                        .popover(isPresented: $showingSource, arrowEdge: .bottom) { sourcePopover }
-                    }
-                }
+                Text(item.title)
+                    .font(D.Font.cardTitle)
+                    .foregroundStyle(D.textPrimary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .help(item.title)
                 metaRow
             }
             Spacer(minLength: 8)
             actionPills
         }
-    }
-
-    private var sourcePopover: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Source")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-            Text(item.sourceURL.absoluteString)
-                .font(.system(size: 12, design: .monospaced))
-                .textSelection(.enabled)
-                .lineLimit(3)
-            HStack {
-                Button("Open") {
-                    NSWorkspace.shared.open(item.sourceURL)
-                }
-                Button("Copy") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(item.sourceURL.absoluteString, forType: .string)
-                }
-            }
-            .controlSize(.small)
-        }
-        .padding(12)
-        .frame(width: 320)
     }
 
     /// yt-dlp's own output, for bug reports.
@@ -174,6 +162,10 @@ struct DownloadCardView: View {
     private var actionPills: some View {
         HStack(spacing: D.Spacing.cardActions) {
             PillMenu(icon: "icon-dots") {
+                if item.fileURL != nil {
+                    Button("Open", action: onOpen)
+                    Button("Quick Look", action: onQuickLook)
+                }
                 if item.status.isActive {
                     Button("Cancel", action: onCancel)
                 } else {
@@ -190,10 +182,8 @@ struct DownloadCardView: View {
                     }
                 }
                 Divider()
-                Button("Copy Link") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(item.sourceURL.absoluteString, forType: .string)
-                }
+                Button("Copy Link", action: onCopyLink)
+                Button("Open Original Page", action: onOpenPage)
                 Divider()
                 Button("Remove", role: .destructive, action: onRemove)
             }

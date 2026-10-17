@@ -77,6 +77,20 @@ struct DownloadItem: Identifiable, Codable, Hashable {
         errorMessage = nil
         addedAt = Date()
     }
+
+    /// The downloaded file once the item is finished: what Open, Quick Look and the
+    /// hover actions use. Nil while downloading or failed.
+    var fileURL: URL? {
+        guard status == .finished, let filePath else { return nil }
+        return URL(fileURLWithPath: filePath)
+    }
+}
+
+extension [DownloadItem] {
+    /// The file Quick Look shows: the selected item's, when it is listed and finished.
+    func previewURL(selection: UUID?) -> URL? {
+        first { $0.id == selection }?.fileURL
+    }
 }
 
 /// What a download does when a file of the same video is already in the folder.

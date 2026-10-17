@@ -8,7 +8,11 @@ import Testing
 @MainActor
 struct ClipboardWatcherTests {
     private let scratch = TestScratch()
-    private let pasteboard = NSPasteboard.withUniqueName()
+    private let pasteboard: NSPasteboard
+
+    init() {
+        pasteboard = scratch.pasteboard()
+    }
 
     private func watcher(_ policy: ClipboardPolicy) -> ClipboardWatcher {
         let settings = AppSettings(defaults: scratch.defaults())

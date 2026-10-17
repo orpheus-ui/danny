@@ -16,6 +16,7 @@ struct ProgressBarView: View {
 
     @Environment(\.windowIsVisible) private var windowIsVisible
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(DownloadManager.self) private var manager: DownloadManager?
 
     var body: some View {
         GeometryReader { geo in
@@ -131,7 +132,8 @@ struct ProgressBarView: View {
 
     private var labelParts: [String] {
         switch item.status {
-        case .queued, .choosing, .existing: []
+        case .queued: manager?.waitsForWiFi == true ? ["Waiting for Wi-Fi"] : []
+        case .choosing, .existing: []
         case .resolving: ["Fetching…"]
         case .downloading: downloadingParts
         case .processing: ["Merging…"]

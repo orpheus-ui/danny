@@ -255,6 +255,11 @@ nonisolated struct YTDLPClient: Sendable {
         ] + outputArguments(in: directory)
     }
 
+    /// The speed limit setting as yt-dlp arguments: bytes per second, 0 for none.
+    static func limitRateArguments(_ bytesPerSecond: Int) -> [String] {
+        bytesPerSecond > 0 ? ["--limit-rate", String(bytesPerSecond)] : []
+    }
+
     /// Where a download goes: `<name by template> [<id>]<suffix>.<ext>`. Extra arguments
     /// repeat it with the chosen template or a suffix, as in " (2)": yt-dlp takes the last `-o`.
     static func outputArguments(in directory: URL, template: FilenameTemplate = .title, suffix: String = "")

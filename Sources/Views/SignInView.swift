@@ -9,6 +9,7 @@ struct SignInView: View {
     let site: SignInSite
 
     @Environment(SiteSessions.self) private var sessions
+    @Environment(DownloadManager.self) private var manager
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -19,6 +20,8 @@ struct SignInView: View {
         .background(WindowBackground())
         .ignoresSafeArea(edges: .top)
         .navigationTitle("Sign in to \(site.name)")
+        // Done or the close button: the downloads that asked for this sign-in go again.
+        .onDisappear { if signedIn { manager.retrySignInFailures(on: site) } }
     }
 
     private var signedIn: Bool { sessions.isSignedIn(site) }

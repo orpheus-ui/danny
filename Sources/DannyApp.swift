@@ -34,6 +34,7 @@ struct DannyApp: App {
             if let site {
                 SignInView(site: site)
                     .environment(model.sessions)
+                    .environment(model.manager)
                     .frame(minWidth: 460, minHeight: 560)
                     .windowTranslucency()
             }

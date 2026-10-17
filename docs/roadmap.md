@@ -3,7 +3,7 @@
 Milestones are sequential. `docs/roadmap.md` says *what* and *in which order*;
 a plan in [plans/](plans/) says *how* for anything bigger than a PR.
 
-**Current milestone: M1 — Match the design.**
+**Current milestones: M1 — Match the design, with M1.5 — Everyday use alongside.**
 
 ---
 
@@ -26,7 +26,7 @@ The Figma file is the spec. Plan: [plans/2026-10-14-m1-match-the-design.md](plan
 - [x] **Progress bar rebuilt**: Metal shader for gradient + dot texture, centered
       two-tone label, smooth eased progress, idle-free animation (ADR-008)
 - [ ] Card: full-bleed thumbnail with scrim, title/meta/actions per Figma
-- [ ] Title bar and bottom bar per Figma
+- [x] Title bar and bottom bar per Figma
 - [ ] Missing states designed and built: Queued, Fetching, Merging, Paused, Failed, empty list
 - [ ] Snapshot tests for every card state
 - [ ] Resource debt from `backlog.md` that touches the UI (clipboard timer, list re-renders)

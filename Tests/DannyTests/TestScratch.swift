@@ -5,7 +5,6 @@ import Foundation
 /// or ~/Library/Preferences. Swift Testing makes a suite instance per test.
 final class TestScratch {
     private var folders: [URL] = []
-    private var suites: [String] = []
 
     /// A new folder path (`DannyTests-<uuid>`) in the temporary directory, not yet created.
     func folder() -> URL {
@@ -14,23 +13,18 @@ final class TestScratch {
         return url
     }
 
-    /// Empty settings of their own, never the app's.
+    /// Empty settings of their own, never the app's. A suite named by an absolute
+    /// path keeps its plist in a scratch folder: one named by a plain name lands in
+    /// ~/Library/Preferences, and cfprefsd writes it back after it's removed.
     func defaults() -> UserDefaults {
-        let name = "DannyTests-\(UUID().uuidString)"
-        suites.append(name)
+        let file = folder().appendingPathComponent("defaults.plist")
         // shortcut: force-unwrapped; suiteName is only nil for the app's own bundle id.
-        return UserDefaults(suiteName: name)!
+        return UserDefaults(suiteName: file.path)!
     }
 
     deinit {
         for url in folders {
             try? FileManager.default.removeItem(at: url)
-        }
-        // Removing a domain empties it but leaves its file behind.
-        let preferences = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Preferences")
-        for name in suites {
-            UserDefaults().removePersistentDomain(forName: name)
-            try? FileManager.default.removeItem(at: preferences.appendingPathComponent("\(name).plist"))
         }
     }
 }

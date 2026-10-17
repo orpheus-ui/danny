@@ -63,6 +63,24 @@ struct SettingsView: View {
                 )
             }
 
+            Section("Organizing") {
+                Toggle("Save into a folder per site", isOn: $settings.folderPerSite)
+                Picker("File name", selection: $settings.filenameTemplate) {
+                    ForEach(FilenameTemplate.allCases) { Text($0.label).tag($0) }
+                }
+                LabeledContent("Example") {
+                    Text(settings.filenameTemplate.preview(siteFolder: settings.folderPerSite))
+                        .font(.system(size: 11, design: .monospaced))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+                Text("Danny ends every name with the video's id, which is how it recognizes a file it already has.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             AccountsSection()
 
             Section("Clipboard") {

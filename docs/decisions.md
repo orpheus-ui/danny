@@ -229,3 +229,23 @@ It is MIT licensed; the license text ships in `Resources/bin/licenses`.
 
 Would change if QuickJS-ng becomes too slow for YouTube's player, or if a
 YouTube token provider needs a specific runtime.
+
+## ADR-017 — No built-in player: Play opens the user's player
+
+**2026-10-17 · Accepted**
+
+Danny has no video player of its own. Play opens a finished file in the app the
+Mac has set for its type (IINA, VLC, QuickTime Player), and Space shows it in
+Quick Look. A streamed torrent (M3) works the same way: the torrent helper serves
+the file over local HTTP with byte ranges, and Danny opens that URL in the user's
+player, which already handles MKV, HEVC, subtitles and seeking.
+
+A player that matched those would mean bundling libmpv or VLCKit, tens of
+megabytes plus its own updates and codec bugs, against ADR-008. AVKit adds no
+weight but cannot play MKV, the usual torrent container, so it would still need
+the hand-off. Playing a site download before it finishes is not offered: yt-dlp
+fetches video and audio separately and merges them at the end, so the file is not
+playable until then.
+
+Would change if a common container stops opening in the players Macs ship with
+or users install, or if streaming needs controls a hand-off cannot give.

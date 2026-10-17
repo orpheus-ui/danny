@@ -136,7 +136,7 @@ struct ProgressBarView: View {
         case .downloading: downloadingParts
         case .processing: ["Merging…"]
         case .finished: ["Done"]
-        case .failed: [item.asksForSignIn ? "Sign in needed" : "Failed"]
+        case .failed: [item.failureReason?.text ?? "Failed"]
         }
     }
 
@@ -151,14 +151,23 @@ struct ProgressBarView: View {
 
     private var failedActions: some View {
         HStack(spacing: 6) {
-            if item.asksForSignIn, let onSignIn {
-                miniButton(icon: "person.crop.circle", title: "Sign In", action: onSignIn)
-            }
-            if let onRetry {
-                miniButton(icon: "arrow.clockwise", title: "Retry", action: onRetry)
-            }
-            if !item.asksForSignIn, let onBrowserCapture {
-                miniButton(icon: "globe", title: "Browser Capture", action: onBrowserCapture)
+            switch item.failureReason?.action {
+            case .signIn:
+                if let onSignIn {
+                    miniButton(icon: "person.crop.circle", title: "Sign In", action: onSignIn)
+                } else if let onBrowserCapture {
+                    miniButton(icon: "globe", title: "Browser Capture", action: onBrowserCapture)
+                }
+            case .browserCapture:
+                if let onBrowserCapture {
+                    miniButton(icon: "globe", title: "Browser Capture", action: onBrowserCapture)
+                }
+            case .retry:
+                if let onRetry {
+                    miniButton(icon: "arrow.clockwise", title: "Retry", action: onRetry)
+                }
+            case .nothing, nil:
+                EmptyView()
             }
         }
         .padding(.trailing, 6)

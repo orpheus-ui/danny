@@ -4,12 +4,13 @@ import Foundation
 // MARK: - Already downloaded
 
 extension DownloadManager {
-    /// Before a download: extra arguments for where the file goes, or nil when the
-    /// card now asks what to do with the file already in the folder.
+    /// Before a download: extra arguments for where the file goes and what it is called,
+    /// or nil when the card now asks what to do with the file already there.
     func existingFileCheck(for itemID: UUID, videoID: String, choice: QualityChoice) async throws -> [String]? {
-        guard let item = items.first(where: { $0.id == itemID }),
-              let existing = existingFile(id: videoID, audio: choice == .audio)
-        else { return [] }
+        guard let item = items.first(where: { $0.id == itemID }) else { return [] }
+        let url = item.sourceURL
+        guard let existing = existingFile(id: videoID, audio: choice == .audio, url: url)
+        else { return outputArguments(for: url) }
         switch item.existingFilePolicy ?? settings.existingFiles {
         case .replace:
             do {
@@ -17,24 +18,50 @@ extension DownloadManager {
             } catch {
                 throw YTDLPError(message: "Danny couldn't move the old file to the Trash.")
             }
-            return []
+            return outputArguments(for: url)
         case .keepBoth:
-            let suffix = ExistingFiles.keepBothSuffix(id: videoID, in: outputDirectory)
-            return YTDLPClient.outputArguments(in: outputDirectory, suffix: suffix)
+            let suffix = ExistingFiles.keepBothSuffix(id: videoID, in: downloadDirectory(for: url))
+            return outputArguments(for: url, suffix: suffix)
         case .ask:
             await askAboutExisting(itemID, file: existing)
             return nil
         }
     }
 
-    /// The Danny folder earlier builds made inside the chosen one; files there are
-    /// still found and cleaned up.
-    private var legacyDirectory: URL { outputDirectory.appendingPathComponent("Danny", isDirectory: true) }
+    /// Where a link's file goes: the chosen folder, or the site's folder inside it.
+    func downloadDirectory(for url: URL) -> URL {
+        SiteFolder.directory(for: url, in: outputDirectory, perSite: settings.folderPerSite)
+    }
 
-    /// The file already downloaded for this video, in the folder or the legacy one.
-    func existingFile(id: String, audio: Bool) -> URL? {
-        ExistingFiles.find(id: id, audio: audio, in: outputDirectory)
-            ?? ExistingFiles.find(id: id, audio: audio, in: legacyDirectory)
+    /// The `-o` for a link's file, named by the chosen template.
+    func outputArguments(for url: URL, suffix: String = "") -> [String] {
+        YTDLPClient.outputArguments(
+            in: downloadDirectory(for: url),
+            template: settings.filenameTemplate,
+            suffix: suffix,
+        )
+    }
+
+    /// Where files of this link's video may be, the one a download goes to first: then the
+    /// chosen folder, the link's site folder (whether or not the setting is on now, so
+    /// switching it loses nothing) and the Danny folder earlier builds made inside the chosen one.
+    func directories(for url: URL) -> [URL] {
+        let candidates = [
+            downloadDirectory(for: url),
+            outputDirectory,
+            SiteFolder.directory(for: url, in: outputDirectory, perSite: true),
+            outputDirectory.appendingPathComponent("Danny", isDirectory: true),
+        ]
+        var folders: [URL] = []
+        for candidate in candidates where !folders.contains(candidate) {
+            folders.append(candidate)
+        }
+        return folders
+    }
+
+    /// The file already downloaded for this video, in any of those folders.
+    func existingFile(id: String, audio: Bool, url: URL) -> URL? {
+        directories(for: url).lazy.compactMap { ExistingFiles.find(id: id, audio: audio, in: $0) }.first
     }
 
     /// Puts the card in `.existing`, showing the file found. Like a quality pick, the
@@ -85,7 +112,7 @@ extension DownloadManager {
     /// card's run is stopped first; yt-dlp gets a moment to exit before its files go.
     func removePartials(of item: DownloadItem, after run: Task<Void, Never>?) {
         guard let videoID = item.videoID else { return }
-        let directories = [outputDirectory, legacyDirectory]
+        let folders = directories(for: item.sourceURL)
         Task {
             if let run {
                 await run.value
@@ -93,7 +120,7 @@ extension DownloadManager {
             }
             // Another card for the same video (another link to it) may be using them.
             guard !items.contains(where: { $0.videoID == videoID && $0.status.isActive }) else { return }
-            for file in directories.flatMap({ ExistingFiles.partials(id: videoID, in: $0) }) {
+            for file in folders.flatMap({ ExistingFiles.partials(id: videoID, in: $0) }) {
                 try? FileManager.default.removeItem(at: file)
             }
         }

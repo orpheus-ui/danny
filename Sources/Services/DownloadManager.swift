@@ -307,7 +307,9 @@ final class DownloadManager {
     private func downloadPhase(
         itemID: UUID, url: URL, extraArguments: [String], planned: [String: Int64],
     ) async throws -> String? {
-        guard !Task.isCancelled, let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
+        // Thrown, not nil: a nil path would mark a stopped card finished.
+        try Task.checkCancellation()
+        guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
         items[index].status = .downloading
         var finalPath: String?
         var progress = DownloadProgress(planned: planned)

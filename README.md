@@ -1,5 +1,10 @@
 # Danny — video downloader for macOS
 
+> [!NOTE]
+> **Danny is under active development and hasn't been released yet.** The first
+> release, 0.1.0, is coming soon. Until then you can [build it from source](#build);
+> expect rough edges and changes between commits.
+
 Danny is an open-source video downloader for macOS, inspired by [Downie](https://software.charliemonroe.net/downie/). Paste a link from YouTube, X, Instagram, or thousands of other sites, watch the live progress, done. For stubborn sites, Danny's built-in **Browser Capture** watches network traffic while you browse and hands you every video file and HLS stream it detects.
 
 ![Danny main window](docs/screenshots/main.png)
@@ -9,16 +14,21 @@ Danny is an open-source video downloader for macOS, inspired by [Downie](https:/
 - **Downloads from anywhere** — powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp): YouTube, X/Twitter, Instagram, TikTok, Vimeo, and 1000+ extractors
 - **Browser Capture** — a built-in browser that sniffs network traffic, `<video>` elements, HLS (`m3u8`) and DASH (`mpd`) manifests while you browse. Every detected stream appears in the sidebar with a one-click **+** to download
 - **Live progress** — percentage and real-time speed on a liquid-glass progress bar
-
-![Downloading state](docs/screenshots/states.png)
+- **Quality and format** — a default in Settings (best, a resolution cap or audio only, in a format that plays everywhere or the highest quality), or **Ask** to pick from the formats on the card
+- **Already downloaded?** — before fetching a video that's already in the folder, Danny asks: replace it, keep both, or show the one you have
+- **Sign in to sites** — downloads that need an account work as you, signed in on the site's own page; YouTube goes signed out first and uses the sign-in only when a video asks for it
+- **Add links your way** — ⌘V in the window, drag a link or `.webloc` onto it, paste from the `+` menu, or turn on clipboard watching in Settings
 - **Smart queue** — configurable concurrent downloads, retry, cancel, per-item actions
-- **Clipboard-friendly** — paste from the `+` menu, or enable clipboard watching in Settings
+- **Search** — one field filters your downloads; paste a link into it and press Return to download
 - **Persistent history** — the queue survives relaunches
 - **Native & private** — SwiftUI + Liquid Glass, no telemetry, no accounts; what leaves your machine is the video request itself and, each time Danny opens, a check of GitHub for a newer yt-dlp (off in Settings › Engine)
 
+![Downloading state](docs/screenshots/states.png)
+
 ## Install
 
-Download the latest DMG from [Releases](https://github.com/orpheus-ui/danny/releases),
+There's no release yet — for now, [build from source](#build). Once 0.1.0 is out,
+download the DMG from [Releases](https://github.com/orpheus-ui/danny/releases),
 open it and drag Danny to Applications. yt-dlp, ffmpeg and a small JavaScript runtime (QuickJS-ng) are included.
 
 Early (0.x) builds aren't notarized yet, so macOS blocks the first launch: open Danny
@@ -55,8 +65,9 @@ Danny looks for `yt-dlp` and `ffmpeg` in this order:
 
 ## Usage
 
+- **⌘V** in the window, or **drag** a link, `.webloc` or text with a link onto it — download it
 - **`+`** — paste a link from the clipboard or type a URL
-- **⌘⇧V** — paste and download from anywhere
+- **⌘⇧V** — paste and download from the Download menu
 - **Browser Capture** (globe icon or ⌘⇧B) — for sites where extraction fails. Browse, play the video, then pick the stream from the sidebar. The first launch asks for your consent
 - **Settings › Accounts** — sign in to YouTube, Instagram, X, Facebook or any site you add, so downloads work as you. Sign-in happens on the site's own page in Danny's browser
 - **⌘N** — enter a URL manually · **⌘, ** — settings (save folder, concurrency, clipboard watching)

@@ -113,9 +113,6 @@ not a switch.
   searches with result cards.
 - **Custom ffmpeg:** Engine row "Bundled · Use another… · Reset"; the chosen binary
   is checked with `-version` before use, with a fallback to the bundled one.
-- **Check for engine updates now:** a "Check now" button beside the yt-dlp version
-  with the last result ("Up to date · checked 2 min ago"); the new version is used
-  from the next download, no relaunch.
 - **App updates** (M5): Sparkle with EdDSA-signed updates; "Check automatically"
   and "Install automatically" on by default, plus "Check now". Installs on quit or
   when idle, never during a download.

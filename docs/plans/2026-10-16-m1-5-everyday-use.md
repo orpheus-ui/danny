@@ -12,6 +12,7 @@
 | menu-bar — progress and paste-to-download in the menu bar | not started | — |
 | organizing — folder per site, filename templates | not started | — |
 | network — Wi-Fi only, speed limit | not started | — |
+| settings-layout — Settings in tabs | not started | — |
 
 M1 makes Danny look right; this milestone makes the common paths shorter. Each
 task is one PR, built in the M1 visual language and checked against the
@@ -56,6 +57,10 @@ resource budget (ADR-008): nothing here polls, and every animation is one-shot.
 10. **network** — "Download only on Wi-Fi" waits on cellular or tethered links
     (path changes are observed, not polled), and a speed limit passes
     `--limit-rate` to yt-dlp.
+11. **settings-layout** — last, once the tasks above have added their settings,
+    so nothing moves twice. Settings become tabs: General (with "Send to
+    Danny"), Downloads, Quality, Network, Sources, Engine & Updates (the layout
+    in `docs/backlog.md`). Rows move; no setting is added or removed.
 
 ## Done when
 

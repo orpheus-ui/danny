@@ -42,15 +42,21 @@ extension DownloadManager {
         )
     }
 
-    /// Where files of this link's video may be: the chosen folder, the link's site folder
-    /// (whether or not the setting is on now, so switching it loses nothing) and the
-    /// Danny folder earlier builds made inside the chosen one.
+    /// Where files of this link's video may be, the one a download goes to first: then the
+    /// chosen folder, the link's site folder (whether or not the setting is on now, so
+    /// switching it loses nothing) and the Danny folder earlier builds made inside the chosen one.
     func directories(for url: URL) -> [URL] {
-        [
+        let candidates = [
+            downloadDirectory(for: url),
             outputDirectory,
             SiteFolder.directory(for: url, in: outputDirectory, perSite: true),
             outputDirectory.appendingPathComponent("Danny", isDirectory: true),
         ]
+        var folders: [URL] = []
+        for candidate in candidates where !folders.contains(candidate) {
+            folders.append(candidate)
+        }
+        return folders
     }
 
     /// The file already downloaded for this video, in any of those folders.

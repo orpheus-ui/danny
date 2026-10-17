@@ -175,4 +175,21 @@ struct OrganizingTests {
             #expect(engine.directories.withLock { $0 }.isEmpty)
         }
     }
+
+    @MainActor
+    @Test(arguments: [true, false]) func `with a copy in both folders the one where downloads go is the one found`(
+        perSite: Bool,
+    ) async throws {
+        let folder = scratch.folder()
+        let site = folder.appendingPathComponent("example.com")
+        try FileManager.default.createDirectory(at: site, withIntermediateDirectories: true)
+        try Data().write(to: folder.appendingPathComponent("Clip [abc].mp4"))
+        try Data().write(to: site.appendingPathComponent("Clip [abc].mp4"))
+        let manager = manager(RecordingEngine(), in: folder) { $0.folderPerSite = perSite }
+        try add(manager)
+        try await settle(manager, until: .existing)
+        let found = try #require(manager.items.first?.existingFile?.path)
+        #expect(URL(fileURLWithPath: found).resolvingSymlinksInPath().deletingLastPathComponent().lastPathComponent
+            == (perSite ? "example.com" : folder.lastPathComponent))
+    }
 }

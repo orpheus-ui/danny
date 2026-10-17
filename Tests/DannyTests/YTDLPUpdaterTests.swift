@@ -3,13 +3,14 @@ import Foundation
 import Testing
 
 struct YTDLPUpdaterTests {
+    private let scratch = TestScratch()
     private let binary = Data("#!/bin/sh\necho 2026.09.01\n".utf8)
 
     /// A fake GitHub: the latest release, its checksums and its binary.
     private func updater(
         latest: String = "2026.09.01", checksum: String? = nil, runs: Bool = true, fetched: Recorder = Recorder(),
     ) -> (YTDLPUpdater, URL) {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let directory = scratch.folder()
         let binary = binary
         let sum = checksum ?? YTDLPUpdater.sha256(binary)
         var updater = YTDLPUpdater()
@@ -91,7 +92,7 @@ struct YTDLPUpdaterTests {
 
     /// Writes an executable `yt-dlp` and its version file into a new folder.
     private func copy(version: String?) throws -> URL {
-        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let folder = scratch.folder()
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let binary = folder.appendingPathComponent("yt-dlp")
         try self.binary.write(to: binary)

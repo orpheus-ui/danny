@@ -14,6 +14,8 @@ Sources/
   Services/
     DownloadManager     the queue: add/cancel/retry/remove, concurrency, runs downloads
     YTDLPClient         runs yt-dlp as a child process, parses its progress output
+    DownloadEngine      what the manager asks of yt-dlp; tests pass a fake
+    ExistingFiles       finds an earlier download of the same video in the folder
     YTDLPUpdater        at launch, installs the latest verified yt-dlp in Application Support
     PersistenceStore    history.json in ~/Library/Application Support/Danny
     AppSettings         UserDefaults-backed settings
@@ -29,9 +31,16 @@ Tests/DannyTests/       Swift Testing unit tests
 1. A URL arrives — `+` menu, ⌘⇧V, the clipboard watcher, or Browser Capture.
 2. `DownloadManager.add` queues a `DownloadItem` and `pump()` starts it when a slot is free.
 3. `YTDLPClient.probe` runs `yt-dlp -J` for title, size, resolution and thumbnail.
-4. `YTDLPClient.downloadStream` runs yt-dlp with a progress template and streams
+4. Before downloading, `ExistingFiles` looks for a file of the same video and kind
+   (video or audio) by its `[id]`. Depending on the card's answer or the setting, the
+   old file goes to the Trash, the new one is named `… [id] (2).ext`, or the card
+   ends on the file already there. yt-dlp's "has already been downloaded" line
+   leads to the same question when the check misses a file.
+5. `YTDLPClient.downloadStream` runs yt-dlp with a progress template and streams
    `DownloadEvent`s (progress, output file) back to the manager, which updates the item.
-5. The item becomes `.finished` or `.failed`; history is saved (debounced) to `history.json`.
+6. Removing an unfinished card deletes its partial files (`.part`, merge parts)
+   once yt-dlp has stopped; finished files are never touched.
+7. The item becomes `.finished` or `.failed`; history is saved (debounced) to `history.json`.
 
 Browser Capture injects a script into the page that reports every media URL it
 sees (`<video>` sources, network requests matching media patterns) through a

@@ -17,13 +17,17 @@ final class DownloadManager {
     /// Signed-in sites; a run passes the link's site cookies to yt-dlp when present.
     var sessions: SiteSessions?
 
-    private let client = YTDLPClient()
+    let client: any DownloadEngine
     private var binaries: YTDLPClient.Binaries = .missing
     private var runningTasks: [UUID: Task<Void, Never>] = [:]
     private var fallbackAttempted: Set<UUID> = []
     private var saveDebounce: Task<Void, Never>?
     /// `-sample-queue` (debug builds): one card per state, in memory only.
     private var isSampleQueue = false
+    /// False in tests: the queue neither loads nor saves the history file.
+    private let persists: Bool
+    /// Replace's way to drop the old file; tests delete their own file instead.
+    var moveToTrash: (URL) throws -> Void = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) }
 
     var activeCount: Int {
         items.filter(\.status.isActive).count
@@ -42,9 +46,14 @@ final class DownloadManager {
         return result
     }
 
-    init(settings: AppSettings) {
+    init(
+        settings: AppSettings, client: any DownloadEngine = YTDLPClient(),
+        binaries: YTDLPClient.Binaries? = nil, persists: Bool = true,
+    ) {
         self.settings = settings
-        binaries = YTDLPClient.locateBinaries()
+        self.client = client
+        self.persists = persists
+        self.binaries = binaries ?? YTDLPClient.locateBinaries()
         #if DEBUG
             if ProcessInfo.processInfo.arguments.contains("-sample-queue") {
                 items = DownloadItem.samples
@@ -52,7 +61,7 @@ final class DownloadManager {
                 return
             }
         #endif
-        let restored = PersistenceStore.load().map { item -> DownloadItem in
+        let restored = (persists ? PersistenceStore.load() : []).map { item -> DownloadItem in
             var item = item
             if item.status.isActive {
                 item.status = .queued
@@ -96,11 +105,12 @@ final class DownloadManager {
         runningTasks[id]?.cancel()
         runningTasks[id] = nil
         if let index = items.firstIndex(where: { $0.id == id }), items[index].status.isActive {
-            if items[index].status == .choosing {
+            if [.choosing, .existing].contains(items[index].status) {
                 // No run is left to resume a card waiting for its pick: stop it
                 // where Retry can start it again.
                 items[index].qualityOptions = nil
                 items[index].choiceDeadline = nil
+                items[index].existingFile = nil
                 fail(itemID: id, message: "Cancelled")
                 return
             }
@@ -122,18 +132,23 @@ final class DownloadManager {
         pump()
     }
 
+    /// Removes the card; an unfinished one takes its partial files with it.
     func remove(id: UUID) {
+        let item = items.first { $0.id == id }
+        let run = runningTasks[id]
         cancel(id: id)
         items.removeAll { $0.id == id }
         saveSoon()
+        if let item, item.status != .finished { removePartials(of: item, after: run) }
     }
 
     func clearFinished() {
-        for item in items where !item.status.isActive {
-            cancel(id: item.id)
-        }
+        let failed = items.filter { $0.status == .failed }
         items.removeAll { !$0.status.isActive }
         saveSoon()
+        for item in failed {
+            removePartials(of: item, after: nil)
+        }
     }
 
     func revealInFinder(id: UUID) {
@@ -141,7 +156,7 @@ final class DownloadManager {
         NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: (path as NSString).deletingLastPathComponent)
     }
 
-    private func pump() {
+    func pump() {
         guard !isSampleQueue else { return }
         // Running downloads only: queued cards and cards waiting for a pick don't
         // hold a slot.
@@ -156,6 +171,7 @@ final class DownloadManager {
         guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
         items[index].status = .resolving
         items[index].errorMessage = nil
+        items[index].existingFile = nil
         let task = Task { [weak self] in
             guard let self else { return }
             await run(itemID: item.id)
@@ -192,18 +208,14 @@ final class DownloadManager {
 
             guard let choice = qualityChoice(for: itemID, metadata: metadata) else { return }
             let quality = QualitySelection.arguments(for: choice, format: settings.format)
+            guard let output = try await existingFileCheck(for: itemID, videoID: metadata.id, choice: choice)
+            else { return }
 
             let path = try await download(
-                itemID: itemID, url: url, arguments: cookies + quality, signedIn: signedIn,
+                itemID: itemID, url: url, arguments: cookies + quality + output, signedIn: signedIn,
                 planned: metadata.plannedFiles,
             )
-
-            guard let index = items.firstIndex(where: { $0.id == itemID }) else { return }
-            items[index].status = .finished
-            items[index].fractionCompleted = 1
-            items[index].speedBytesPerSecond = nil
-            items[index].filePath = path
-            saveSoon()
+            await finish(itemID: itemID, path: path)
         } catch is CancellationError {
             return
         } catch {
@@ -255,6 +267,7 @@ final class DownloadManager {
         guard let index = items.firstIndex(where: { $0.id == itemID }),
               items[index].status == .resolving else { return nil }
         items[index].title = metadata.title.isEmpty ? items[index].title : metadata.title
+        items[index].videoID = metadata.id
         items[index].resolution = metadata.resolutionLabel
         items[index].totalBytes = metadata.filesizeApprox
         items[index].thumbnailURL = metadata.thumbnail.flatMap(URL.init(string:))
@@ -282,11 +295,10 @@ final class DownloadManager {
     ) async throws -> String? {
         guard !Task.isCancelled, let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
         items[index].status = .downloading
-        let directory = settings.downloadDirectory.appendingPathComponent("Danny", isDirectory: true)
         var finalPath: String?
         var progress = DownloadProgress(planned: planned)
         for try await event in client.downloadStream(
-            url: url, into: directory, binaries: binaries, extraArguments: extraArguments,
+            url: url, into: outputDirectory, binaries: binaries, extraArguments: extraArguments,
         ) {
             guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
             switch event {
@@ -298,9 +310,21 @@ final class DownloadManager {
                 items[index].speedBytesPerSecond = speed
             case let .outputFile(path):
                 finalPath = path
+            case let .alreadyDownloaded(path):
+                items[index].existingFile = ExistingFile(path: path)
             }
         }
         return finalPath
+    }
+
+    /// Changes one item in place; how the manager's extensions in other files write.
+    func updateItem(_ id: UUID, _ body: (inout DownloadItem) -> Void) {
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        body(&items[index])
+    }
+
+    var outputDirectory: URL {
+        settings.downloadDirectory.appendingPathComponent("Danny", isDirectory: true)
     }
 
     func toolVersions() async -> String {
@@ -310,7 +334,7 @@ final class DownloadManager {
         return "yt-dlp \(ytdlpText) · ffmpeg \(ffmpegInstalled ? "found" : "missing")"
     }
 
-    private func fail(itemID: UUID, message: String) {
+    func fail(itemID: UUID, message: String) {
         guard let index = items.firstIndex(where: { $0.id == itemID }) else { return }
         items[index].status = .failed
         items[index].errorMessage = message
@@ -319,8 +343,8 @@ final class DownloadManager {
         saveSoon()
     }
 
-    private func saveSoon() {
-        guard !isSampleQueue else { return }
+    func saveSoon() {
+        guard !isSampleQueue, persists else { return }
         saveDebounce?.cancel()
         saveDebounce = Task { [items] in
             try? await Task.sleep(for: .milliseconds(400))
@@ -333,51 +357,6 @@ final class DownloadManager {
 extension URL {
     var fileExistsAsExecutable: Bool {
         FileManager.default.isExecutableFile(atPath: path)
-    }
-}
-
-// MARK: - Quality pick
-
-extension DownloadManager {
-    /// The quality for this run: the card's pick, else the setting's. With "Ask each
-    /// time", the card shows the options and nil comes back: the run ends, freeing
-    /// its slot, and `choose` queues the item again.
-    private func qualityChoice(for itemID: UUID, metadata: VideoMetadata) -> QualityChoice? {
-        guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
-        if let picked = items[index].quality { return picked }
-        if let preset = settings.quality.choice { return preset }
-
-        let options = QualitySelection.options(from: metadata.formats ?? [], format: settings.format)
-        guard options.count > 1, let first = options.first else {
-            return options.first?.choice ?? .video(maxHeight: nil)
-        }
-        items[index].status = .choosing
-        items[index].qualityOptions = options
-        let deadline = Date().addingTimeInterval(Self.choiceWait)
-        items[index].choiceDeadline = deadline
-        saveSoon()
-        // Unanswered, the first option (the best the format setting allows) starts.
-        Task { [weak self] in
-            try? await Task.sleep(for: .seconds(Self.choiceWait))
-            // Only this prompt's timer: a retried card asks again with a new deadline.
-            guard let self, let item = items.first(where: { $0.id == itemID }),
-                  item.status == .choosing, item.choiceDeadline == deadline else { return }
-            choose(id: itemID, choice: first.choice)
-        }
-        return nil
-    }
-
-    static let choiceWait: TimeInterval = 10
-
-    /// Starts a card that is waiting for its quality.
-    func choose(id: UUID, choice: QualityChoice) {
-        guard let index = items.firstIndex(where: { $0.id == id }), items[index].status == .choosing else { return }
-        items[index].quality = choice
-        items[index].qualityOptions = nil
-        items[index].choiceDeadline = nil
-        items[index].status = .queued
-        saveSoon()
-        pump()
     }
 }
 

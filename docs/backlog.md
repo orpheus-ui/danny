@@ -41,6 +41,13 @@ its own PR, delete it from here when it merges.
   matches WebKit's signature and only allows everything — delete it.
 - **Small dead code:** `_ = existing` in `DownloadManager.add`; unused `url`
   parameter in `DownloadManager.hinted`; `if manager.add(url:) {}` in `ClipboardWatcher.poll`.
+- **Downloads land in `Danny/Danny`.** The default folder is already
+  `~/Downloads/Danny` (`AppSettings`), and `DownloadManager.outputDirectory` adds
+  another `Danny`. Pick one; files already in the nested folder should still be found
+  by the existing-file check (or be moved once).
+- **The signed-out-then-signed-in retry has no manager test.** `DownloadEngine` now
+  lets tests fake yt-dlp; a test still needs a stand-in for `SiteSessions` to check
+  that a probe asking for a sign-in is retried with cookies.
 - **User-facing strings are hardcoded.** Move to a String Catalog before any localization.
 
 ## Missing
@@ -52,6 +59,10 @@ its own PR, delete it from here when it merges.
   Danny already has.
 - **Say when quality falls short.** If the best format is below the chosen quality,
   the card should say so instead of quietly downloading 360p.
+- **Clear the web cache.** Browser Capture and sign-in fill
+  `~/Library/Caches/app.danny.desktop/WebKit` (tens of MB) and nothing bounds or
+  clears it. Add a "Clear Cache" button in Settings that removes cached web data
+  but keeps sign-ins (`WKWebsiteDataStore.removeData` with cache types only).
 - **Pause/resume** of a download (needs the M1 Paused state and engine support).
 - **UI snapshot tests** for every card state (M1).
 - **App size.** The bundled tools are most of the app: yt-dlp's PyInstaller binary

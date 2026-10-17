@@ -63,6 +63,8 @@ nonisolated enum DownloadEvent: Sendable {
     /// `file` is the format id being fetched; merged downloads fetch one file per format.
     case progress(downloaded: Int64, total: Int64?, speedBytesPerSecond: Double?, file: String? = nil)
     case outputFile(String)
+    /// yt-dlp found the file already there and skipped the download.
+    case alreadyDownloaded(String)
 }
 
 struct YTDLPError: LocalizedError {
@@ -183,8 +185,6 @@ nonisolated struct YTDLPClient: Sendable {
     ) async throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
-        let outputTemplate = directory
-            .appendingPathComponent("%(title).120B [%(id)s].%(ext)s", isDirectory: false).path
         let progressTemplate =
             // The exact size when yt-dlp has it, else its estimate (fragmented streams).
             "download:\u{40}P|%(progress.downloaded_bytes)s|%(progress.total_bytes,progress.total_bytes_estimate)s"
@@ -194,8 +194,7 @@ nonisolated struct YTDLPClient: Sendable {
             "--newline", "--no-playlist", "--progress",
             "--print", "after_move:FILE:%(filepath)s",
             "--progress-template", progressTemplate,
-            "-o", outputTemplate,
-        ]
+        ] + Self.outputArguments(in: directory)
         if let ffmpeg = binaries.ffmpegDirectory {
             arguments += ["--ffmpeg-location", ffmpeg.path]
         }
@@ -226,7 +225,7 @@ nonisolated struct YTDLPClient: Sendable {
                     if !path.isEmpty { outputPath = path }
                     continue
                 }
-                if let event = Self.parseProgressLine(line) {
+                if let event = Self.parseEvent(line) {
                     onEvent(event)
                 } else if line.contains("ERROR") {
                     failureLines.append(line)
@@ -248,6 +247,24 @@ nonisolated struct YTDLPClient: Sendable {
             throw YTDLPError(message: Self.meaningfulError(failureLines)
                 ?? "yt-dlp exited with code \(process.terminationStatus).")
         }
+    }
+
+    /// Where a download goes: `<title> [<id>]<suffix>.<ext>`. Extra arguments may
+    /// repeat it with a suffix, as in " (2)": yt-dlp takes the last `-o`.
+    static func outputArguments(in directory: URL, suffix: String = "") -> [String] {
+        ["-o", directory.appendingPathComponent("%(title).120B [%(id)s]\(suffix).%(ext)s", isDirectory: false).path]
+    }
+
+    static func parseEvent(_ line: some StringProtocol) -> DownloadEvent? {
+        alreadyDownloadedPath(line).map(DownloadEvent.alreadyDownloaded) ?? parseProgressLine(line)
+    }
+
+    /// The path in yt-dlp's `[download] <path> has already been downloaded` line.
+    static func alreadyDownloadedPath(_ line: some StringProtocol) -> String? {
+        let prefix = "[download] ", suffix = " has already been downloaded"
+        guard line.hasPrefix(prefix), line.hasSuffix(suffix) else { return nil }
+        let path = line.dropFirst(prefix.count).dropLast(suffix.count)
+        return path.isEmpty ? nil : String(path)
     }
 
     static func parseProgressLine(_ line: some StringProtocol) -> DownloadEvent? {

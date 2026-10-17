@@ -94,7 +94,7 @@ struct ProgressBarView: View {
 
     private var fillStyle: FillStyle? {
         switch item.status {
-        case .queued, .choosing:
+        case .queued, .choosing, .existing:
             nil
         case .resolving, .downloading, .processing:
             FillStyle(gradient: D.progressFill, dotStart: D.progressDotStart, dotEnd: D.progressDotEnd)
@@ -131,7 +131,7 @@ struct ProgressBarView: View {
 
     private var labelParts: [String] {
         switch item.status {
-        case .queued, .choosing: []
+        case .queued, .choosing, .existing: []
         case .resolving: ["Fetching…"]
         case .downloading: downloadingParts
         case .processing: ["Merging…"]

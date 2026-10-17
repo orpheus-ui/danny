@@ -41,6 +41,9 @@ struct SettingsView: View {
                 Text(formatNote)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Picker("If the file exists", selection: $settings.existingFiles) {
+                    ForEach(ExistingFilePolicy.allCases) { Text($0.label).tag($0) }
+                }
                 Stepper(
                     "Simultaneous downloads: \(settings.maxConcurrentDownloads)",
                     value: $settings.maxConcurrentDownloads,

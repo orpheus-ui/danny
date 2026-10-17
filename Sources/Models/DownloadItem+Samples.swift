@@ -22,6 +22,8 @@
                 item.fractionCompleted = state.1
                 item.speedBytesPerSecond = state.0 == .downloading ? 80_000_000 : nil
                 item.errorMessage = state.0 == .failed ? "Unsupported URL" : nil
+                // The thumbnail stands in for the video, so Open and Quick Look have a real file.
+                item.filePath = state.0 == .finished ? thumbnail.path : nil
                 if state.0 == .choosing {
                     item.qualityOptions = [
                         QualityOption(choice: .video(maxHeight: 1080), label: "1080p", bytes: 340_000_000),

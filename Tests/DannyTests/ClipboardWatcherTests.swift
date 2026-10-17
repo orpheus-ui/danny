@@ -91,6 +91,14 @@ struct ClipboardWatcherTests {
         #expect(watcher.offer == URL(string: "https://vimeo.com/1"))
     }
 
+    @Test func `a link Danny copies itself is not offered back`() throws {
+        let watcher = watcher(.ask)
+        try watcher.copy(#require(URL(string: "https://vimeo.com/1")))
+        watcher.check()
+        #expect(watcher.offer == nil)
+        #expect(pasteboard.string(forType: .string) == "https://vimeo.com/1")
+    }
+
     @Test func `what was on the clipboard at launch is not offered`() {
         copy("https://vimeo.com/1")
         let watcher = watcher(.ask)

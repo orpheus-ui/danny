@@ -7,6 +7,9 @@ struct DownloadCardView: View {
     let onRetry: () -> Void
     let onReveal: () -> Void
     let onBrowserCapture: () -> Void
+    let onOpen: () -> Void
+    let onCopyLink: () -> Void
+    var isSelected = false
     var onSignIn: (() -> Void)?
     var onChoose: ((QualityChoice) -> Void)?
     var onResolveExisting: ((ExistingFilePolicy) -> Void)?
@@ -22,9 +25,11 @@ struct DownloadCardView: View {
             .background { D.cardScrim.allowsHitTesting(false) }
             .background { thumbnailLayer }
             .clipShape(RoundedRectangle(cornerRadius: D.Radius.card, style: .continuous))
+            // The whole card takes clicks, not just its text: select, double-click to open.
+            .contentShape(RoundedRectangle(cornerRadius: D.Radius.card, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: D.Radius.card, style: .continuous)
-                    .strokeBorder(D.cardStroke, lineWidth: D.Stroke.card)
+                    .strokeBorder(isSelected ? D.accent : D.cardStroke, lineWidth: D.Stroke.card)
             }
             .onHover { hovering in
                 self.hovering = hovering
@@ -114,10 +119,7 @@ struct DownloadCardView: View {
                 Button("Open") {
                     NSWorkspace.shared.open(item.sourceURL)
                 }
-                Button("Copy") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(item.sourceURL.absoluteString, forType: .string)
-                }
+                Button("Copy", action: onCopyLink)
             }
             .controlSize(.small)
         }
@@ -148,7 +150,16 @@ struct DownloadCardView: View {
 
     private var actionPills: some View {
         HStack(spacing: D.Spacing.cardActions) {
+            // Drawn only while hovered (ADR-008): a long list keeps three fewer controls per card at rest.
+            if hovering, item.fileURL != nil {
+                hoverPill("icon-play", "Play", action: onOpen)
+                hoverPill("icon-folder", "Show in Finder", action: onReveal)
+                hoverPill("icon-link", "Copy Link", action: onCopyLink)
+            }
             PillMenu(icon: "icon-dots") {
+                if item.fileURL != nil {
+                    Button("Open", action: onOpen)
+                }
                 if item.status.isActive {
                     Button("Cancel", action: onCancel)
                 } else {
@@ -162,10 +173,7 @@ struct DownloadCardView: View {
                     }
                 }
                 Divider()
-                Button("Copy Link") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(item.sourceURL.absoluteString, forType: .string)
-                }
+                Button("Copy Link", action: onCopyLink)
                 Divider()
                 Button("Remove", role: .destructive, action: onRemove)
             }
@@ -174,5 +182,12 @@ struct DownloadCardView: View {
             }
             .help("Remove")
         }
+    }
+
+    private func hoverPill(_ icon: String, _ label: String, action: @escaping () -> Void) -> some View {
+        PillButton(icon: icon, action: action)
+            .help(label)
+            .accessibilityLabel(label)
+            .transition(.opacity)
     }
 }

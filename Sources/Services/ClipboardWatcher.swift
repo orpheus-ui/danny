@@ -54,4 +54,11 @@ final class ClipboardWatcher {
     func dismissOffer() {
         offer = nil
     }
+
+    /// Copies a link from Danny itself, so coming back to Danny doesn't offer it as new.
+    func copy(_ url: URL) {
+        pasteboard.clearContents()
+        pasteboard.setString(url.absoluteString, forType: .string)
+        lastChangeCount = pasteboard.changeCount
+    }
 }

@@ -4,7 +4,7 @@
 |---|---|---|
 | add-anywhere — ⌘V in the window, drag and drop | done | orpheus-ui/danny#31 |
 | clipboard-toast — ask before adding a copied link | done | orpheus-ui/danny#36 |
-| finished-items — Quick Look, hover actions, open on double-click | not started | — |
+| finished-items — Quick Look, hover actions, open on double-click | in progress | — |
 | keyboard — select, remove and retry from the keyboard | not started | — |
 | system — Dock progress, notification when a download finishes | not started | — |
 | failures — plain-language errors with one suggested fix | not started | — |

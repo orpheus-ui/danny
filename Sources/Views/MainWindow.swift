@@ -52,6 +52,10 @@ struct MainWindow: View {
                     manager.filter.text = text
                     isSearching = true
                 }
+                // `-sample-clipboard <link>` (debug builds): offer this link in the toast.
+                if let link = UserDefaults.standard.string(forKey: "sample-clipboard") {
+                    model.watcher.offer = URL(string: link)
+                }
                 // `-sample-drop` (debug builds): show the drop highlight.
                 if ProcessInfo.processInfo.arguments.contains("-sample-drop") {
                     isDropTargeted = true
@@ -128,6 +132,7 @@ struct MainWindow: View {
                 }
             }
             .animation(.easeOut(duration: 0.15), value: isDropTargeted)
+            .animation(.easeOut(duration: 0.2), value: model.watcher.offer)
             // ⌘V with no text field focused adds the clipboard's link.
             .focusable()
             .focusEffectDisabled()
@@ -143,6 +148,17 @@ struct MainWindow: View {
             .safeAreaBar(edge: .top, spacing: 0) { topBars }
             .scrollEdgeEffectStyle(.soft, for: .top)
             .defaultScrollAnchor(.top)
+
+            if let offer = model.watcher.offer {
+                ClipboardToast(
+                    url: offer,
+                    onAccept: model.watcher.acceptOffer,
+                    onDismiss: model.watcher.dismissOffer,
+                )
+                .padding(.horizontal, D.Spacing.listInset)
+                .padding(.bottom, 60) // above the bottom bar
+                .transition(.opacity)
+            }
 
             BottomBarView(
                 sortOrder: $manager.sortOrder,

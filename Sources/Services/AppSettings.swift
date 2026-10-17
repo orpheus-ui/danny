@@ -26,7 +26,7 @@ enum SortOrder: String, CaseIterable, Identifiable {
 final class AppSettings {
     private enum Key {
         static let downloadDirectory = "downloadDirectory"
-        static let monitorClipboard = "monitorClipboard"
+        static let clipboard = "clipboardLinks"
         static let maxConcurrent = "maxConcurrentDownloads"
         static let browserConsent = "browserConsentGiven"
         static let quality = "quality"
@@ -39,8 +39,9 @@ final class AppSettings {
         didSet { defaults.set(downloadDirectory.path, forKey: Key.downloadDirectory) }
     }
 
-    var monitorClipboard: Bool {
-        didSet { defaults.set(monitorClipboard, forKey: Key.monitorClipboard) }
+    /// What happens to a link copied in another app.
+    var clipboard: ClipboardPolicy {
+        didSet { defaults.set(clipboard.rawValue, forKey: Key.clipboard) }
     }
 
     var maxConcurrentDownloads: Int {
@@ -75,6 +76,7 @@ final class AppSettings {
         quality = defaults.string(forKey: Key.quality).flatMap(QualityPreference.init(rawValue:)) ?? .best
         format = defaults.string(forKey: Key.format).flatMap(FormatPreference.init(rawValue:)) ?? .compatible
         existingFiles = defaults.string(forKey: Key.existingFiles).flatMap(ExistingFilePolicy.init(rawValue:)) ?? .ask
+        clipboard = defaults.string(forKey: Key.clipboard).flatMap(ClipboardPolicy.init(rawValue:)) ?? .ask
         self.defaults = defaults
         let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser
@@ -84,7 +86,6 @@ final class AppSettings {
         } else {
             downloadDirectory = fallback
         }
-        monitorClipboard = defaults.object(forKey: Key.monitorClipboard) as? Bool ?? false
         maxConcurrentDownloads = defaults.object(forKey: Key.maxConcurrent) as? Int ?? 3
         browserConsentGiven = defaults.bool(forKey: Key.browserConsent)
         keepsEngineCurrent = defaults.object(forKey: Key.keepsEngineCurrent) as? Bool ?? true

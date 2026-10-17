@@ -15,7 +15,7 @@ struct FinishedItemTests {
         #expect(item(.finished).fileURL == URL(fileURLWithPath: "/tmp/video.mp4"))
     }
 
-    @Test(arguments: [ItemStatus.queued, .resolving, .choosing, .existing, .downloading, .processing, .failed])
+    @Test(arguments: [ItemStatus.queued, .resolving, .choosing, .existing, .downloading, .processing, .paused, .failed])
     func `an unfinished item has no file URL, even with a path`(status: ItemStatus) {
         #expect(item(status).fileURL == nil)
     }

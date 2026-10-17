@@ -5,6 +5,11 @@ struct BottomBarView: View {
     var onBrowser: () -> Void
     var onPaste: () -> Void
     var onEnterURL: () -> Void
+    /// Pause All shows while something can be paused, else Resume All while something is paused.
+    var canPauseAll = false
+    var canResumeAll = false
+    var onPauseAll: () -> Void = {}
+    var onResumeAll: () -> Void = {}
 
     var body: some View {
         ZStack {
@@ -15,6 +20,15 @@ struct BottomBarView: View {
             GlassEffectContainer {
                 HStack(spacing: 10) {
                     sortMenu
+                    if canPauseAll {
+                        PillButton(symbol: "pause.fill", style: .bar, action: onPauseAll)
+                            .help("Pause All (⌥⌘P)")
+                            .accessibilityLabel("Pause All")
+                    } else if canResumeAll {
+                        PillButton(symbol: "play.fill", style: .bar, action: onResumeAll)
+                            .help("Resume All (⌥⌘P)")
+                            .accessibilityLabel("Resume All")
+                    }
                     Spacer()
                     PillButton(icon: "icon-browser", style: .bar) {
                         onBrowser()

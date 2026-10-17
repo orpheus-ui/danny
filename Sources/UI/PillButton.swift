@@ -16,14 +16,23 @@ enum PillStyle {
 struct PillIcon: View {
     let icon: String
     var style: PillStyle = .card
+    /// An SF Symbol name instead of an asset, for glyphs Figma has no icon for.
+    var isSymbol = false
 
     var body: some View {
-        Image(icon)
-            .resizable()
-            .scaledToFit()
+        glyph
             .frame(width: style.iconSize, height: style.iconSize)
             .frame(width: style.diameter, height: style.diameter)
             .contentShape(Circle())
+    }
+
+    @ViewBuilder private var glyph: some View {
+        if isSymbol {
+            // Sized like the line icons around it, not stretched to fill their square.
+            Image(systemName: icon).font(.system(size: style.iconSize * 0.7, weight: .medium))
+        } else {
+            Image(icon).resizable().scaledToFit()
+        }
     }
 }
 
@@ -51,11 +60,23 @@ private struct PillSurface: ViewModifier {
 struct PillButton: View {
     let icon: String
     var style: PillStyle = .card
+    var isSymbol = false
     let action: () -> Void
+
+    init(icon: String, style: PillStyle = .card, action: @escaping () -> Void) {
+        self.icon = icon
+        self.style = style
+        self.action = action
+    }
+
+    init(symbol: String, style: PillStyle = .card, action: @escaping () -> Void) {
+        self.init(icon: symbol, style: style, action: action)
+        isSymbol = true
+    }
 
     var body: some View {
         Button(action: action) {
-            PillIcon(icon: icon, style: style)
+            PillIcon(icon: icon, style: style, isSymbol: isSymbol)
         }
         .buttonStyle(.plain)
         .modifier(PillSurface(style: style))

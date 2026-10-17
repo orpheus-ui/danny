@@ -13,6 +13,7 @@
 | organizing — folder per site, filename templates | done | orpheus-ui/danny#40 |
 | network — Wi-Fi only, speed limit | not started | — |
 | settings-layout — Settings in tabs | not started | — |
+| pause-resume — pause and resume a download, Pause All, survives quit | in progress | — |
 
 M1 makes Danny look right; this milestone makes the common paths shorter. Each
 task is one PR, built in the M1 visual language and checked against the
@@ -61,6 +62,13 @@ resource budget (ADR-008): nothing here polls, and every animation is one-shot.
     so nothing moves twice. Settings become tabs: General (with "Send to
     Danny"), Downloads, Quality, Network, Sources, Engine & Updates (the layout
     in `docs/backlog.md`). Rows move; no setting is added or removed.
+12. **pause-resume** — a Pause chip on a running card's bar (drawn on hover)
+    stops its yt-dlp but keeps the `.part` files, which yt-dlp continues on the
+    next run; the paused bar is dimmed with "Paused · 59%" and a Resume chip.
+    Pause All / Resume All sit in the bottom bar and the Download menu (⌥⌘P).
+    Paused cards stay paused across a quit; cards that were running when Danny
+    quit start again on launch. Cancel now stops a card for good and deletes its
+    partial files, as Remove does.
 
 ## Done when
 

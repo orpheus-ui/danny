@@ -9,14 +9,21 @@ enum ItemStatus: String, Codable, Comparable {
     case existing
     case downloading
     case processing
+    /// Stopped by the user with its partial files kept; Resume continues them.
+    case paused
     case finished
     case failed
 
     var isActive: Bool {
         switch self {
-        case .queued, .resolving, .choosing, .existing, .downloading, .processing: true
+        case .queued, .resolving, .choosing, .existing, .downloading, .processing, .paused: true
         case .finished, .failed: false
         }
+    }
+
+    /// Running or waiting for a slot; a card waiting on the user's answer isn't.
+    var canPause: Bool {
+        [.queued, .resolving, .downloading, .processing].contains(self)
     }
 
     private var rank: Int {
@@ -26,8 +33,9 @@ enum ItemStatus: String, Codable, Comparable {
         case .choosing, .existing: 2
         case .resolving: 3
         case .queued: 4
-        case .failed: 5
-        case .finished: 6
+        case .paused: 5
+        case .failed: 6
+        case .finished: 7
         }
     }
 

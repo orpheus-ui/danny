@@ -98,6 +98,12 @@ struct DannyCommands: Commands {
                 openWindow(id: "sniffer")
             }
             .keyboardShortcut("b", modifiers: [.command, .shift])
+
+            Button(model.manager.canPauseAll || !model.manager.canResumeAll ? "Pause All" : "Resume All") {
+                if model.manager.canPauseAll { model.manager.pauseAll() } else { model.manager.resumeAll() }
+            }
+            .keyboardShortcut("p", modifiers: [.command, .option])
+            .disabled(!model.manager.canPauseAll && !model.manager.canResumeAll)
         }
     }
 }

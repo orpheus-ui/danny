@@ -125,6 +125,8 @@ struct MainWindow: View {
                                 manager.keepExisting(id: item.id)
                                 manager.revealInFinder(id: item.id)
                             },
+                            onPause: { manager.pause(id: item.id) },
+                            onResume: { manager.resume(id: item.id) },
                         )
                         .onTapGesture(count: 2) { manager.open(id: item.id) }
                         .simultaneousGesture(TapGesture().onEnded {
@@ -193,6 +195,10 @@ struct MainWindow: View {
                 onBrowser: { requestBrowser(url: nil) },
                 onPaste: pasteFromClipboard,
                 onEnterURL: { manager.pendingManualAdd = true },
+                canPauseAll: manager.canPauseAll,
+                canResumeAll: manager.canResumeAll,
+                onPauseAll: { manager.pauseAll() },
+                onResumeAll: { manager.resumeAll() },
             )
         }
     }

@@ -8,7 +8,10 @@
                 .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
                 .appendingPathComponent("Resources/Images/sample-thumbnail.png")
             let states: [(ItemStatus, Double?)] = [
-                (.downloading, 0.54), (.choosing, nil), (.existing, nil), (.resolving, nil), (.processing, nil),
+                (.downloading, 0.54), (.paused, 0.59), (.choosing, nil), (.existing, nil), (.resolving, nil), (
+                    .processing,
+                    nil,
+                ),
                 (.finished, 1), (.failed, nil), (.queued, nil),
             ].reversed() // the list shows the newest first
             return states.enumerated().map { index, state in

@@ -7,11 +7,11 @@ struct OverallProgress: Equatable {
     let fraction: Double?
     let count: Int
 
-    /// Nil when nothing is running. Finished and failed items don't count, nor do
-    /// cards waiting on the user. Byte-weighted when every item knows its size, else
+    /// Nil when nothing is running. Finished, failed and paused items don't count, nor
+    /// do cards waiting on the user. Byte-weighted when every item knows its size, else
     /// each item weighs the same; an item with no fraction yet counts as 0.
     static func of(_ items: [DownloadItem]) -> OverallProgress? {
-        let counted = items.filter { $0.status.isActive && $0.status != .choosing && $0.status != .existing }
+        let counted = items.filter { $0.status.isActive && ![.choosing, .existing, .paused].contains($0.status) }
         guard counted.contains(where: { $0.status != .queued }) else { return nil }
         guard counted.contains(where: { $0.fractionCompleted != nil }) else {
             return OverallProgress(fraction: nil, count: counted.count)

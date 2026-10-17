@@ -12,7 +12,7 @@ Sources/
   DannyApp.swift        app entry, windows (main, Browser Capture, Settings), menu commands
   Models/               DownloadItem, its Status and SortOrder
   Services/
-    DownloadManager     the queue: add/cancel/retry/remove, concurrency, runs downloads
+    DownloadManager     the queue: add/pause/resume/cancel/retry/remove, concurrency, runs downloads
     YTDLPClient         runs yt-dlp as a child process, parses its progress output
     DownloadEngine      what the manager asks of yt-dlp; tests pass a fake
     ExistingFiles       finds an earlier download of the same video in the folder
@@ -41,9 +41,12 @@ Tests/DannyTests/       Swift Testing unit tests
    leads to the same question when the check misses a file.
 5. `YTDLPClient.downloadStream` runs yt-dlp with a progress template and streams
    `DownloadEvent`s (progress, output file) back to the manager, which updates the item.
-6. Removing an unfinished card deletes its partial files (`.part`, merge parts)
-   once yt-dlp has stopped; finished files are never touched.
+6. Pausing stops yt-dlp and keeps the partial files; Resume queues the card and
+   yt-dlp continues them. Cancelling or removing an unfinished card deletes its
+   partial files (`.part`, merge parts) once yt-dlp has stopped; finished files are
+   never touched.
 7. The item becomes `.finished` or `.failed`; history is saved (debounced) to `history.json`.
+   At launch, paused cards stay paused and cards that were running are queued again.
 
 Browser Capture injects a script into the page that reports every media URL it
 sees (`<video>` sources, network requests matching media patterns) through a

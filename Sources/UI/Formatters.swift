@@ -33,6 +33,14 @@ enum Format {
         return "\(amount.formatted(style)) per second"
     }
 
+    /// "45 s left", "3 min left", "2 h left".
+    static func remaining(_ seconds: TimeInterval?) -> String? {
+        guard let seconds, seconds.isFinite, seconds >= 0 else { return nil }
+        if seconds < 60 { return "\(max(1, Int(seconds.rounded(.up)))) s left" }
+        if seconds < 3600 { return "\(Int((seconds / 60).rounded())) min left" }
+        return "\(Int((seconds / 3600).rounded())) h left"
+    }
+
     static func percent(_ fraction: Double?) -> String? {
         guard let fraction else { return nil }
         return "\(Int((fraction * 100).rounded()))%"

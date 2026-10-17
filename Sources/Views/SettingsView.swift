@@ -105,6 +105,7 @@ struct SettingsView: View {
                 Text("Danny looks for a copied video link when you switch to it.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Toggle("Show progress and Paste to Download in the menu bar", isOn: $settings.menuBarItem)
             }
 
             Section("Browser capture") {

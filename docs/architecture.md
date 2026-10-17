@@ -23,7 +23,7 @@ Sources/
     AppSettings         UserDefaults-backed settings
     ClipboardWatcher    offers a copied link when Danny becomes active
     LinkIntake          finds the link in pasted or dropped text, URLs and .webloc files
-    SystemStatus        Dock progress (≤1 update/s) and a notification per finished download
+    SystemStatus        Dock and menu-bar progress (≤1 update/s) and a notification per finished download
   Sniffer/              Browser Capture — a WKWebView that reports media URLs it sees
   Views/                main window, card, progress bar, title/bottom bars, settings
   UI/                   design tokens (`D`), glass effects, pill buttons, formatters

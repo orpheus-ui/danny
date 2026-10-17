@@ -37,6 +37,7 @@ final class AppSettings {
         static let folderPerSite = "folderPerSite"
         static let downloadsOnlyOnWiFi = "downloadsOnlyOnWiFi"
         static let speedLimit = "speedLimit"
+        static let menuBarItem = "menuBarItem"
     }
 
     var downloadDirectory: URL {
@@ -97,6 +98,11 @@ final class AppSettings {
         didSet { defaults.set(speedLimit, forKey: Key.speedLimit) }
     }
 
+    /// Show overall progress and Paste to Download in the menu bar.
+    var menuBarItem: Bool {
+        didSet { defaults.set(menuBarItem, forKey: Key.menuBarItem) }
+    }
+
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
@@ -109,6 +115,7 @@ final class AppSettings {
         folderPerSite = defaults.bool(forKey: Key.folderPerSite)
         downloadsOnlyOnWiFi = defaults.bool(forKey: Key.downloadsOnlyOnWiFi)
         speedLimit = defaults.integer(forKey: Key.speedLimit)
+        menuBarItem = defaults.bool(forKey: Key.menuBarItem)
         self.defaults = defaults
         let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser

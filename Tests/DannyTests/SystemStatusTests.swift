@@ -47,7 +47,11 @@ struct SystemStatusTests {
     // MARK: Throttle
 
     /// `#expect` can't call a mutating method on its argument.
-    private func admit(_ throttle: inout DockThrottle, _ progress: OverallProgress?, at now: ContinuousClock.Instant)
+    private func admit(
+        _ throttle: inout DockThrottle,
+        _ progress: OverallProgress?,
+        at now: ContinuousClock.Instant,
+    )
         -> Bool
     {
         throttle.admit(progress, at: now)
@@ -110,7 +114,8 @@ struct SystemStatusTests {
 
     @Test func `shows progress while downloading, then clears and notifies`() async throws {
         let manager = manager()
-        let status = SystemStatus(manager: manager, dock: dock, notifier: notifier)
+        let menuBar = MenuBarState()
+        let status = SystemStatus(manager: manager, dock: dock, notifier: notifier, menuBar: menuBar)
         try manager.add(url: #require(URL(string: "https://example.com/watch?v=abc")))
         for _ in 0 ..< 200 where manager.items.first?.status != .finished || dock.shown.last != .some(nil) {
             try await Task.sleep(for: .milliseconds(10))
@@ -120,6 +125,7 @@ struct SystemStatusTests {
         #expect(dock.shown.last == .some(nil))
         #expect(notifier.finished.map(\.id) == manager.items.map(\.id))
         #expect(notifier.finished.first?.filePath != nil)
+        #expect(menuBar.icon == nil)
         _ = status
     }
 }

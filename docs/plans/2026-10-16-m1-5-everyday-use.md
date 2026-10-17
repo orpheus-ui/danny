@@ -3,7 +3,7 @@
 | Task | Status | PR |
 |---|---|---|
 | add-anywhere — ⌘V in the window, drag and drop | done | orpheus-ui/danny#31 |
-| clipboard-toast — ask before adding a copied link | not started | — |
+| clipboard-toast — ask before adding a copied link | in progress | — |
 | finished-items — Quick Look, hover actions, open on double-click | not started | — |
 | keyboard — select, remove and retry from the keyboard | not started | — |
 | system — Dock progress, notification when a download finishes | not started | — |

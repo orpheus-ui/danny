@@ -14,19 +14,14 @@ its own PR, delete it from here when it merges.
 
 ## Debt — resource use
 
-- **Clipboard timer runs forever.** `ClipboardWatcher.start()` is called on launch
-  and polls every 0.6 s even when clipboard watching is off; `poll()` checks the
-  setting only after waking. Start/stop the timer with the setting, add a tolerance.
-  (`Sources/Services/ClipboardWatcher.swift`, `MainWindow.task`)
 - **Every progress line re-renders the list.** Each yt-dlp progress event mutates
   `DownloadManager.items`, so every card observes every change. Throttle updates
   and observe per item. (`DownloadManager.downloadPhase`)
 - **`visibleItems` filters and sorts on every read** from the view body. Cache it
   and recompute when items, query or sort order change. (`DownloadManager.visibleItems`)
-- **Idle wakeups.** An empty, hidden window still wakes ~15 times a second
+- **Idle wakeups.** An empty, hidden window still wakes ~4 times a second (~15 before the clipboard timer went)
   (budget: under 1), and ~30 with six cards — no animation runs then, so it's
-  timers or observation. Profile with `/perf-check` §4; the clipboard timer above
-  is one source.
+  timers or observation. Profile with `/perf-check` §4.
 
 ## Debt — structure
 
@@ -40,7 +35,7 @@ its own PR, delete it from here when it merges.
   main-actor properties from a `nonisolated` method; `decidePolicyFor` never
   matches WebKit's signature and only allows everything — delete it.
 - **Small dead code:** `_ = existing` in `DownloadManager.add`; unused `url`
-  parameter in `DownloadManager.hinted`; `if manager.add(url:) {}` in `ClipboardWatcher.poll`.
+  parameter in `DownloadManager.hinted`.
 - **The signed-out-then-signed-in retry has no manager test.** `DownloadEngine` now
   lets tests fake yt-dlp; a test still needs a stand-in for `SiteSessions` to check
   that a probe asking for a sign-in is retried with cookies.

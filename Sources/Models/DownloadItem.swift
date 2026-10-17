@@ -94,6 +94,21 @@ enum ExistingFilePolicy: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+/// What happens to a link copied in another app.
+enum ClipboardPolicy: String, CaseIterable, Identifiable {
+    case ask, addAtOnce, off
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .ask: "Ask"
+        case .addAtOnce: "Add at Once"
+        case .off: "Off"
+        }
+    }
+}
+
 struct ExistingFile: Codable, Hashable {
     var path: String
     var resolution: String?

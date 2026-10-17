@@ -20,7 +20,7 @@ Sources/
     YTDLPUpdater        at launch, installs the latest verified yt-dlp in Application Support
     PersistenceStore    history.json in ~/Library/Application Support/Danny
     AppSettings         UserDefaults-backed settings
-    ClipboardWatcher    optional: queues links you copy
+    ClipboardWatcher    offers a copied link when Danny becomes active
     LinkIntake          finds the link in pasted or dropped text, URLs and .webloc files
   Sniffer/              Browser Capture — a WKWebView that reports media URLs it sees
   Views/                main window, card, progress bar, title/bottom bars, settings

@@ -66,8 +66,10 @@ struct SettingsView: View {
             AccountsSection()
 
             Section("Clipboard") {
-                Toggle("Watch clipboard for links", isOn: $settings.monitorClipboard)
-                Text("When enabled, copied video links are added to the queue automatically.")
+                Picker("Copied links", selection: $settings.clipboard) {
+                    ForEach(ClipboardPolicy.allCases) { Text($0.label).tag($0) }
+                }
+                Text("Danny looks for a copied video link when you switch to it.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

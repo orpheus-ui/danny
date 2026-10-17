@@ -17,7 +17,7 @@ Danny is an open-source video downloader for macOS, inspired by [Downie](https:/
 - **Quality and format** — a default in Settings (best, a resolution cap or audio only, in a format that plays everywhere or the highest quality), or **Ask** to pick from the formats on the card
 - **Already downloaded?** — before fetching a video that's already in the folder, Danny asks: replace it, keep both, or show the one you have
 - **Sign in to sites** — downloads that need an account work as you, signed in on the site's own page; YouTube goes signed out first and uses the sign-in only when a video asks for it
-- **Add links your way** — ⌘V in the window, drag a link or `.webloc` onto it, paste from the `+` menu, or turn on clipboard watching in Settings
+- **Add links your way** — ⌘V in the window, drag a link or `.webloc` onto it, paste from the `+` menu, or copy one in another app and Danny offers it when you switch back
 - **Smart queue** — configurable concurrent downloads, retry, cancel, per-item actions
 - **Search** — one field filters your downloads; paste a link into it and press Return to download
 - **Persistent history** — the queue survives relaunches
@@ -70,7 +70,7 @@ Danny looks for `yt-dlp` and `ffmpeg` in this order:
 - **⌘⇧V** — paste and download from the Download menu
 - **Browser Capture** (globe icon or ⌘⇧B) — for sites where extraction fails. Browse, play the video, then pick the stream from the sidebar. The first launch asks for your consent
 - **Settings › Accounts** — sign in to YouTube, Instagram, X, Facebook or any site you add, so downloads work as you. Sign-in happens on the site's own page in Danny's browser
-- **⌘N** — enter a URL manually · **⌘, ** — settings (save folder, concurrency, clipboard watching)
+- **⌘N** — enter a URL manually · **⌘, ** — settings (save folder, concurrency, copied links)
 
 ## Contributing
 

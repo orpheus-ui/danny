@@ -71,3 +71,55 @@ its own PR, delete it from here when it merges.
   yt-dlp on first run instead of bundling it (it's updated separately anyway,
   roadmap M2), or one copy of the ffmpeg libraries shared by both tools instead of
   two static ones.
+
+## Settings and features
+
+Settings stay small: General (with "Send to Danny"), Downloads, Quality, Network,
+Sources, Engine & Updates. A choice most people can't answer gets a good default,
+not a switch.
+
+- **Keep the Mac awake while downloading.** A power assertion held only while a
+  download runs, released when the queue is idle.
+- **Embed thumbnail, chapters and metadata** in the file by default, instead of
+  sidecar JSON or JPEG files.
+- **Clear history after** a day / week / month / never; a card whose file was
+  deleted from disk shows it as missing.
+- **Hide the Dock icon**, only while the menu-bar item is on.
+- **Audio track language** (M4): pick dubbed tracks by the Mac's preferred
+  languages, with a per-download override.
+- **System proxy:** pass the macOS proxy settings to yt-dlp; no proxy pane.
+- **Pause the queue on low disk space** and say why on the cards.
+- **Record live streams** (M4) with `--live-from-start`.
+- **Back off when a site rate-limits** (HTTP 429, bot checks): wait and retry the
+  queue instead of failing every card, with no delay setting.
+- **Connections per download:** default yt-dlp `-N` to 8; a 1–16 stepper under
+  Network → Advanced. More than about 8 adds little and invites rate limits.
+- **Global speed limit on the main screen:** a pill in the bottom bar shows total
+  speed; clicking it sets a limit (off / presets / custom). yt-dlp's `-r` is per
+  process and fixed for a run, so the limit is split across active downloads and
+  they restart (resuming from `.part`) when it or their number changes. Needs a
+  Figma state.
+- **Danny's own sounds:** short original "done" and "failed" sounds played with
+  the notification; setting Danny / System / None. Needs the sound design.
+- **Sources pane** (M2+): every way media is fetched is a source plugin — yt-dlp,
+  torrents (M3), AI extraction (M4), third-party plugins — each with on/off,
+  version, "Update now" and permissions. A "Does this site work?" box takes a URL
+  and names the source that handles it. Per source: yt-dlp has site sign-ins,
+  Clear Cache and the supported-site list; AI has the provider, ask-before-sending
+  and saved site recipes (deletable, exportable); torrents have port, upload limit,
+  seed ratio and stream-while-downloading. Ways links arrive (clipboard, Share
+  menu, Services, `danny://`, extensions) live in General → Send to Danny.
+- **Search:** text instead of a URL searches. Built-in yt-dlp searches (YouTube,
+  SoundCloud) to switch on; custom search sites as a name plus URL template
+  (`https://site.com/search?q=%s`) opened in Browser Capture; plugins (M2) can add
+  searches with result cards.
+- **Custom ffmpeg:** Engine row "Bundled · Use another… · Reset"; the chosen binary
+  is checked with `-version` before use, with a fallback to the bundled one.
+- **Check for engine updates now:** a "Check now" button beside the yt-dlp version
+  with the last result ("Up to date · checked 2 min ago"); the new version is used
+  from the next download, no relaunch.
+- **App updates** (M5): Sparkle with EdDSA-signed updates; "Check automatically"
+  and "Install automatically" on by default, plus "Check now". Installs on quit or
+  when idle, never during a download.
+- **Browser extensions** (last): Safari, Chrome-family and Firefox extensions that
+  send the page's link, and optionally its cookies, to Danny.

@@ -255,10 +255,12 @@ nonisolated struct YTDLPClient: Sendable {
         ] + outputArguments(in: directory)
     }
 
-    /// Where a download goes: `<title> [<id>]<suffix>.<ext>`. Extra arguments may
-    /// repeat it with a suffix, as in " (2)": yt-dlp takes the last `-o`.
-    static func outputArguments(in directory: URL, suffix: String = "") -> [String] {
-        ["-o", directory.appendingPathComponent("%(title).120B [%(id)s]\(suffix).%(ext)s", isDirectory: false).path]
+    /// Where a download goes: `<name by template> [<id>]<suffix>.<ext>`. Extra arguments
+    /// repeat it with the chosen template or a suffix, as in " (2)": yt-dlp takes the last `-o`.
+    static func outputArguments(in directory: URL, template: FilenameTemplate = .title, suffix: String = "")
+        -> [String]
+    {
+        ["-o", directory.appendingPathComponent("\(template.ytdlp)\(suffix).%(ext)s", isDirectory: false).path]
     }
 
     static func parseEvent(_ line: some StringProtocol) -> DownloadEvent? {

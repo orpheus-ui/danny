@@ -305,7 +305,7 @@ final class DownloadManager {
         var finalPath: String?
         var progress = DownloadProgress(planned: planned)
         for try await event in client.downloadStream(
-            url: url, into: outputDirectory, binaries: binaries, extraArguments: extraArguments,
+            url: url, into: downloadDirectory(for: url), binaries: binaries, extraArguments: extraArguments,
         ) {
             guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
             switch event {

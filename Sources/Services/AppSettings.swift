@@ -33,6 +33,8 @@ final class AppSettings {
         static let format = "format"
         static let keepsEngineCurrent = "keepsEngineCurrent"
         static let existingFiles = "existingFiles"
+        static let filenameTemplate = "filenameTemplate"
+        static let folderPerSite = "folderPerSite"
     }
 
     var downloadDirectory: URL {
@@ -70,6 +72,16 @@ final class AppSettings {
         didSet { defaults.set(existingFiles.rawValue, forKey: Key.existingFiles) }
     }
 
+    /// How downloaded files are named.
+    var filenameTemplate: FilenameTemplate {
+        didSet { defaults.set(filenameTemplate.rawValue, forKey: Key.filenameTemplate) }
+    }
+
+    /// Save into a folder per site (`<download folder>/youtube.com/…`).
+    var folderPerSite: Bool {
+        didSet { defaults.set(folderPerSite, forKey: Key.folderPerSite) }
+    }
+
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
@@ -77,6 +89,9 @@ final class AppSettings {
         format = defaults.string(forKey: Key.format).flatMap(FormatPreference.init(rawValue:)) ?? .compatible
         existingFiles = defaults.string(forKey: Key.existingFiles).flatMap(ExistingFilePolicy.init(rawValue:)) ?? .ask
         clipboard = defaults.string(forKey: Key.clipboard).flatMap(ClipboardPolicy.init(rawValue:)) ?? .ask
+        filenameTemplate = defaults.string(forKey: Key.filenameTemplate).flatMap(FilenameTemplate.init(rawValue:))
+            ?? .title
+        folderPerSite = defaults.bool(forKey: Key.folderPerSite)
         self.defaults = defaults
         let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser

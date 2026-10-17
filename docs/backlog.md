@@ -92,8 +92,10 @@ not a switch.
 - **Record live streams** (M4) with `--live-from-start`.
 - **Back off when a site rate-limits** (HTTP 429, bot checks): wait and retry the
   queue instead of failing every card, with no delay setting.
-- **Connections per download:** default yt-dlp `-N` to 8; a 1–16 stepper under
-  Network → Advanced. More than about 8 adds little and invites rate limits.
+- **Concurrent fragments:** default yt-dlp `-N` (`--concurrent-fragments`) to 8;
+  a 1–16 stepper under Network → Advanced. It only speeds up streams that come in
+  fragments (DASH, HLS); single-file downloads use one connection either way. More
+  than about 8 adds little and invites rate limits.
 - **Global speed limit on the main screen:** a pill in the bottom bar shows total
   speed; clicking it sets a limit (off / presets / custom). yt-dlp's `-r` is per
   process and fixed for a run, so the limit is split across active downloads and

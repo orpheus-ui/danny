@@ -21,7 +21,9 @@ nonisolated enum LinkIntake {
     /// A web link as it is, the link inside a `.webloc` file, nil for anything else.
     static func link(from url: URL) -> URL? {
         if url.isFileURL {
+            // A real .webloc is under 1 KB; the cap keeps a huge or remote file from stalling a paste.
             guard url.pathExtension.lowercased() == "webloc",
+                  let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize, size <= 64 * 1024,
                   let data = try? Data(contentsOf: url),
                   let plist = try? PropertyListSerialization.propertyList(from: data, format: nil),
                   let string = (plist as? [String: Any])?["URL"] as? String,

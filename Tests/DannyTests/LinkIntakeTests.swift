@@ -37,6 +37,13 @@ struct LinkIntakeTests {
         #expect(LinkIntake.link(from: video) == nil)
         #expect(LinkIntake.link(from: broken) == nil)
         #expect(LinkIntake.link(from: folder.appendingPathComponent("Missing.webloc")) == nil)
+        let huge = folder.appendingPathComponent("Huge.webloc")
+        let padded = try PropertyListSerialization.data(
+            fromPropertyList: ["URL": "https://vimeo.com/123", "Pad": String(repeating: "x", count: 70000)],
+            format: .xml, options: 0,
+        )
+        try padded.write(to: huge)
+        #expect(LinkIntake.link(from: huge) == nil)
     }
 
     @MainActor @Test func `pasteboard URL comes before its text`() throws {

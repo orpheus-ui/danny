@@ -67,7 +67,7 @@ final class AppModel {
         manager = DownloadManager(settings: settings)
         watcher = ClipboardWatcher(settings: settings, manager: manager)
         manager.sessions = sessions
-        Task { [manager] in await manager.updateEngine() }
+        Task { [manager] in await manager.checkEngine() }
     }
 }
 

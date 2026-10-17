@@ -19,6 +19,12 @@ nonisolated struct YTDLPUpdater: Sendable {
         case failed(String)
     }
 
+    /// A finished check: what it found, and when.
+    struct Check: Equatable {
+        let outcome: Outcome
+        let date: Date
+    }
+
     private static let log = Logger(subsystem: "app.danny.desktop", category: "yt-dlp")
     private static let latestRelease = URL(string: "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest")!
     /// The universal macOS build, as yt-dlp names it in each release.

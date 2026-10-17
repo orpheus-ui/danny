@@ -11,6 +11,12 @@ struct EngineArgumentsTests {
         #expect(binaries.runtimeArguments == ["--no-js-runtimes", "--js-runtimes", "quickjs:\(runtime.path)"])
     }
 
+    @Test func `downloads fragmented streams with 8 connections`() {
+        let arguments = YTDLPClient.downloadArguments(in: URL(fileURLWithPath: "/tmp"), progressTemplate: "")
+        let index = arguments.firstIndex(of: "--concurrent-fragments")
+        #expect(index.map { arguments[$0 + 1] } == "8")
+    }
+
     @Test func `leaves yt-dlp's default without a bundled runtime`() {
         #expect(YTDLPClient.Binaries.missing.runtimeArguments.isEmpty)
     }

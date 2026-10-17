@@ -190,11 +190,7 @@ nonisolated struct YTDLPClient: Sendable {
             "download:\u{40}P|%(progress.downloaded_bytes)s|%(progress.total_bytes,progress.total_bytes_estimate)s"
             + "|%(progress._speed_str)s|%(info.format_id)s"
 
-        var arguments = [
-            "--newline", "--no-playlist", "--progress",
-            "--print", "after_move:FILE:%(filepath)s",
-            "--progress-template", progressTemplate,
-        ] + Self.outputArguments(in: directory)
+        var arguments = Self.downloadArguments(in: directory, progressTemplate: progressTemplate)
         if let ffmpeg = binaries.ffmpegDirectory {
             arguments += ["--ffmpeg-location", ffmpeg.path]
         }
@@ -247,6 +243,16 @@ nonisolated struct YTDLPClient: Sendable {
             throw YTDLPError(message: Self.meaningfulError(failureLines)
                 ?? "yt-dlp exited with code \(process.terminationStatus).")
         }
+    }
+
+    static func downloadArguments(in directory: URL, progressTemplate: String) -> [String] {
+        [
+            "--newline", "--no-playlist", "--progress",
+            "--print", "after_move:FILE:%(filepath)s",
+            "--progress-template", progressTemplate,
+            // Only speeds up fragmented streams (DASH, HLS); more than ~8 invites rate limits.
+            "--concurrent-fragments", "8",
+        ] + outputArguments(in: directory)
     }
 
     /// Where a download goes: `<title> [<id>]<suffix>.<ext>`. Extra arguments may

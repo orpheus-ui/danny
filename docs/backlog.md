@@ -88,8 +88,8 @@ not a switch.
 - **Record live streams** (M4) with `--live-from-start`.
 - **Back off when a site rate-limits** (HTTP 429, bot checks): wait and retry the
   queue instead of failing every card, with no delay setting.
-- **Concurrent fragments:** default yt-dlp `-N` (`--concurrent-fragments`) to 8;
-  a 1–16 stepper under Network → Advanced. It only speeds up streams that come in
+- **Concurrent fragments stepper:** the default of 8 (`--concurrent-fragments`)
+  ships; still to do is a 1–16 stepper under Network → Advanced. It only speeds up streams that come in
   fragments (DASH, HLS); single-file downloads use one connection either way. More
   than about 8 adds little and invites rate limits.
 - **Global speed limit on the main screen:** a pill in the bottom bar shows total

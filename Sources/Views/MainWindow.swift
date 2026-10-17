@@ -140,7 +140,8 @@ struct MainWindow: View {
                 }
                 .padding(.horizontal, D.Spacing.listInset)
                 .padding(.top, D.Spacing.listTop)
-                .padding(.bottom, 68)
+                // The last card scrolls clear of the floating bar, a list gap above it.
+                .padding(.bottom, D.Size.bottomBar + D.Spacing.list)
             }
             .overlay {
                 if isDropTargeted {
@@ -195,7 +196,7 @@ struct MainWindow: View {
                 onBrowser: { requestBrowser(url: nil) },
                 onPaste: pasteFromClipboard,
                 onEnterURL: { manager.pendingManualAdd = true },
-                canPauseAll: manager.canPauseAll,
+                activity: QueueActivity.of(manager.items),
                 canResumeAll: manager.canResumeAll,
                 onPauseAll: { manager.pauseAll() },
                 onResumeAll: { manager.resumeAll() },

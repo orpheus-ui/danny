@@ -5,8 +5,8 @@ struct BottomBarView: View {
     var onBrowser: () -> Void
     var onPaste: () -> Void
     var onEnterURL: () -> Void
-    /// Pause All shows while something can be paused, else Resume All while something is paused.
-    var canPauseAll = false
+    /// The activity pill beside Sort; nil hides it.
+    var activity: QueueActivity?
     var canResumeAll = false
     var onPauseAll: () -> Void = {}
     var onResumeAll: () -> Void = {}
@@ -20,14 +20,11 @@ struct BottomBarView: View {
             GlassEffectContainer {
                 HStack(spacing: 10) {
                     sortMenu
-                    if canPauseAll {
-                        PillButton(symbol: "pause.fill", style: .bar, action: onPauseAll)
-                            .help("Pause All (⌥⌘P)")
-                            .accessibilityLabel("Pause All")
-                    } else if canResumeAll {
-                        PillButton(symbol: "play.fill", style: .bar, action: onResumeAll)
-                            .help("Resume All (⌥⌘P)")
-                            .accessibilityLabel("Resume All")
+                    if let activity {
+                        ActivityPill(
+                            activity: activity, canResumeAll: canResumeAll,
+                            onPauseAll: onPauseAll, onResumeAll: onResumeAll,
+                        )
                     }
                     Spacer()
                     PillButton(icon: "icon-browser", style: .bar) {
@@ -44,7 +41,7 @@ struct BottomBarView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
         }
-        .frame(height: 56)
+        .frame(height: D.Size.bottomBar)
     }
 
     private var sortMenu: some View {

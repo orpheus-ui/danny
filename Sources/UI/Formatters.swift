@@ -21,6 +21,18 @@ enum Format {
         return String(format: "%.0f Bps", bytesPerSecond)
     }
 
+    /// The speed as VoiceOver reads it: "4.1 megabytes per second".
+    static func spokenSpeed(_ bytesPerSecond: Double?) -> String? {
+        guard let bytesPerSecond, bytesPerSecond > 0 else { return nil }
+        let unit: UnitInformationStorage = bytesPerSecond >= 1_000_000 ? .megabytes : .kilobytes
+        let amount = Measurement(value: bytesPerSecond, unit: UnitInformationStorage.bytes).converted(to: unit)
+        let style = Measurement<UnitInformationStorage>.FormatStyle(
+            width: .wide, locale: Locale(identifier: "en_US"), usage: .asProvided,
+            numberFormatStyle: .number.precision(.fractionLength(0 ... 1)),
+        )
+        return "\(amount.formatted(style)) per second"
+    }
+
     static func percent(_ fraction: Double?) -> String? {
         guard let fraction else { return nil }
         return "\(Int((fraction * 100).rounded()))%"

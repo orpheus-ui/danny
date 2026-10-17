@@ -152,7 +152,7 @@ struct ProgressBarView: View {
         case .resolving: ["Fetching…"]
         case .downloading: downloadingParts
         case .processing: ["Merging…"]
-        case .paused: item.fractionCompleted.map { ["Paused", "·", Self.percent($0)] } ?? ["Paused"]
+        case .paused: Format.percent(item.fractionCompleted).map { ["Paused", "·", $0] } ?? ["Paused"]
         case .finished: ["Done"]
         case .failed: [item.failureReason?.text ?? "Failed"]
         }
@@ -160,13 +160,8 @@ struct ProgressBarView: View {
 
     private var downloadingParts: [String] {
         let speed = Format.speed(item.speedBytesPerSecond)
-        guard let fraction = item.fractionCompleted else { return [speed ?? "Starting…"] }
-        let percent = Self.percent(fraction)
+        guard let percent = Format.percent(item.fractionCompleted) else { return [speed ?? "Starting…"] }
         return speed.map { [percent, "-", $0] } ?? [percent]
-    }
-
-    private static func percent(_ fraction: Double) -> String {
-        "\(Int((fraction * 100).rounded()))%"
     }
 
     // MARK: Failed

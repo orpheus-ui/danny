@@ -77,6 +77,16 @@ struct ClipboardWatcherTests {
         #expect(watcher.offer == nil)
     }
 
+    @Test func `copying the same link again offers it again`() {
+        let watcher = watcher(.ask)
+        copy("https://vimeo.com/1")
+        watcher.check()
+        watcher.dismissOffer()
+        copy("https://vimeo.com/1")
+        watcher.check()
+        #expect(watcher.offer == URL(string: "https://vimeo.com/1"))
+    }
+
     @Test func `what was on the clipboard at launch is not offered`() {
         copy("https://vimeo.com/1")
         let watcher = watcher(.ask)

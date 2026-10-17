@@ -11,7 +11,6 @@ final class ClipboardWatcher {
     var offer: URL?
 
     private var lastChangeCount: Int
-    private var lastHandledURL: URL?
     private var activation: NSObjectProtocol?
 
     let settings: AppSettings
@@ -38,10 +37,8 @@ final class ClipboardWatcher {
         guard settings.clipboard != .off, pasteboard.changeCount != lastChangeCount else { return }
         lastChangeCount = pasteboard.changeCount
         guard let string = pasteboard.string(forType: .string),
-              let url = LinkIntake.link(from: string),
-              url != lastHandledURL
+              let url = LinkIntake.link(from: string)
         else { return }
-        lastHandledURL = url
         if settings.clipboard == .ask {
             offer = url
         } else {

@@ -83,7 +83,14 @@ not a switch.
 - **Hide the Dock icon**, only while the menu-bar item is on.
 - **Audio track language** (M4): pick dubbed tracks by the Mac's preferred
   languages, with a per-download override.
-- **System proxy:** pass the macOS proxy settings to yt-dlp; no proxy pane.
+- **Proxy auto-config (PAC) and bypass list:** the system proxy is passed to yt-dlp only
+  when it is a fixed HTTPS, HTTP or SOCKS proxy; a PAC script, auto-discovery and the
+  "bypass these hosts" list are not followed.
+- **Proxies that need a password:** with "Proxy server requires password" on, Danny
+  passes the proxy without credentials, so it answers 407. Read the password from the
+  Keychain (internet password for the proxy host and port, which asks permission once)
+  and hand it to yt-dlp through the environment rather than the command line, where
+  `ps` would show it.
 - **Pause the queue on low disk space** and say why on the cards.
 - **Record live streams** (M4) with `--live-from-start`.
 - **Back off when a site rate-limits** (HTTP 429, bot checks): wait and retry the

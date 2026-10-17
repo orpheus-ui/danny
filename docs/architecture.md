@@ -16,6 +16,7 @@ Sources/
     YTDLPClient         runs yt-dlp as a child process, parses its progress output
     DownloadEngine      what the manager asks of yt-dlp; tests pass a fake
     ExistingFiles       finds an earlier download of the same video in the folder
+    SystemProxy         the macOS proxy as `--proxy`, read when a yt-dlp run starts
     YTDLPUpdater        at launch, installs the latest verified yt-dlp in Application Support
     PersistenceStore    history.json in ~/Library/Application Support/Danny
     AppSettings         UserDefaults-backed settings

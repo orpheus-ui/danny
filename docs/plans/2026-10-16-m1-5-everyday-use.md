@@ -10,7 +10,7 @@
 | failures — plain-language errors with one suggested fix | in progress | — |
 | grouping — active first, then Today and Earlier | not started | — |
 | menu-bar — progress and paste-to-download in the menu bar | not started | — |
-| organizing — folder per site, filename templates | not started | — |
+| organizing — folder per site, filename templates | in progress | — |
 | network — Wi-Fi only, speed limit | not started | — |
 | settings-layout — Settings in tabs | not started | — |
 

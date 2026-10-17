@@ -11,7 +11,7 @@
 | grouping — active first, then Today and Earlier | not started | — |
 | menu-bar — progress and paste-to-download in the menu bar | not started | — |
 | organizing — folder per site, filename templates | done | orpheus-ui/danny#40 |
-| network — Wi-Fi only, speed limit | not started | — |
+| network — Wi-Fi only, speed limit | done | — |
 | settings-layout — Settings in tabs | not started | — |
 
 M1 makes Danny look right; this milestone makes the common paths shorter. Each

@@ -2,7 +2,8 @@ import CFNetwork
 import Foundation
 
 /// The proxy System Settings has on, as yt-dlp arguments. Read when a run starts, so
-/// there is nothing to observe or poll (ADR-008). PAC / auto-config and the bypass list are not followed.
+/// there is nothing to observe or poll (ADR-008). PAC / auto-config, the bypass list
+/// and proxy passwords are not followed (docs/backlog.md).
 nonisolated enum SystemProxy {
     /// Preference order; each is the dictionary's key prefix and the scheme yt-dlp needs.
     private static let kinds: [(prefix: String, scheme: String)] = [

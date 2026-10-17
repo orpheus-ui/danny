@@ -11,7 +11,7 @@
 | grouping — active first, then Today and Earlier | not started | — |
 | menu-bar — progress and paste-to-download in the menu bar | not started | — |
 | organizing — folder per site, filename templates | done | orpheus-ui/danny#40 |
-| network — Wi-Fi only, speed limit | not started | — |
+| network — Wi-Fi only, speed limit | done | orpheus-ui/danny#44 |
 | settings-layout — Settings in tabs | not started | — |
 | pause-resume — pause and resume a download, Pause All, survives quit | in progress | — |
 
@@ -65,7 +65,11 @@ resource budget (ADR-008): nothing here polls, and every animation is one-shot.
 12. **pause-resume** — a Pause chip on a running card's bar (drawn on hover)
     stops its yt-dlp but keeps the `.part` files, which yt-dlp continues on the
     next run; the paused bar is dimmed with "Paused · 59%" and a Resume chip.
-    Pause All / Resume All sit in the bottom bar and the Download menu (⌥⌘P).
+    While anything runs, an activity pill beside Sort shows the count and total
+    speed (`↓ 2 · 4 MBps`) and opens Pause All / Resume All, the speed limit
+    and Download only on Wi-Fi; with everything paused it reads `Paused · 3`
+    with a Resume button. At idle there's no pill. ⌥⌘P in the Download menu
+    pauses or resumes all.
     Paused cards stay paused across a quit; cards that were running when Danny
     quit start again on launch. Cancel now stops a card for good and deletes its
     partial files, as Remove does.

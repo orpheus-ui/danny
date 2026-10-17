@@ -35,6 +35,8 @@ final class AppSettings {
         static let existingFiles = "existingFiles"
         static let filenameTemplate = "filenameTemplate"
         static let folderPerSite = "folderPerSite"
+        static let downloadsOnlyOnWiFi = "downloadsOnlyOnWiFi"
+        static let speedLimit = "speedLimit"
     }
 
     var downloadDirectory: URL {
@@ -82,6 +84,19 @@ final class AppSettings {
         didSet { defaults.set(folderPerSite, forKey: Key.folderPerSite) }
     }
 
+    /// Queued downloads wait while the path is cellular or a hotspot.
+    var downloadsOnlyOnWiFi: Bool {
+        didSet { defaults.set(downloadsOnlyOnWiFi, forKey: Key.downloadsOnlyOnWiFi) }
+    }
+
+    /// Each download's top speed in bytes per second; 0 is no limit.
+    /// The speed limits offered, in bytes per second; 0 is no limit.
+    static let speedLimits = [0, 500_000, 1_000_000, 5_000_000, 10_000_000]
+
+    var speedLimit: Int {
+        didSet { defaults.set(speedLimit, forKey: Key.speedLimit) }
+    }
+
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
@@ -92,6 +107,8 @@ final class AppSettings {
         filenameTemplate = defaults.string(forKey: Key.filenameTemplate).flatMap(FilenameTemplate.init(rawValue:))
             ?? .title
         folderPerSite = defaults.bool(forKey: Key.folderPerSite)
+        downloadsOnlyOnWiFi = defaults.bool(forKey: Key.downloadsOnlyOnWiFi)
+        speedLimit = defaults.integer(forKey: Key.speedLimit)
         self.defaults = defaults
         let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser

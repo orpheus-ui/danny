@@ -17,6 +17,7 @@ Sources/
     DownloadEngine      what the manager asks of yt-dlp; tests pass a fake
     ExistingFiles       finds an earlier download of the same video in the folder
     SystemProxy         the macOS proxy as `--proxy`, read when a yt-dlp run starts
+    NetworkPath         whether the path is metered (NWPathMonitor, observed), for Wi-Fi only
     YTDLPUpdater        at launch, installs the latest verified yt-dlp in Application Support
     PersistenceStore    history.json in ~/Library/Application Support/Danny
     AppSettings         UserDefaults-backed settings

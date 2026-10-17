@@ -33,6 +33,8 @@ final class DownloadManager {
     }
 
     private let keepAwake: any KeepAwake
+    /// Whether the path is metered, for "Download only on Wi-Fi".
+    let network: any NetworkPath
     private var fallbackAttempted: Set<UUID> = []
     private var saveDebounce: Task<Void, Never>?
     /// `-sample-queue` (debug builds): one card per state, in memory only.
@@ -62,8 +64,10 @@ final class DownloadManager {
     init(
         settings: AppSettings, client: any DownloadEngine = YTDLPClient(),
         binaries: YTDLPClient.Binaries? = nil, persists: Bool = true, keepAwake: any KeepAwake = SystemKeepAwake(),
+        network: any NetworkPath = SystemNetworkPath(),
     ) {
         self.keepAwake = keepAwake
+        self.network = network
         self.settings = settings
         self.client = client
         self.persists = persists
@@ -79,14 +83,8 @@ final class DownloadManager {
         items = Self.restored(persists ? PersistenceStore.load() : []).sorted { $0.addedAt > $1.addedAt }
         // `didSet` doesn't run in an initializer.
         updatePauseAll()
+        watchNetwork()
         pump()
-    }
-
-    private func updatePauseAll() {
-        let pausable = items.contains { $0.status.canPause }
-        let paused = items.contains { $0.status == .paused }
-        if canPauseAll != pausable { canPauseAll = pausable }
-        if canResumeAll != paused { canResumeAll = paused }
     }
 
     func refreshBinaries() {
@@ -129,14 +127,6 @@ final class DownloadManager {
         removePartials(of: item, after: run)
     }
 
-    /// Ends the card's run, if any, and returns it so its files can wait for it to exit.
-    @discardableResult
-    func stopRun(_ id: UUID) -> Task<Void, Never>? {
-        let run = runningTasks.removeValue(forKey: id)
-        run?.cancel()
-        return run
-    }
-
     func retry(id: UUID) {
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
         items[index].status = .queued
@@ -168,7 +158,7 @@ final class DownloadManager {
     }
 
     func pump() {
-        guard !isSampleQueue else { return }
+        guard !isSampleQueue, !waitsForWiFi else { return }
         // Running downloads only: queued cards and cards waiting for a pick don't
         // hold a slot.
         while runningTasks.count < max(1, settings.maxConcurrentDownloads),
@@ -314,7 +304,8 @@ final class DownloadManager {
         var finalPath: String?
         var progress = DownloadProgress(planned: planned)
         for try await event in client.downloadStream(
-            url: url, into: downloadDirectory(for: url), binaries: binaries, extraArguments: extraArguments,
+            url: url, into: downloadDirectory(for: url), binaries: binaries,
+            extraArguments: extraArguments + YTDLPClient.limitRateArguments(settings.speedLimit),
         ) {
             guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
             switch event {
@@ -370,9 +361,23 @@ final class DownloadManager {
     }
 }
 
-extension URL {
-    var fileExistsAsExecutable: Bool {
-        FileManager.default.isExecutableFile(atPath: path)
+// MARK: - Run bookkeeping
+
+/// In this file for the class's private state, outside its body for its length.
+extension DownloadManager {
+    /// Ends the card's run, if any, and returns it so its files can wait for it to exit.
+    @discardableResult
+    func stopRun(_ id: UUID) -> Task<Void, Never>? {
+        let run = runningTasks.removeValue(forKey: id)
+        run?.cancel()
+        return run
+    }
+
+    private func updatePauseAll() {
+        let pausable = items.contains { $0.status.canPause }
+        let paused = items.contains { $0.status == .paused }
+        if canPauseAll != pausable { canPauseAll = pausable }
+        if canResumeAll != paused { canResumeAll = paused }
     }
 }
 

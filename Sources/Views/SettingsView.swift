@@ -81,6 +81,21 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section("Network") {
+                Toggle("Download only on Wi-Fi", isOn: $settings.downloadsOnlyOnWiFi)
+                Text("""
+                On an iPhone hotspot or another metered connection, new downloads wait and start \
+                once the Mac is back on Wi-Fi or Ethernet. Downloads already running carry on.
+                """)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                Picker("Speed limit", selection: $settings.speedLimit) {
+                    ForEach(AppSettings.speedLimits, id: \.self) { limit in
+                        Text(Format.speed(Double(limit)).map { "\($0) per download" } ?? "None").tag(limit)
+                    }
+                }
+            }
+
             AccountsSection()
 
             Section("Clipboard") {

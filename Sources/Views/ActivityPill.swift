@@ -10,7 +10,11 @@ struct ActivityPill: View {
     let onPauseAll: () -> Void
     let onResumeAll: () -> Void
 
+    @Environment(AppSettings.self) private var settings
+
     var body: some View {
+        @Bindable var settings = settings
+
         switch activity {
         case let .active(count, speed):
             Menu {
@@ -18,6 +22,14 @@ struct ActivityPill: View {
                 if canResumeAll {
                     Button("Resume All", action: onResumeAll)
                 }
+                Divider()
+                Picker("Speed Limit", selection: $settings.speedLimit) {
+                    ForEach(AppSettings.speedLimits, id: \.self) { limit in
+                        Text(Format.speed(Double(limit)) ?? "Unlimited").tag(limit)
+                    }
+                }
+                .pickerStyle(.menu)
+                Toggle("Download Only on Wi-Fi", isOn: $settings.downloadsOnlyOnWiFi)
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.down").font(.system(size: 11, weight: .bold))

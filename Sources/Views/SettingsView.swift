@@ -81,6 +81,21 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section("Network") {
+                Toggle("Download only on Wi-Fi", isOn: $settings.downloadsOnlyOnWiFi)
+                Text("""
+                On an iPhone hotspot or another metered connection, new downloads wait and start \
+                once the Mac is back on Wi-Fi or Ethernet. Downloads already running carry on.
+                """)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                Picker("Speed limit", selection: $settings.speedLimit) {
+                    ForEach(Self.speedLimits, id: \.self) { limit in
+                        Text(Format.speed(Double(limit)).map { "\($0) per download" } ?? "None").tag(limit)
+                    }
+                }
+            }
+
             AccountsSection()
 
             Section("Clipboard") {
@@ -127,6 +142,9 @@ struct SettingsView: View {
             + "and installs it only when it matches yt-dlp's published checksum."
             : "Danny keeps the yt-dlp it has now. Check Now fetches a newer one when you ask."
     }
+
+    /// Bytes per second; 0 is no limit.
+    private static let speedLimits = [0, 500_000, 1_000_000, 5_000_000, 10_000_000]
 
     private var formatNote: String {
         switch settings.format {

@@ -10,8 +10,9 @@ final class DownloadManager {
     var filter = DownloadFilter()
     var pendingManualAdd = false
     private(set) var lastFailureMessage: String?
-    /// The launch update check, for Settings: nil until it has run.
-    private(set) var engineUpdate: YTDLPUpdater.Outcome?
+    /// The last yt-dlp update check, for Settings: nil until one has run.
+    private(set) var engineCheck: YTDLPUpdater.Check?
+    private(set) var isCheckingEngine = false
 
     let settings: AppSettings
     /// Signed-in sites; a run passes the link's site cookies to yt-dlp when present.
@@ -363,13 +364,16 @@ extension URL {
 // MARK: - Engine updates
 
 extension DownloadManager {
-    /// Fetches the latest yt-dlp when the setting allows. Runs once per launch; a
-    /// new copy is used from the next download on, running ones keep theirs.
-    func updateEngine(with updater: YTDLPUpdater = YTDLPUpdater()) async {
-        guard settings.keepsEngineCurrent, !isSampleQueue else { return }
+    /// Fetches the latest yt-dlp: at launch when the setting allows, and whenever
+    /// Settings' Check Now asks (`manual`). A new copy is used from the next download
+    /// on; running ones keep theirs.
+    func checkEngine(with updater: YTDLPUpdater = YTDLPUpdater(), manual: Bool = false) async {
+        guard manual || settings.keepsEngineCurrent, !isSampleQueue, !isCheckingEngine else { return }
+        isCheckingEngine = true
+        defer { isCheckingEngine = false }
         let installed = await client.version(binaries: binaries)
         let outcome = await updater.update(from: installed)
         if case .updated = outcome { refreshBinaries() }
-        engineUpdate = outcome
+        engineCheck = YTDLPUpdater.Check(outcome: outcome, date: .now)
     }
 }

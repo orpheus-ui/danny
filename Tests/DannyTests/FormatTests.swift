@@ -42,10 +42,10 @@ struct URLHandlingTests {
 
     @Test func `finds first web link in clipboard text`() {
         let text = "look at this ftp://nope.example and https://youtu.be/xyz then http://b.example"
-        #expect(ClipboardWatcher.firstURL(in: text)?.absoluteString == "https://youtu.be/xyz")
+        #expect(LinkIntake.link(from: text)?.absoluteString == "https://youtu.be/xyz")
     }
 
     @Test func `no link in plain text`() {
-        #expect(ClipboardWatcher.firstURL(in: "just words") == nil)
+        #expect(LinkIntake.link(from: "just words") == nil)
     }
 }

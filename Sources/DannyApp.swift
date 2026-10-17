@@ -81,10 +81,8 @@ struct DannyCommands: Commands {
 
         CommandMenu("Download") {
             Button("Paste and Download") {
-                if let string = NSPasteboard.general.string(forType: .string),
-                   let url = ClipboardWatcher.firstURL(in: string)
-                {
-                    _ = model.manager.add(url: url)
+                if let url = LinkIntake.pasteboardLink() {
+                    model.manager.add(url: url)
                 }
             }
             .keyboardShortcut("v", modifiers: [.command, .shift])

@@ -40,23 +40,10 @@ final class ClipboardWatcher {
         guard pasteboard.changeCount != lastChangeCount else { return }
         lastChangeCount = pasteboard.changeCount
         guard let string = pasteboard.string(forType: .string),
-              let url = Self.firstURL(in: string),
+              let url = LinkIntake.link(from: string),
               url != lastHandledURL
         else { return }
         lastHandledURL = url
         if manager.add(url: url) {}
-    }
-
-    static func firstURL(in text: String) -> URL? {
-        let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
-        let matches = detector?.matches(in: text, range: NSRange(text.startIndex..., in: text))
-        for match in matches ?? [] {
-            if let url = match.url, let scheme = url.scheme?.lowercased(),
-               scheme == "http" || scheme == "https"
-            {
-                return url
-            }
-        }
-        return nil
     }
 }

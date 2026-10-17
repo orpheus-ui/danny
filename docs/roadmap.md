@@ -36,7 +36,7 @@ The Figma file is the spec. Plan: [plans/2026-10-14-m1-match-the-design.md](plan
 
 Shorter paths for the things done every day. Plan: [plans/2026-10-16-m1-5-everyday-use.md](plans/2026-10-16-m1-5-everyday-use.md).
 
-- [ ] ⌘V in the window and drag and drop add links
+- [x] ⌘V in the window and drag and drop add links
 - [ ] Clipboard toast asks before adding a copied link; no clipboard timer
 - [ ] Finished items: Quick Look (Space), double-click to open, hover actions
 - [ ] Keyboard: arrows select, ⌫ removes, ⌘R retries, Return opens

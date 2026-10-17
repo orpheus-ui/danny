@@ -3,12 +3,36 @@ import Foundation
 import Testing
 
 struct EngineArgumentsTests {
+    private let scratch = TestScratch()
+
     @Test func `pins yt-dlp to the bundled runtime`() {
         let runtime = URL(fileURLWithPath: "/Applications/Danny.app/Contents/Resources/bin/qjs")
         let binaries = YTDLPClient.Binaries(
             ytdlp: URL(fileURLWithPath: "/bin/yt-dlp"), ffmpegDirectory: nil, jsRuntime: runtime,
         )
         #expect(binaries.runtimeArguments == ["--no-js-runtimes", "--js-runtimes", "quickjs:\(runtime.path)"])
+    }
+
+    /// Runs a real download against a fake yt-dlp that records its arguments, so the
+    /// test fails if the download stops passing them, not just if the builder changes.
+    @Test func `downloads fragmented streams with 8 connections`() async throws {
+        let directory = scratch.folder()
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let recorded = directory.appendingPathComponent("arguments")
+        let script = directory.appendingPathComponent("yt-dlp")
+        try Data("#!/bin/sh\nprintf '%s\\n' \"$@\" > '\(recorded.path)'\n".utf8).write(to: script)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: script.path)
+
+        let stream = try YTDLPClient().downloadStream(
+            url: #require(URL(string: "https://example.com/v")), into: directory,
+            binaries: YTDLPClient.Binaries(ytdlp: script, ffmpegDirectory: nil),
+        )
+        // The fake leaves no file, so the run may fail; only its arguments matter.
+        do { for try await _ in stream {} } catch {}
+
+        let arguments = try String(contentsOf: recorded, encoding: .utf8).split(separator: "\n").map(String.init)
+        let index = arguments.firstIndex(of: "--concurrent-fragments")
+        #expect(index.map { arguments[$0 + 1] } == "8")
     }
 
     @Test func `leaves yt-dlp's default without a bundled runtime`() {

@@ -7,7 +7,7 @@
 | finished-items — Quick Look, hover actions, open on double-click | not started | — |
 | keyboard — select, remove and retry from the keyboard | not started | — |
 | system — Dock progress, notification when a download finishes | not started | — |
-| failures — plain-language errors with one suggested fix | not started | — |
+| failures — plain-language errors with one suggested fix | in progress | — |
 | grouping — active first, then Today and Earlier | not started | — |
 | menu-bar — progress and paste-to-download in the menu bar | not started | — |
 | organizing — folder per site, filename templates | not started | — |

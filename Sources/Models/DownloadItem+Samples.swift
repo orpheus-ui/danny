@@ -21,7 +21,7 @@
                 item.status = state.0
                 item.fractionCompleted = state.1
                 item.speedBytesPerSecond = state.0 == .downloading ? 80_000_000 : nil
-                item.errorMessage = state.0 == .failed ? "Unsupported URL" : nil
+                item.errorMessage = state.0 == .failed ? "ERROR: Unsupported URL: https://example.com/page" : nil
                 if state.0 == .choosing {
                     item.qualityOptions = [
                         QualityOption(choice: .video(maxHeight: 1080), label: "1080p", bytes: 340_000_000),

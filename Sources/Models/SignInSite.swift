@@ -99,7 +99,8 @@ extension DownloadItem {
 
     static func asksForSignIn(_ message: String) -> Bool {
         let lowered = message.lowercased().replacingOccurrences(of: "’", with: "'")
-        return ["sign in", "log in", "login required", "--cookies", "not a bot"].contains { lowered.contains($0) }
+        return ["sign in", "log in", "login required", "registered users", "--cookies", "not a bot"]
+            .contains { lowered.contains($0) }
     }
 }
 

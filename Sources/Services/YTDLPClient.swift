@@ -137,8 +137,8 @@ nonisolated struct YTDLPClient: Sendable {
     func probe(url: URL, binaries: Binaries, extraArguments: [String] = []) async throws -> VideoMetadata {
         let output = try await runProcess(
             binaries.ytdlp,
-            ["-J", "--no-playlist", "--skip-download"] + binaries.runtimeArguments + extraArguments
-                + [url.absoluteString],
+            ["-J", "--no-playlist", "--skip-download"] + binaries.runtimeArguments + SystemProxy.current()
+                + extraArguments + [url.absoluteString],
         )
         guard let data = output.data(using: .utf8),
               let metadata = try? JSONDecoder().decode(VideoMetadata.self, from: data)
@@ -198,7 +198,7 @@ nonisolated struct YTDLPClient: Sendable {
         if let ffmpeg = binaries.ffmpegDirectory {
             arguments += ["--ffmpeg-location", ffmpeg.path]
         }
-        arguments += binaries.runtimeArguments + extraArguments
+        arguments += binaries.runtimeArguments + SystemProxy.current() + extraArguments
         arguments.append(url.absoluteString)
 
         let process = Process()

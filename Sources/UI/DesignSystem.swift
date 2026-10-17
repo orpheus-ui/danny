@@ -89,6 +89,8 @@ enum D {
         static let progressHeight: CGFloat = 20
         static let cardIcon: CGFloat = 18
         static let cardIconPadding: CGFloat = 6
+        /// How far the title fades out before the hover actions.
+        static let hoverFade: CGFloat = 28
         static let barIcon: CGFloat = 24
         static let barIconPadding: CGFloat = 8
         static let toolbarIcon: CGFloat = 20
@@ -99,7 +101,10 @@ enum D {
 
     enum Spacing {
         static let list: CGFloat = 12
-        static let listInset: CGFloat = 16
+        /// Cards' distance from the window's sides (Figma: 16; 8 since M1.5 for wider cards).
+        static let listInset: CGFloat = 8
+        /// Space between the title bar and the first card.
+        static let listTop: CGFloat = 12
         static let cardPadding: CGFloat = 10
         static let cardActions: CGFloat = 10
         static let toolbar: CGFloat = 8

@@ -132,7 +132,7 @@ struct MainWindow: View {
                     }
                 }
                 .padding(.horizontal, D.Spacing.listInset)
-                .padding(.top, 4)
+                .padding(.top, D.Spacing.listTop)
                 .padding(.bottom, 68)
             }
             .overlay {

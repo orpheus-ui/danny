@@ -26,7 +26,7 @@ struct DownloadCardView: View {
             .background { thumbnailLayer }
             .clipShape(RoundedRectangle(cornerRadius: D.Radius.card, style: .continuous))
             // The whole card takes clicks, not just its text: select, double-click to open.
-            .contentShape(RoundedRectangle(cornerRadius: D.Radius.card, style: .continuous))
+            .contentShape(.interaction, RoundedRectangle(cornerRadius: D.Radius.card, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: D.Radius.card, style: .continuous)
                     .strokeBorder(isSelected ? D.accent : D.cardStroke, lineWidth: D.Stroke.card)
@@ -79,29 +79,22 @@ struct DownloadCardView: View {
     private var headerRow: some View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(item.title)
-                        .font(D.Font.cardTitle)
-                        .foregroundStyle(D.textPrimary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                    if hovering {
-                        Button {
-                            showingSource.toggle()
-                        } label: {
-                            Image("icon-search")
-                                .resizable()
-                                .frame(width: D.Size.cardIcon, height: D.Size.cardIcon)
-                        }
-                        .buttonStyle(.plain)
-                        .transition(.opacity)
-                        .help(item.sourceURL.absoluteString)
-                        .popover(isPresented: $showingSource, arrowEdge: .bottom) { sourcePopover }
-                    }
-                }
+                Text(item.title)
+                    .font(D.Font.cardTitle)
+                    .foregroundStyle(D.textPrimary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .mask { titleMask }
+                    .help(item.title)
                 metaRow
             }
-            Spacer(minLength: 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            // Over the title's end, which fades out beneath them: hovering never takes
+            // width from the title.
+            .overlay(alignment: .topTrailing) {
+                if hovering { hoverActions }
+            }
             actionPills
         }
     }
@@ -150,12 +143,6 @@ struct DownloadCardView: View {
 
     private var actionPills: some View {
         HStack(spacing: D.Spacing.cardActions) {
-            // Drawn only while hovered (ADR-008): a long list keeps three fewer controls per card at rest.
-            if hovering, item.fileURL != nil {
-                hoverPill("icon-play", "Play", action: onOpen)
-                hoverPill("icon-folder", "Show in Finder", action: onReveal)
-                hoverPill("icon-link", "Copy Link", action: onCopyLink)
-            }
             PillMenu(icon: "icon-dots") {
                 if item.fileURL != nil {
                     Button("Open", action: onOpen)
@@ -184,10 +171,50 @@ struct DownloadCardView: View {
         }
     }
 
+    /// Drawn only while hovered (ADR-008): a long list keeps these off every card at rest.
+    private var hoverActions: some View {
+        HStack(spacing: D.Spacing.cardActions) {
+            Button {
+                showingSource.toggle()
+            } label: {
+                Image("icon-search")
+                    .resizable()
+                    .frame(width: D.Size.cardIcon, height: D.Size.cardIcon)
+                    .frame(height: PillStyle.card.diameter)
+            }
+            .buttonStyle(.plain)
+            .help(item.sourceURL.absoluteString)
+            .accessibilityLabel("Source")
+            .popover(isPresented: $showingSource, arrowEdge: .bottom) { sourcePopover }
+            if item.fileURL != nil {
+                hoverPill("icon-play", "Play", action: onOpen)
+                hoverPill("icon-folder", "Show in Finder", action: onReveal)
+                hoverPill("icon-link", "Copy Link", action: onCopyLink)
+            }
+        }
+        .transition(.opacity)
+    }
+
+    /// Opaque at rest; while hovered, the title fades out just before the hover actions.
+    private var titleMask: some View {
+        HStack(spacing: 0) {
+            Color.black
+            LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                .frame(width: hovering ? D.Size.hoverFade : 0)
+            Color.clear
+                .frame(width: hovering ? hoverActionsWidth + D.Spacing.cardActions : 0)
+        }
+    }
+
+    /// Computed from the tokens the actions are drawn with, so the mask needs no measuring pass.
+    private var hoverActionsWidth: CGFloat {
+        let pills: CGFloat = item.fileURL == nil ? 0 : 3
+        return D.Size.cardIcon + pills * (PillStyle.card.diameter + D.Spacing.cardActions)
+    }
+
     private func hoverPill(_ icon: String, _ label: String, action: @escaping () -> Void) -> some View {
         PillButton(icon: icon, action: action)
             .help(label)
             .accessibilityLabel(label)
-            .transition(.opacity)
     }
 }

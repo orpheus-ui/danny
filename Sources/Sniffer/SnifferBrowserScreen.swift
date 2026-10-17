@@ -12,12 +12,7 @@ struct SnifferBrowserScreen: View {
     @State private var reference = WebViewReference()
 
     static func initialURL() -> URL {
-        if let text = NSPasteboard.general.string(forType: .string),
-           let url = ClipboardWatcher.firstURL(in: text)
-        {
-            return url
-        }
-        return URL(string: "https://duckduckgo.com")!
+        LinkIntake.pasteboardLink() ?? URL(string: "https://duckduckgo.com")!
     }
 
     var body: some View {

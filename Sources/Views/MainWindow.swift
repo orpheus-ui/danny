@@ -11,6 +11,7 @@ struct MainWindow: View {
     @State private var pendingSnifferURL: URL?
     @State private var manualURL = ""
     @State private var isSearching = false
+    @State private var isDropTargeted = false
 
     var body: some View {
         @Bindable var manager = manager
@@ -50,6 +51,10 @@ struct MainWindow: View {
                 if let text = UserDefaults.standard.string(forKey: "sample-search") {
                     manager.filter.text = text
                     isSearching = true
+                }
+                // `-sample-drop` (debug builds): show the drop highlight.
+                if ProcessInfo.processInfo.arguments.contains("-sample-drop") {
+                    isDropTargeted = true
                 }
                 // `-sample-sign-in <site id>` (debug builds): open that site's sign-in window.
                 if let id = UserDefaults.standard.string(forKey: "sample-sign-in"),
@@ -113,6 +118,26 @@ struct MainWindow: View {
                 .padding(.top, 4)
                 .padding(.bottom, 68)
             }
+            .overlay {
+                if isDropTargeted {
+                    DropHighlight()
+                        .padding([.horizontal, .bottom], D.Spacing.listInset)
+                        .padding(.bottom, 52) // clear of the bottom bar
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
+            }
+            .animation(.easeOut(duration: 0.15), value: isDropTargeted)
+            // ⌘V with no text field focused adds the clipboard's link.
+            .focusable()
+            .focusEffectDisabled()
+            .onPasteCommand(of: [.url, .plainText]) { _ in pasteFromClipboard() }
+            .dropDestination(for: DroppedLink.self) { links, _ in
+                for link in links {
+                    manager.add(url: link.url)
+                }
+                return !links.isEmpty
+            } isTargeted: { isDropTargeted = $0 }
             // The bars float over the list; cards scroll under them through the
             // system's soft edge, a blurred fade drawn by the compositor.
             .safeAreaBar(edge: .top, spacing: 0) { topBars }
@@ -179,10 +204,8 @@ struct MainWindow: View {
     }
 
     private func pasteFromClipboard() {
-        guard let string = NSPasteboard.general.string(forType: .string),
-              let url = ClipboardWatcher.firstURL(in: string)
-        else { return }
-        _ = manager.add(url: url)
+        guard let url = LinkIntake.pasteboardLink() else { return }
+        manager.add(url: url)
     }
 }
 

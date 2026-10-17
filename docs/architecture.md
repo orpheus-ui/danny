@@ -20,6 +20,7 @@ Sources/
     PersistenceStore    history.json in ~/Library/Application Support/Danny
     AppSettings         UserDefaults-backed settings
     ClipboardWatcher    optional: queues links you copy
+    LinkIntake          finds the link in pasted or dropped text, URLs and .webloc files
   Sniffer/              Browser Capture — a WKWebView that reports media URLs it sees
   Views/                main window, card, progress bar, title/bottom bars, settings
   UI/                   design tokens (`D`), glass effects, pill buttons, formatters

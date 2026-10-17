@@ -2,7 +2,7 @@
 
 | Task | Status | PR |
 |---|---|---|
-| add-anywhere — ⌘V in the window, drag and drop | not started | — |
+| add-anywhere — ⌘V in the window, drag and drop | done | — |
 | clipboard-toast — ask before adding a copied link | not started | — |
 | finished-items — Quick Look, hover actions, open on double-click | not started | — |
 | keyboard — select, remove and retry from the keyboard | not started | — |

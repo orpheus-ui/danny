@@ -20,7 +20,12 @@ final class DownloadManager {
 
     let client: any DownloadEngine
     private var binaries: YTDLPClient.Binaries = .missing
-    private var runningTasks: [UUID: Task<Void, Never>] = [:]
+    /// The runs in flight; the Mac stays awake while there are any.
+    private var runningTasks: [UUID: Task<Void, Never>] = [:] {
+        didSet { keepAwake.isHeld = !runningTasks.isEmpty }
+    }
+
+    private let keepAwake: any KeepAwake
     private var fallbackAttempted: Set<UUID> = []
     private var saveDebounce: Task<Void, Never>?
     /// `-sample-queue` (debug builds): one card per state, in memory only.
@@ -49,8 +54,9 @@ final class DownloadManager {
 
     init(
         settings: AppSettings, client: any DownloadEngine = YTDLPClient(),
-        binaries: YTDLPClient.Binaries? = nil, persists: Bool = true,
+        binaries: YTDLPClient.Binaries? = nil, persists: Bool = true, keepAwake: any KeepAwake = SystemKeepAwake(),
     ) {
+        self.keepAwake = keepAwake
         self.settings = settings
         self.client = client
         self.persists = persists

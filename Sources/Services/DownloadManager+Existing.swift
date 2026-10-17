@@ -27,11 +27,14 @@ extension DownloadManager {
         }
     }
 
-    /// The file already downloaded for this video, also looking in the Danny folder
-    /// that earlier builds made inside the chosen one.
+    /// The Danny folder earlier builds made inside the chosen one; files there are
+    /// still found and cleaned up.
+    var legacyDirectory: URL { outputDirectory.appendingPathComponent("Danny", isDirectory: true) }
+
+    /// The file already downloaded for this video, in the folder or the legacy one.
     func existingFile(id: String, audio: Bool) -> URL? {
         ExistingFiles.find(id: id, audio: audio, in: outputDirectory)
-            ?? ExistingFiles.find(id: id, audio: audio, in: outputDirectory.appendingPathComponent("Danny"))
+            ?? ExistingFiles.find(id: id, audio: audio, in: legacyDirectory)
     }
 
     /// Puts the card in `.existing`, showing the file found. Like a quality pick, the
@@ -82,7 +85,7 @@ extension DownloadManager {
     /// card's run is stopped first; yt-dlp gets a moment to exit before its files go.
     func removePartials(of item: DownloadItem, after run: Task<Void, Never>?) {
         guard let videoID = item.videoID else { return }
-        let directory = outputDirectory
+        let directories = [outputDirectory, legacyDirectory]
         Task {
             if let run {
                 await run.value
@@ -90,7 +93,7 @@ extension DownloadManager {
             }
             // Another card for the same video (another link to it) may be using them.
             guard !items.contains(where: { $0.videoID == videoID && $0.status.isActive }) else { return }
-            for file in ExistingFiles.partials(id: videoID, in: directory) {
+            for file in directories.flatMap({ ExistingFiles.partials(id: videoID, in: $0) }) {
                 try? FileManager.default.removeItem(at: file)
             }
         }

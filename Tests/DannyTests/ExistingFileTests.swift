@@ -177,8 +177,13 @@ struct ExistingFileTests {
 
     @Test func `removing an unfinished card deletes its partial files only`() async throws {
         let finished = try file("Clip [abc].mp4")
+        let nested = folder.appendingPathComponent("Danny")
+        try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+        let nestedPartial = nested.appendingPathComponent("Clip [abc].mp4.part")
+        try Data().write(to: nestedPartial)
         let partials = try [
             file("Clip [abc] (2).f137.mp4.part"), file("Clip [abc] (2).f251.webm"), file("Clip [abc] (2).mp4.ytdl"),
+            nestedPartial,
         ]
         let other = try file("Other [xyz].mp4.part")
         let manager = try manager(FakeEngine())

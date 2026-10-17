@@ -4,13 +4,13 @@
 |---|---|---|
 | add-anywhere — ⌘V in the window, drag and drop | done | orpheus-ui/danny#31 |
 | clipboard-toast — ask before adding a copied link | done | orpheus-ui/danny#36 |
-| finished-items — Quick Look, hover actions, open on double-click | in progress | — |
+| finished-items — Quick Look, hover actions, open on double-click | done | orpheus-ui/danny#43 |
 | keyboard — select, remove and retry from the keyboard | not started | — |
-| system — Dock progress, notification when a download finishes | not started | — |
-| failures — plain-language errors with one suggested fix | not started | — |
+| system — Dock progress, notification when a download finishes | done | orpheus-ui/danny#41 |
+| failures — plain-language errors with one suggested fix | done | orpheus-ui/danny#39 |
 | grouping — active first, then Today and Earlier | not started | — |
 | menu-bar — progress and paste-to-download in the menu bar | not started | — |
-| organizing — folder per site, filename templates | not started | — |
+| organizing — folder per site, filename templates | done | orpheus-ui/danny#40 |
 | network — Wi-Fi only, speed limit | not started | — |
 | settings-layout — Settings in tabs | not started | — |
 

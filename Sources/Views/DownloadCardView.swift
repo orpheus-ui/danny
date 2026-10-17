@@ -19,6 +19,7 @@ struct DownloadCardView: View {
 
     @State private var hovering = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var showingError = false
 
     var body: some View {
         content
@@ -93,6 +94,7 @@ struct DownloadCardView: View {
                     finishedActions: hovering ? fileActions : [],
                 )
                 .help(item.status == .failed ? item.errorMessage ?? "" : "")
+                .popover(isPresented: $showingError, arrowEdge: .top) { errorPopover }
             }
         }
     }
@@ -111,6 +113,29 @@ struct DownloadCardView: View {
             Spacer(minLength: 8)
             actionPills
         }
+    }
+
+    /// yt-dlp's own output, for bug reports.
+    private var errorPopover: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Error Details")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+            ScrollView {
+                Text(item.errorMessage ?? "")
+                    .font(.system(size: 11, design: .monospaced))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: 160)
+            Button("Copy") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(item.errorMessage ?? "", forType: .string)
+            }
+            .controlSize(.small)
+        }
+        .padding(12)
+        .frame(width: 360)
     }
 
     private var metaRow: some View {
@@ -145,6 +170,9 @@ struct DownloadCardView: View {
                     Button("Cancel", action: onCancel)
                 } else {
                     Button("Retry", action: onRetry)
+                }
+                if item.status == .failed {
+                    Button("Show Error Details") { showingError = true }
                 }
                 if item.filePath != nil {
                     Button("Show in Finder", action: onReveal)

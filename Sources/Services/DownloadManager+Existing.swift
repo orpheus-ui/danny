@@ -31,7 +31,8 @@ extension DownloadManager {
     /// run ends here; the user's answer queues the card again.
     func askAboutExisting(_ itemID: UUID, file: URL) async {
         let resolution = await ExistingFiles.resolution(of: file)
-        guard items.contains(where: { $0.id == itemID && $0.status.isActive }) else { return }
+        // A cancel during the lookup leaves the card queued, which still counts as active.
+        guard !Task.isCancelled, items.contains(where: { $0.id == itemID && $0.status.isActive }) else { return }
         updateItem(itemID) {
             $0.status = .existing
             $0.existingFile = ExistingFile(path: file.path, resolution: resolution)

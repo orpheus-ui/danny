@@ -12,16 +12,19 @@ struct ExistingFileTests {
     final class FakeEngine: DownloadEngine {
         let suffixes = Mutex<[String]>([])
         let skipsAsExisting: String?
+        let probeDelay: Duration
 
-        init(skipsAsExisting: String? = nil) {
+        init(skipsAsExisting: String? = nil, probeDelay: Duration = .zero) {
             self.skipsAsExisting = skipsAsExisting
+            self.probeDelay = probeDelay
         }
 
         @concurrent
         func probe(url _: URL, binaries _: YTDLPClient.Binaries, extraArguments _: [String]) async throws
             -> VideoMetadata
         {
-            try JSONDecoder().decode(VideoMetadata.self, from: Data(#"{"id":"abc","title":"Clip"}"#.utf8))
+            try await Task.sleep(for: probeDelay)
+            return try JSONDecoder().decode(VideoMetadata.self, from: Data(#"{"id":"abc","title":"Clip"}"#.utf8))
         }
 
         @concurrent
@@ -170,6 +173,21 @@ struct ExistingFileTests {
         #expect(partials.allSatisfy { !FileManager.default.fileExists(atPath: $0.path) })
         #expect(FileManager.default.fileExists(atPath: finished.path))
         #expect(FileManager.default.fileExists(atPath: other.path))
+    }
+
+    @Test func `a run cancelled while it looks at the old file doesn't ask about it`() async throws {
+        let elsewhere = scratch.folder()
+        try FileManager.default.createDirectory(at: elsewhere, withIntermediateDirectories: true)
+        let old = elsewhere.appendingPathComponent("Clip [abc].mp4")
+        try Data().write(to: old)
+        // The probe holds the card in `.resolving`, which counts as active.
+        let manager = try manager(FakeEngine(probeDelay: .milliseconds(300)))
+        try add(manager)
+        let id = try #require(manager.items.first?.id)
+        let cancelled = Task { await manager.askAboutExisting(id, file: old) }
+        cancelled.cancel()
+        await cancelled.value
+        _ = try await settle(manager, until: .finished)
     }
 
     @Test func `reads yt-dlp's already-downloaded line`() {

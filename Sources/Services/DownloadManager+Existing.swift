@@ -29,7 +29,7 @@ extension DownloadManager {
 
     /// The Danny folder earlier builds made inside the chosen one; files there are
     /// still found and cleaned up.
-    var legacyDirectory: URL { outputDirectory.appendingPathComponent("Danny", isDirectory: true) }
+    private var legacyDirectory: URL { outputDirectory.appendingPathComponent("Danny", isDirectory: true) }
 
     /// The file already downloaded for this video, in the folder or the legacy one.
     func existingFile(id: String, audio: Bool) -> URL? {

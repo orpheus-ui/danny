@@ -13,6 +13,14 @@ struct ProgressBarView: View {
     var onBrowserCapture: (() -> Void)?
     /// Shown instead of Browser Capture when the site wants a signed-in user.
     var onSignIn: (() -> Void)?
+    /// A finished card's actions while it is hovered, as chips at the bar's trailing end.
+    var finishedActions: [Chip] = []
+
+    struct Chip {
+        let icon: String
+        let title: String
+        let action: () -> Void
+    }
 
     @Environment(\.windowIsVisible) private var windowIsVisible
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -30,6 +38,7 @@ struct ProgressBarView: View {
         .overlay { label }
         .overlay(alignment: .trailing) {
             if item.status == .failed { failedActions }
+            if item.status == .finished, !finishedActions.isEmpty { doneActions }
         }
     }
 
@@ -164,11 +173,28 @@ struct ProgressBarView: View {
         .padding(.trailing, 6)
     }
 
-    private func miniButton(icon: String, title: String, action: @escaping () -> Void) -> some View {
+    // MARK: Done
+
+    /// Icon-only: four labelled chips don't fit beside "Done" at the window's minimum width.
+    private var doneActions: some View {
+        HStack(spacing: 6) {
+            ForEach(finishedActions, id: \.title) { chip in
+                miniButton(icon: chip.icon, title: nil, action: chip.action)
+                    .help(chip.title)
+                    .accessibilityLabel(chip.title)
+            }
+        }
+        .padding(.trailing, 6)
+        .transition(.opacity)
+    }
+
+    private func miniButton(icon: String, title: String?, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 4) {
                 Image(systemName: icon).font(.system(size: 9, weight: .bold))
-                Text(title).font(.system(size: 10, weight: .bold))
+                if let title {
+                    Text(title).font(.system(size: 10, weight: .bold))
+                }
             }
             .foregroundStyle(.white.opacity(0.95))
             .padding(.horizontal, 8)

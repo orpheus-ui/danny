@@ -89,8 +89,6 @@ enum D {
         static let progressHeight: CGFloat = 20
         static let cardIcon: CGFloat = 18
         static let cardIconPadding: CGFloat = 6
-        /// How far the title fades out before the hover actions.
-        static let hoverFade: CGFloat = 28
         static let barIcon: CGFloat = 24
         static let barIconPadding: CGFloat = 8
         static let toolbarIcon: CGFloat = 20

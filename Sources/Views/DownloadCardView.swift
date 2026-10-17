@@ -8,7 +8,9 @@ struct DownloadCardView: View {
     let onReveal: () -> Void
     let onBrowserCapture: () -> Void
     let onOpen: () -> Void
+    let onQuickLook: () -> Void
     let onCopyLink: () -> Void
+    let onOpenPage: () -> Void
     var isSelected = false
     var onSignIn: (() -> Void)?
     var onChoose: ((QualityChoice) -> Void)?
@@ -16,7 +18,7 @@ struct DownloadCardView: View {
     var onKeepExisting: (() -> Void)?
 
     @State private var hovering = false
-    @State private var showingSource = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         content
@@ -34,7 +36,24 @@ struct DownloadCardView: View {
             .onHover { hovering in
                 self.hovering = hovering
             }
-            .animation(.easeInOut(duration: 0.15), value: hovering)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: hovering)
+            // The bar's chips are drawn only while hovered; VoiceOver reaches them here.
+            .accessibilityActions {
+                ForEach(fileActions, id: \.title) { action in
+                    Button(action.title, action: action.action)
+                }
+            }
+    }
+
+    /// A finished file's actions: chips on the Done bar while hovered, and accessibility actions.
+    private var fileActions: [ProgressBarView.Chip] {
+        guard item.fileURL != nil else { return [] }
+        return [
+            .init(icon: "play.fill", title: "Play", action: onOpen),
+            .init(icon: "folder", title: "Show in Finder", action: onReveal),
+            .init(icon: "link", title: "Copy Link", action: onCopyLink),
+            .init(icon: "eye", title: "Quick Look", action: onQuickLook),
+        ]
     }
 
     private var thumbnailLayer: some View {
@@ -70,6 +89,8 @@ struct DownloadCardView: View {
                     onRetry: onRetry,
                     onBrowserCapture: onBrowserCapture,
                     onSignIn: onSignIn,
+                    // Drawn only for the hovered card (ADR-008), never for every card at rest.
+                    finishedActions: hovering ? fileActions : [],
                 )
                 .help(item.status == .failed ? item.errorMessage ?? "" : "")
             }
@@ -84,40 +105,12 @@ struct DownloadCardView: View {
                     .foregroundStyle(D.textPrimary)
                     .lineLimit(1)
                     .truncationMode(.tail)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .mask { titleMask }
                     .help(item.title)
                 metaRow
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            // Over the title's end, which fades out beneath them: hovering never takes
-            // width from the title.
-            .overlay(alignment: .topTrailing) {
-                if hovering { hoverActions }
-            }
+            Spacer(minLength: 8)
             actionPills
         }
-    }
-
-    private var sourcePopover: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Source")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-            Text(item.sourceURL.absoluteString)
-                .font(.system(size: 12, design: .monospaced))
-                .textSelection(.enabled)
-                .lineLimit(3)
-            HStack {
-                Button("Open") {
-                    NSWorkspace.shared.open(item.sourceURL)
-                }
-                Button("Copy", action: onCopyLink)
-            }
-            .controlSize(.small)
-        }
-        .padding(12)
-        .frame(width: 320)
     }
 
     private var metaRow: some View {
@@ -146,6 +139,7 @@ struct DownloadCardView: View {
             PillMenu(icon: "icon-dots") {
                 if item.fileURL != nil {
                     Button("Open", action: onOpen)
+                    Button("Quick Look", action: onQuickLook)
                 }
                 if item.status.isActive {
                     Button("Cancel", action: onCancel)
@@ -161,6 +155,7 @@ struct DownloadCardView: View {
                 }
                 Divider()
                 Button("Copy Link", action: onCopyLink)
+                Button("Open Original Page", action: onOpenPage)
                 Divider()
                 Button("Remove", role: .destructive, action: onRemove)
             }
@@ -169,52 +164,5 @@ struct DownloadCardView: View {
             }
             .help("Remove")
         }
-    }
-
-    /// Drawn only while hovered (ADR-008): a long list keeps these off every card at rest.
-    private var hoverActions: some View {
-        HStack(spacing: D.Spacing.cardActions) {
-            Button {
-                showingSource.toggle()
-            } label: {
-                Image("icon-search")
-                    .resizable()
-                    .frame(width: D.Size.cardIcon, height: D.Size.cardIcon)
-                    .frame(height: PillStyle.card.diameter)
-            }
-            .buttonStyle(.plain)
-            .help(item.sourceURL.absoluteString)
-            .accessibilityLabel("Source")
-            .popover(isPresented: $showingSource, arrowEdge: .bottom) { sourcePopover }
-            if item.fileURL != nil {
-                hoverPill("icon-play", "Play", action: onOpen)
-                hoverPill("icon-folder", "Show in Finder", action: onReveal)
-                hoverPill("icon-link", "Copy Link", action: onCopyLink)
-            }
-        }
-        .transition(.opacity)
-    }
-
-    /// Opaque at rest; while hovered, the title fades out just before the hover actions.
-    private var titleMask: some View {
-        HStack(spacing: 0) {
-            Color.black
-            LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
-                .frame(width: hovering ? D.Size.hoverFade : 0)
-            Color.clear
-                .frame(width: hovering ? hoverActionsWidth + D.Spacing.cardActions : 0)
-        }
-    }
-
-    /// Computed from the tokens the actions are drawn with, so the mask needs no measuring pass.
-    private var hoverActionsWidth: CGFloat {
-        let pills: CGFloat = item.fileURL == nil ? 0 : 3
-        return D.Size.cardIcon + pills * (PillStyle.card.diameter + D.Spacing.cardActions)
-    }
-
-    private func hoverPill(_ icon: String, _ label: String, action: @escaping () -> Void) -> some View {
-        PillButton(icon: icon, action: action)
-            .help(label)
-            .accessibilityLabel(label)
     }
 }

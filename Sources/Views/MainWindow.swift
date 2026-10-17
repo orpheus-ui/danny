@@ -111,7 +111,12 @@ struct MainWindow: View {
                             onReveal: { manager.revealInFinder(id: item.id) },
                             onBrowserCapture: { requestBrowser(url: item.sourceURL) },
                             onOpen: { manager.open(id: item.id) },
+                            onQuickLook: {
+                                selection = item.id
+                                previewURL = item.fileURL
+                            },
                             onCopyLink: { model.watcher.copy(item.sourceURL) },
+                            onOpenPage: { manager.openOriginalPage(id: item.id) },
                             isSelected: selection == item.id,
                             onSignIn: signInAction(for: item),
                             onChoose: { manager.choose(id: item.id, choice: $0) },

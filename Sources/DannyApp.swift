@@ -59,6 +59,7 @@ final class AppModel {
     let manager: DownloadManager
     let watcher: ClipboardWatcher
     let sessions = SiteSessions()
+    let system: SystemStatus
     var snifferStartURL: URL?
 
     init() {
@@ -67,6 +68,7 @@ final class AppModel {
         manager = DownloadManager(settings: settings)
         watcher = ClipboardWatcher(settings: settings, manager: manager)
         manager.sessions = sessions
+        system = SystemStatus(manager: manager)
         Task { [manager] in await manager.checkEngine() }
     }
 }

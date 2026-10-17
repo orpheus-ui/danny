@@ -4,9 +4,11 @@ import CoreTransferable
 /// Finds the video link in what the user pastes, copies or drops onto the window.
 /// Nonisolated: drops are imported off the main actor.
 nonisolated enum LinkIntake {
-    /// The first web link in the clipboard's text.
-    @MainActor static func pasteboardLink() -> URL? {
-        NSPasteboard.general.string(forType: .string).flatMap(link(from:))
+    /// The clipboard's link: a copied URL or `.webloc` file first, then the first link in its text.
+    @MainActor static func pasteboardLink(_ pasteboard: NSPasteboard = .general) -> URL? {
+        let urls = pasteboard.readObjects(forClasses: [NSURL.self]) as? [URL] ?? []
+        return urls.lazy.compactMap(link(from:)).first
+            ?? pasteboard.string(forType: .string).flatMap(link(from:))
     }
 
     /// The first http(s) link in the text.

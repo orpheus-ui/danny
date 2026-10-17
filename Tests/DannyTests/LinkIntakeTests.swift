@@ -1,3 +1,4 @@
+import AppKit
 @testable import Danny
 import Foundation
 import Testing
@@ -36,5 +37,21 @@ struct LinkIntakeTests {
         #expect(LinkIntake.link(from: video) == nil)
         #expect(LinkIntake.link(from: broken) == nil)
         #expect(LinkIntake.link(from: folder.appendingPathComponent("Missing.webloc")) == nil)
+    }
+
+    @MainActor @Test func `pasteboard URL comes before its text`() throws {
+        let pasteboard = NSPasteboard(name: .init("DannyTests-\(UUID().uuidString)"))
+        defer { pasteboard.releaseGlobally() }
+        pasteboard.clearContents()
+        try pasteboard.writeObjects([#require(URL(string: "https://vimeo.com/9")) as NSURL])
+        #expect(LinkIntake.pasteboardLink(pasteboard) == URL(string: "https://vimeo.com/9"))
+
+        pasteboard.clearContents()
+        pasteboard.setString("see https://youtu.be/xyz", forType: .string)
+        #expect(LinkIntake.pasteboardLink(pasteboard) == URL(string: "https://youtu.be/xyz"))
+
+        pasteboard.clearContents()
+        pasteboard.setString("no link", forType: .string)
+        #expect(LinkIntake.pasteboardLink(pasteboard) == nil)
     }
 }

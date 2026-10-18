@@ -2,9 +2,10 @@ import Foundation
 import WebKit
 
 /// Proof-of-origin tokens for YouTube's video servers. Signed in, YouTube serves some
-/// accounts only SABR streams, which yt-dlp can't read, and leaves it the 360p file; its
-/// `mweb` client still gets the normal streams when the request carries a token from
-/// YouTube's BotGuard. Danny mints one in a hidden `WKWebView` (no Node or Deno), only
+/// accounts only SABR streams, which yt-dlp can't read, and leaves it the 360p file. Its
+/// `web_creator` client still gets every stream, and they download only when the request
+/// carries a token from YouTube's BotGuard (`mweb` and `web` stay SABR-only with one). Danny mints one in a hidden
+/// `WKWebView` (no Node or Deno), only
 /// when a signed-in YouTube run is about to start, and drops the view right after.
 /// A token is kept for its run (the probe, the download and a retry share it), since
 /// it can be bound to the account and the next run may be signed in as someone else.
@@ -45,17 +46,18 @@ final class YouTubeTokens {
     // MARK: Arguments
 
     /// yt-dlp keeps only the last `--extractor-args youtube:` it is given, so the token
-    /// joins the one already there (the retry's clients, which include `mweb`) or comes
-    /// with its own, adding `mweb` to the clients yt-dlp picks for a signed-in run.
+    /// and its client join the one already there (the retry's clients) or come with
+    /// their own, next to the clients yt-dlp picks for a signed-in run.
     nonisolated static func adding(_ token: String, to arguments: [String]) -> [String] {
-        let tokenArgument = "po_token=mweb.gvs+" + token
+        let tokenArgument = "po_token=web_creator.gvs+" + token
         var result = arguments
         if let index = result.indices.dropLast().last(where: {
             result[$0] == "--extractor-args" && result[$0 + 1].hasPrefix("youtube:")
         }) {
-            result[index + 1] += ";" + tokenArgument
+            result[index + 1] = result[index + 1]
+                .replacingOccurrences(of: "player_client=", with: "player_client=web_creator,") + ";" + tokenArgument
         } else {
-            result += ["--extractor-args", "youtube:player_client=default,mweb;" + tokenArgument]
+            result += ["--extractor-args", "youtube:player_client=default,web_creator;" + tokenArgument]
         }
         return result
     }

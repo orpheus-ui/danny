@@ -256,16 +256,17 @@ or users install, or if streaming needs controls a hand-off cannot give.
 **2026-10-18 · Accepted**
 
 Signed in, YouTube serves some accounts only SABR streams, which yt-dlp can't
-read, so those accounts get the 360p file. yt-dlp's `mweb` client still gets the
-normal streams when its requests carry a proof-of-origin (PO) token from
-YouTube's BotGuard. When a run is about to send YouTube cookies, `YouTubeTokens`
+read, so those accounts get the 360p file. yt-dlp's `web_creator` client still
+gets every stream, up to 2160p, and they download only when its requests carry a
+proof-of-origin (PO) token from YouTube's BotGuard. On such an account `mweb` and
+`web` stay SABR-only even with a token, and `web_safari`'s HLS stops at 1080p. When a run is about to send YouTube cookies, `YouTubeTokens`
 mints one: it opens a hidden `WKWebView` on a blank page with YouTube's origin and
 the browser's sign-ins, reads the watch page to learn what YouTube binds the
 token to (the video ID, or the account's data sync ID for sessions outside that
 experiment, the same choice yt-dlp makes), runs BotGuard's challenge, mints the
 token, and drops the view. yt-dlp gets it as
-`--extractor-args "youtube:…;po_token=mweb.gvs+<token>"` with `mweb` among its
-clients. A mint takes one to two seconds; the token is kept in memory for its
+`--extractor-args "youtube:…;po_token=web_creator.gvs+<token>"` with `web_creator`
+among its clients. A mint takes one to two seconds; the token is kept in memory for its
 run, so the probe, the download and a retry share one, and no run reuses
 another's, which may have been bound to a different account. Nothing runs while
 idle (ADR-008), and a failed mint leaves the run as it was before.

@@ -45,9 +45,9 @@ struct YouTubeTokensTests {
         }
     }
 
-    @Test func `adds mweb and the token when no YouTube clients are set`() {
+    @Test func `adds web_creator and the token when no YouTube clients are set`() {
         #expect(YouTubeTokens.adding("T", to: cookies) == cookies + [
-            "--extractor-args", "youtube:player_client=default,mweb;po_token=mweb.gvs+T",
+            "--extractor-args", "youtube:player_client=default,web_creator;po_token=web_creator.gvs+T",
         ])
     }
 
@@ -56,7 +56,7 @@ struct YouTubeTokensTests {
     @Test func `joins the retry's YouTube clients`() {
         let retry = cookies + DownloadManager.fallbackArguments(signedIn: true)
         #expect(YouTubeTokens.adding("T", to: retry) == cookies + [
-            "--extractor-args", "youtube:player_client=tv,mweb;po_token=mweb.gvs+T",
+            "--extractor-args", "youtube:player_client=web_creator,tv,mweb;po_token=web_creator.gvs+T",
         ])
     }
 
@@ -77,7 +77,7 @@ struct YouTubeTokensTests {
         let first = await tokens.arguments(cookies, for: watch)
         let second = await tokens.arguments(cookies, for: watch)
         #expect(first == second)
-        #expect(first.last?.hasSuffix("po_token=mweb.gvs+t1") == true)
+        #expect(first.last?.hasSuffix("po_token=web_creator.gvs+t1") == true)
         #expect(fake.mints == 1)
     }
 

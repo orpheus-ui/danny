@@ -48,7 +48,8 @@ struct ActivityPill: View {
             .dannyGlass(tint: D.barButtonFill, in: Capsule(), interactive: true)
             .help("Pause or resume all downloads (⌥⌘P)")
             .accessibilityLabel(
-                ["\(count) downloading", Format.spokenSpeed(speed)].compactMap(\.self).joined(separator: ", "),
+                ["\(count) queued or downloading", Format.spokenSpeed(speed)].compactMap(\.self)
+                    .joined(separator: ", "),
             )
         case let .paused(count):
             HStack(spacing: 8) {

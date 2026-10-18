@@ -41,6 +41,7 @@ final class AppSettings {
         static let backgroundLimit = "backgroundLimit"
         /// Before speed modes: bytes per second, 0 for none.
         static let legacySpeedLimit = "speedLimit"
+        static let menuBarItem = "menuBarItem"
     }
 
     var downloadDirectory: URL {
@@ -143,6 +144,11 @@ final class AppSettings {
         defaults.removeObject(forKey: Key.legacySpeedLimit)
     }
 
+    /// Show overall progress and Paste to Download in the menu bar.
+    var menuBarItem: Bool {
+        didSet { defaults.set(menuBarItem, forKey: Key.menuBarItem) }
+    }
+
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
@@ -158,6 +164,7 @@ final class AppSettings {
         speedMode = defaults.string(forKey: Key.speedMode).flatMap(SpeedMode.init(rawValue:)) ?? .full
         balancedLimit = Self.storedLimit(Key.balancedLimit, for: .balanced, in: defaults)
         backgroundLimit = Self.storedLimit(Key.backgroundLimit, for: .background, in: defaults)
+        menuBarItem = defaults.bool(forKey: Key.menuBarItem)
         self.defaults = defaults
         let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser

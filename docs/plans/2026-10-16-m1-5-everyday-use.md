@@ -9,7 +9,7 @@
 | system — Dock progress, notification when a download finishes | done | orpheus-ui/danny#41 |
 | failures — plain-language errors with one suggested fix | done | orpheus-ui/danny#39 |
 | grouping — active first, then Today and Earlier | not started | — |
-| menu-bar — progress and paste-to-download in the menu bar | not started | — |
+| menu-bar — progress and paste-to-download in the menu bar | done | orpheus-ui/danny#47 |
 | organizing — folder per site, filename templates | done | orpheus-ui/danny#40 |
 | network — Wi-Fi only, speed limit | done | orpheus-ui/danny#44 |
 | settings-layout — Settings in tabs | not started | — |
@@ -49,8 +49,12 @@ resource budget (ADR-008): nothing here polls, and every animation is one-shot.
    with tests, built from real error lines.
 7. **grouping** — active items first, then Today and Earlier, with small section
    headers. Sorting still applies inside each group.
-8. **menu-bar** — an optional menu-bar item: a ring that fills with overall
-   progress, the active items, and Paste to Download. Off by default.
+8. **menu-bar** — an optional menu-bar item, off by default: the Danny mark that
+   fills from the bottom with overall progress, with the percentage beside it. Its
+   popover (system glass) shows a headline and speed, an add row for the clipboard's
+   link or a typed one, up to four active downloads (click shows the card in the
+   window), the last three finished files (click opens, draggable), and quick
+   toggles for the speed limit and Wi-Fi only. It exists only while open.
 9. **organizing** — Settings keep the download folder; a new option saves into
    a subfolder per site (`Downloads/youtube.com/…`), off by default. Filename
    templates offer a few presets (title; title and site; date and title) mapped
@@ -85,4 +89,5 @@ resource budget (ADR-008): nothing here polls, and every animation is one-shot.
 ## Open
 
 - Whether the menu-bar item and the Dock progress should both exist by default.
-  Both are built; Settings decide.
+  Both are built; Settings decide. The menu-bar item ships off by default; the
+  Dock progress is always on.

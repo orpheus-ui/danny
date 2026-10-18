@@ -23,18 +23,4 @@ struct FinishedItemTests {
     @Test func `a finished item without a path has no file URL`() {
         #expect(item(.finished, file: nil).fileURL == nil)
     }
-
-    @Test func `space previews the selected finished item`() {
-        let finished = item(.finished)
-        let other = item(.finished, file: "/tmp/other.mp4")
-        #expect([other, finished].previewURL(selection: finished.id) == finished.fileURL)
-    }
-
-    @Test func `space previews nothing for no selection, an unfinished one or an unlisted one`() {
-        let finished = item(.finished)
-        let failed = item(.failed)
-        #expect([finished].previewURL(selection: nil) == nil)
-        #expect([finished, failed].previewURL(selection: failed.id) == nil)
-        #expect([failed].previewURL(selection: finished.id) == nil)
-    }
 }

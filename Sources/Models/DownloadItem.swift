@@ -97,9 +97,21 @@ struct DownloadItem: Identifiable, Codable, Hashable {
 }
 
 extension [DownloadItem] {
-    /// The file Quick Look shows: the selected item's, when it is listed and finished.
-    func previewURL(selection: UUID?) -> URL? {
-        first { $0.id == selection }?.fileURL
+    /// The card an arrow key selects: `step` cards on in display order, stopping at either end.
+    /// With no listed selection, ↓ starts at the top and ↑ at the bottom.
+    func selection(movingFrom current: UUID?, by step: Int) -> UUID? {
+        guard !isEmpty else { return nil }
+        guard let index = firstIndex(where: { $0.id == current }) else {
+            return step < 0 ? last?.id : first?.id
+        }
+        return self[Swift.min(Swift.max(index + step, 0), count - 1)].id
+    }
+
+    /// The card selected once `id` is removed: the one below it, or above it at the end.
+    func selection(afterRemoving id: UUID) -> UUID? {
+        guard let index = firstIndex(where: { $0.id == id }) else { return nil }
+        if index + 1 < count { return self[index + 1].id }
+        return index > 0 ? self[index - 1].id : nil
     }
 }
 

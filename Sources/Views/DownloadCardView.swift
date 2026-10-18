@@ -40,6 +40,10 @@ struct DownloadCardView: View {
                 self.hovering = hovering
             }
             .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: hovering)
+            // One group per card, named by its title, so VoiceOver can say which card is selected.
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(item.title)
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
             // The bar's chips are drawn only while hovered; VoiceOver reaches them here.
             .accessibilityActions {
                 ForEach(fileActions, id: \.title) { action in

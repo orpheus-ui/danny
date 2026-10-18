@@ -151,6 +151,7 @@ struct MainWindow: View {
                 .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
                     manager.today = .now
                 }
+                .onAppear { manager.today = .now } // the window was closed when the day changed
                 .onPasteCommand(of: [.url, .plainText]) { _ in pasteFromClipboard() }
                 .dropDestination(for: DroppedLink.self) { links, _ in
                     for link in links {

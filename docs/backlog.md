@@ -31,9 +31,6 @@ its own PR, delete it from here when it merges.
 - **`YTDLPClient.runDownload` blocks a cooperative thread** with
   `process.waitUntilExit()`, and has a complexity waiver. Use a termination
   continuation; split parsing from process handling. (M2)
-- **Swift 6 isolation warnings** in `MediaSnifferWebView`: the popup handler reads
-  main-actor properties from a `nonisolated` method; `decidePolicyFor` never
-  matches WebKit's signature and only allows everything — delete it.
 - **Small dead code:** `_ = existing` in `DownloadManager.add`; unused `url`
   parameter in `DownloadManager.hinted`.
 - **The signed-out-then-signed-in retry has no manager test.** `DownloadEngine` now

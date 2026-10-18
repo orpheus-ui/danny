@@ -46,7 +46,7 @@ Shorter paths for the things done every day. Plan: [plans/2026-10-16-m1-5-everyd
 - [x] Optional menu-bar item with progress and Paste to Download
 - [x] Optional folder per site inside the download folder; filename templates
 - [x] Download only on Wi-Fi; speed limit
-- [ ] Settings in tabs: General, Downloads, Quality, Network, Sources, Engine & Updates
+- [x] Settings in tabs: General, Downloads, Quality, Network, Sources, Engine & Updates
 - [ ] Pause and resume a download, Pause All (⌥⌘P); paused cards survive a quit
 - [x] yt-dlp kept current: checked each time Danny opens, verified against yt-dlp's
       published checksums, used from the next download on (ADR-015)

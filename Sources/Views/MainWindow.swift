@@ -104,37 +104,15 @@ struct MainWindow: View {
             ScrollViewReader { proxy in
                 ScrollView(.vertical, showsIndicators: false) {
                     LazyVStack(spacing: D.Spacing.list) {
-                        ForEach(manager.visibleItems) { item in
-                            DownloadCardView(
-                                item: item,
-                                onRemove: { manager.remove(id: item.id) },
-                                onCancel: { manager.cancel(id: item.id) },
-                                onRetry: { manager.retry(id: item.id) },
-                                onReveal: { manager.revealInFinder(id: item.id) },
-                                onBrowserCapture: { requestBrowser(url: item.sourceURL) },
-                                onOpen: { manager.open(id: item.id) },
-                                onQuickLook: {
-                                    selection = item.id
-                                    previewURL = item.fileURL
-                                },
-                                onCopyLink: { model.watcher.copy(item.sourceURL) },
-                                onOpenPage: { manager.openOriginalPage(id: item.id) },
-                                isSelected: selection == item.id,
-                                onSignIn: signInAction(for: item),
-                                onChoose: { manager.choose(id: item.id, choice: $0) },
-                                onResolveExisting: { manager.resolveExisting(id: item.id, with: $0) },
-                                onKeepExisting: {
-                                    manager.keepExisting(id: item.id)
-                                    manager.revealInFinder(id: item.id)
-                                },
-                                onPause: { manager.pause(id: item.id) },
-                                onResume: { manager.resume(id: item.id) },
-                            )
-                            .onTapGesture(count: 2) { manager.open(id: item.id) }
-                            .simultaneousGesture(TapGesture().onEnded {
-                                selection = item.id
-                                listFocused = true
-                            })
+                        ForEach(manager.visibleGroups) { group in
+                            VStack(spacing: D.Spacing.sectionHeader) {
+                                SectionHeader(title: group.section.title)
+                                LazyVStack(spacing: D.Spacing.list) {
+                                    ForEach(group.items) { item in
+                                        card(for: item)
+                                    }
+                                }
+                            }
                         }
                         if manager.visibleItems.isEmpty {
                             emptyState
@@ -169,6 +147,11 @@ struct MainWindow: View {
                     return previewURL == nil ? .ignored : .handled
                 }
                 .quickLookPreview($previewURL)
+                // Midnight, a clock change or waking up: Today becomes Earlier without a timer.
+                .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
+                    manager.today = .now
+                }
+                .onAppear { manager.today = .now } // the window was closed when the day changed
                 .onPasteCommand(of: [.url, .plainText]) { _ in pasteFromClipboard() }
                 .dropDestination(for: DroppedLink.self) { links, _ in
                     for link in links {
@@ -221,6 +204,39 @@ struct MainWindow: View {
                 onResumeAll: { manager.resumeAll() },
             )
         }
+    }
+
+    private func card(for item: DownloadItem) -> some View {
+        DownloadCardView(
+            item: item,
+            onRemove: { manager.remove(id: item.id) },
+            onCancel: { manager.cancel(id: item.id) },
+            onRetry: { manager.retry(id: item.id) },
+            onReveal: { manager.revealInFinder(id: item.id) },
+            onBrowserCapture: { requestBrowser(url: item.sourceURL) },
+            onOpen: { manager.open(id: item.id) },
+            onQuickLook: {
+                selection = item.id
+                previewURL = item.fileURL
+            },
+            onCopyLink: { model.watcher.copy(item.sourceURL) },
+            onOpenPage: { manager.openOriginalPage(id: item.id) },
+            isSelected: selection == item.id,
+            onSignIn: signInAction(for: item),
+            onChoose: { manager.choose(id: item.id, choice: $0) },
+            onResolveExisting: { manager.resolveExisting(id: item.id, with: $0) },
+            onKeepExisting: {
+                manager.keepExisting(id: item.id)
+                manager.revealInFinder(id: item.id)
+            },
+            onPause: { manager.pause(id: item.id) },
+            onResume: { manager.resume(id: item.id) },
+        )
+        .onTapGesture(count: 2) { manager.open(id: item.id) }
+        .simultaneousGesture(TapGesture().onEnded {
+            selection = item.id
+            listFocused = true
+        })
     }
 
     private var emptyState: some View {
@@ -311,5 +327,19 @@ struct AddURLSheet: View {
         else { return }
         onAdd(trimmed)
         dismiss()
+    }
+}
+
+/// Names a section of the list: small, quiet, above its first card.
+private struct SectionHeader: View {
+    let title: String
+
+    var body: some View {
+        Text(title)
+            .font(D.Font.sectionHeader)
+            .foregroundStyle(D.textSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, D.Spacing.sectionHeaderInset)
+            .accessibilityAddTraits(.isHeader)
     }
 }

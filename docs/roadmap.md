@@ -43,7 +43,7 @@ Shorter paths for the things done every day. Plan: [plans/2026-10-16-m1-5-everyd
 - [x] Dock progress and a notification when a download finishes
 - [x] Plain-language failures with one suggested fix
 - [ ] List grouped: active first, then Today and Earlier
-- [ ] Optional menu-bar item with progress and Paste to Download
+- [x] Optional menu-bar item with progress and Paste to Download
 - [x] Optional folder per site inside the download folder; filename templates
 - [x] Download only on Wi-Fi; speed limit
 - [ ] Settings in tabs: General, Downloads, Quality, Network, Sources, Engine & Updates

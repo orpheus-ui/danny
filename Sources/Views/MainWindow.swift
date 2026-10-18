@@ -7,6 +7,7 @@ struct MainWindow: View {
     @Environment(AppSettings.self) private var settings
     @Environment(SiteSessions.self) private var sessions
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     @State private var showConsentAlert = false
     @State private var pendingSnifferURL: URL?
@@ -100,67 +101,84 @@ struct MainWindow: View {
     private var listArea: some View {
         @Bindable var manager = manager
         return ZStack(alignment: .bottom) {
-            ScrollView(.vertical, showsIndicators: false) {
-                LazyVStack(spacing: D.Spacing.list) {
-                    ForEach(manager.visibleGroups) { group in
-                        VStack(spacing: D.Spacing.sectionHeader) {
-                            SectionHeader(title: group.section.title)
-                            LazyVStack(spacing: D.Spacing.list) {
-                                ForEach(group.items) { item in
-                                    card(for: item)
+            ScrollViewReader { proxy in
+                ScrollView(.vertical, showsIndicators: false) {
+                    LazyVStack(spacing: D.Spacing.list) {
+                        ForEach(manager.visibleGroups) { group in
+                            VStack(spacing: D.Spacing.sectionHeader) {
+                                SectionHeader(title: group.section.title)
+                                LazyVStack(spacing: D.Spacing.list) {
+                                    ForEach(group.items) { item in
+                                        card(for: item)
+                                    }
                                 }
                             }
                         }
+                        if manager.visibleItems.isEmpty {
+                            emptyState
+                        }
                     }
-                    if manager.visibleItems.isEmpty {
-                        emptyState
+                    .padding(.horizontal, D.Spacing.listInset)
+                    .padding(.top, D.Spacing.listTop)
+                    // The last card scrolls clear of the floating bar, a list gap above it.
+                    .padding(.bottom, D.Size.bottomBar + D.Spacing.list)
+                }
+                .overlay {
+                    if isDropTargeted {
+                        DropHighlight()
+                            .padding([.horizontal, .bottom], D.Spacing.listInset)
+                            .padding(.bottom, 52) // clear of the bottom bar
+                            .allowsHitTesting(false)
+                            .transition(.opacity)
                     }
                 }
-                .padding(.horizontal, D.Spacing.listInset)
-                .padding(.top, D.Spacing.listTop)
-                // The last card scrolls clear of the floating bar, a list gap above it.
-                .padding(.bottom, D.Size.bottomBar + D.Spacing.list)
-            }
-            .overlay {
-                if isDropTargeted {
-                    DropHighlight()
-                        .padding([.horizontal, .bottom], D.Spacing.listInset)
-                        .padding(.bottom, 52) // clear of the bottom bar
-                        .allowsHitTesting(false)
-                        .transition(.opacity)
+                .animation(.easeOut(duration: 0.15), value: isDropTargeted)
+                .animation(.easeOut(duration: 0.2), value: model.watcher.offer)
+                // ⌘V with no text field focused adds the clipboard's link.
+                .focusable()
+                .focusEffectDisabled()
+                .focused($listFocused)
+                .onKeyPress(.space) {
+                    if previewURL != nil {
+                        previewURL = nil
+                        return .handled
+                    }
+                    previewURL = manager.visibleItems.previewURL(selection: selection)
+                    return previewURL == nil ? .ignored : .handled
+                }
+                .quickLookPreview($previewURL)
+                // Midnight, a clock change or waking up: Today becomes Earlier without a timer.
+                .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
+                    manager.today = .now
+                }
+                .onPasteCommand(of: [.url, .plainText]) { _ in pasteFromClipboard() }
+                .dropDestination(for: DroppedLink.self) { links, _ in
+                    for link in links {
+                        manager.add(url: link.url)
+                    }
+                    return !links.isEmpty
+                } isTargeted: { isDropTargeted = $0 }
+                // The bars float over the list; cards scroll under them through the
+                // system's soft edge, a blurred fade drawn by the compositor.
+                .safeAreaBar(edge: .top, spacing: 0) { topBars }
+                .scrollEdgeEffectStyle(.soft, for: .top)
+                .defaultScrollAnchor(.top)
+                .onChange(of: model.windowRequest, initial: true) { _, request in
+                    guard let request else { return }
+                    model.windowRequest = nil
+                    switch request {
+                    case let .focus(id):
+                        // A search or scope that hides the card is cleared so it can be shown.
+                        if !manager.visibleItems.contains(where: { $0.id == id }) { manager.filter = DownloadFilter() }
+                        selection = id
+                        withAnimation { proxy.scrollTo(id, anchor: .center) }
+                    case .browserCapture:
+                        requestBrowser(url: nil)
+                    case .settings:
+                        openSettings()
+                    }
                 }
             }
-            .animation(.easeOut(duration: 0.15), value: isDropTargeted)
-            .animation(.easeOut(duration: 0.2), value: model.watcher.offer)
-            // ⌘V with no text field focused adds the clipboard's link.
-            .focusable()
-            .focusEffectDisabled()
-            .focused($listFocused)
-            .onKeyPress(.space) {
-                if previewURL != nil {
-                    previewURL = nil
-                    return .handled
-                }
-                previewURL = manager.visibleItems.previewURL(selection: selection)
-                return previewURL == nil ? .ignored : .handled
-            }
-            .quickLookPreview($previewURL)
-            // Midnight, a clock change or waking up: Today becomes Earlier without a timer.
-            .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
-                manager.today = .now
-            }
-            .onPasteCommand(of: [.url, .plainText]) { _ in pasteFromClipboard() }
-            .dropDestination(for: DroppedLink.self) { links, _ in
-                for link in links {
-                    manager.add(url: link.url)
-                }
-                return !links.isEmpty
-            } isTargeted: { isDropTargeted = $0 }
-            // The bars float over the list; cards scroll under them through the
-            // system's soft edge, a blurred fade drawn by the compositor.
-            .safeAreaBar(edge: .top, spacing: 0) { topBars }
-            .scrollEdgeEffectStyle(.soft, for: .top)
-            .defaultScrollAnchor(.top)
 
             if let offer = model.watcher.offer {
                 ClipboardToast(

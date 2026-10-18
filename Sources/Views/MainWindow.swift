@@ -140,7 +140,8 @@ struct MainWindow: View {
                 }
                 .padding(.horizontal, D.Spacing.listInset)
                 .padding(.top, D.Spacing.listTop)
-                .padding(.bottom, D.Spacing.list)
+                // The last card scrolls clear of the floating bar, a list gap above it.
+                .padding(.bottom, D.Size.bottomBar + D.Spacing.list)
             }
             .overlay {
                 if isDropTargeted {
@@ -177,21 +178,6 @@ struct MainWindow: View {
             // system's soft edge, a blurred fade drawn by the compositor.
             .safeAreaBar(edge: .top, spacing: 0) { topBars }
             .scrollEdgeEffectStyle(.soft, for: .top)
-            // The bottom bar is a safe-area bar too, so the list's end clears its real height.
-            .safeAreaBar(edge: .bottom, spacing: 0) {
-                BottomBarView(
-                    sortOrder: $manager.sortOrder,
-                    onBrowser: { requestBrowser(url: nil) },
-                    onPaste: pasteFromClipboard,
-                    onEnterURL: { manager.pendingManualAdd = true },
-                    activity: QueueActivity.of(manager.items),
-                    canPauseAll: manager.canPauseAll,
-                    canResumeAll: manager.canResumeAll,
-                    onPauseAll: { manager.pauseAll() },
-                    onResumeAll: { manager.resumeAll() },
-                )
-            }
-            .scrollEdgeEffectHidden(true, for: .bottom)
             .defaultScrollAnchor(.top)
 
             if let offer = model.watcher.offer {
@@ -204,6 +190,18 @@ struct MainWindow: View {
                 .padding(.bottom, 60) // above the bottom bar
                 .transition(.opacity)
             }
+
+            BottomBarView(
+                sortOrder: $manager.sortOrder,
+                onBrowser: { requestBrowser(url: nil) },
+                onPaste: pasteFromClipboard,
+                onEnterURL: { manager.pendingManualAdd = true },
+                activity: QueueActivity.of(manager.items),
+                canPauseAll: manager.canPauseAll,
+                canResumeAll: manager.canResumeAll,
+                onPauseAll: { manager.pauseAll() },
+                onResumeAll: { manager.resumeAll() },
+            )
         }
     }
 

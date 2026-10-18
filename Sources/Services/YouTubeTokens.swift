@@ -6,7 +6,8 @@ import WebKit
 /// `mweb` client still gets the normal streams when the request carries a token from
 /// YouTube's BotGuard. Danny mints one in a hidden `WKWebView` (no Node or Deno), only
 /// when a signed-in YouTube run is about to start, and drops the view right after.
-/// Tokens are kept per video until they expire.
+/// A token is kept for its run (the probe, the download and a retry share it), since
+/// it can be bound to the account and the next run may be signed in as someone else.
 @MainActor
 final class YouTubeTokens {
     struct Token {
@@ -14,6 +15,7 @@ final class YouTubeTokens {
         let expires: Date
     }
 
+    /// By video ID and cookie file: each run writes its own file.
     private var cache: [String: Token] = [:]
     private let mint: (String) async -> Token?
 
@@ -25,15 +27,18 @@ final class YouTubeTokens {
     /// `arguments` with a token added when they send YouTube cookies; unchanged otherwise,
     /// or when no token could be minted (the run goes on as before).
     func arguments(_ arguments: [String], for url: URL) async -> [String] {
-        guard arguments.contains("--cookies"), let id = Self.videoID(in: url),
-              let token = await token(for: id) else { return arguments }
+        guard let flag = arguments.firstIndex(of: "--cookies"), flag + 1 < arguments.count,
+              let id = Self.videoID(in: url),
+              let token = await token(for: id, session: arguments[flag + 1]) else { return arguments }
         return Self.adding(token, to: arguments)
     }
 
-    func token(for videoID: String, now: Date = .now) async -> String? {
-        if let cached = cache[videoID], cached.expires > now { return cached.value }
+    func token(for videoID: String, session: String, now: Date = .now) async -> String? {
+        let key = videoID + "\t" + session
+        if let cached = cache[key], cached.expires > now { return cached.value }
         guard let minted = await mint(videoID) else { return nil }
-        cache[videoID] = minted
+        cache = cache.filter { $0.value.expires > now }
+        cache[key] = minted
         return minted.value
     }
 

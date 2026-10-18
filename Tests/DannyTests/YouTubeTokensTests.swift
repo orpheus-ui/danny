@@ -84,8 +84,16 @@ struct YouTubeTokensTests {
     @Test func `mints again once the token expires`() async {
         let fake = FakeMint(lifetime: 60)
         let tokens = fake.tokens()
-        #expect(await tokens.token(for: "aqz-KE-bpKQ") == "t1")
-        #expect(await tokens.token(for: "aqz-KE-bpKQ", now: .now + 61) == "t2")
+        #expect(await tokens.token(for: "aqz-KE-bpKQ", session: "a") == "t1")
+        #expect(await tokens.token(for: "aqz-KE-bpKQ", session: "a", now: .now + 61) == "t2")
+    }
+
+    /// A token may be bound to the account, and the next run may be another account's.
+    @Test func `mints again for another run's session`() async {
+        let fake = FakeMint()
+        let tokens = fake.tokens()
+        #expect(await tokens.token(for: "aqz-KE-bpKQ", session: "/tmp/a.txt") == "t1")
+        #expect(await tokens.token(for: "aqz-KE-bpKQ", session: "/tmp/b.txt") == "t2")
     }
 
     @Test func `runs on without a token when minting fails`() async throws {

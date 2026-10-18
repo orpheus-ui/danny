@@ -265,8 +265,9 @@ token to (the video ID, or the account's data sync ID for sessions outside that
 experiment, the same choice yt-dlp makes), runs BotGuard's challenge, mints the
 token, and drops the view. yt-dlp gets it as
 `--extractor-args "youtube:…;po_token=mweb.gvs+<token>"` with `mweb` among its
-clients. A mint takes about a second; the token is kept in memory for its
-lifetime (12 hours) per video, so the probe and the download share one. Nothing runs while
+clients. A mint takes one to two seconds; the token is kept in memory for its
+run, so the probe, the download and a retry share one, and no run reuses
+another's, which may have been bound to a different account. Nothing runs while
 idle (ADR-008), and a failed mint leaves the run as it was before.
 
 yt-dlp's PO token guide points to provider plugins. The common one (bgutil) runs

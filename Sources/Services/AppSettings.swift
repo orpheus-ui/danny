@@ -100,11 +100,19 @@ final class AppSettings {
 
     /// Balanced's and Background's top speed per download, in bytes per second.
     var balancedLimit: Int {
-        didSet { defaults.set(balancedLimit, forKey: Key.balancedLimit) }
+        didSet {
+            let clamped = Self.clamped(balancedLimit)
+            if clamped != balancedLimit { balancedLimit = clamped }
+            defaults.set(clamped, forKey: Key.balancedLimit)
+        }
     }
 
     var backgroundLimit: Int {
-        didSet { defaults.set(backgroundLimit, forKey: Key.backgroundLimit) }
+        didSet {
+            let clamped = Self.clamped(backgroundLimit)
+            if clamped != backgroundLimit { backgroundLimit = clamped }
+            defaults.set(clamped, forKey: Key.backgroundLimit)
+        }
     }
 
     /// The current mode's top speed per download in bytes per second; 0 is no limit.
@@ -166,6 +174,10 @@ final class AppSettings {
 
     private static func storedLimit(_ key: String, for mode: SpeedMode, in defaults: UserDefaults) -> Int {
         let stored = defaults.object(forKey: key) as? Int ?? mode.defaultLimit
-        return min(max(stored, SpeedMode.limitRange.lowerBound), SpeedMode.limitRange.upperBound)
+        return clamped(stored)
+    }
+
+    private static func clamped(_ limit: Int) -> Int {
+        min(max(limit, SpeedMode.limitRange.lowerBound), SpeedMode.limitRange.upperBound)
     }
 }

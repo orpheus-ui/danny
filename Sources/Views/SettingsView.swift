@@ -181,10 +181,12 @@ private struct SpeedLimitField: View {
         Binding(
             get: { Double(bytesPerSecond) / 1_000_000 },
             // Clamped as a Double: a pasted 1e13 would trap in Int().
-            set: { bytesPerSecond = Int(min(
-                max($0 * 1_000_000, Double(SpeedMode.limitRange.lowerBound)),
-                Double(SpeedMode.limitRange.upperBound),
-            ).rounded()) },
+            set: { guard $0.isFinite else { return }
+                bytesPerSecond = Int(min(
+                    max($0 * 1_000_000, Double(SpeedMode.limitRange.lowerBound)),
+                    Double(SpeedMode.limitRange.upperBound),
+                ).rounded())
+            },
         )
     }
 

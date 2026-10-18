@@ -48,6 +48,16 @@ struct SpeedModeTests {
         #expect(settings.backgroundLimit == SpeedMode.limitRange.upperBound)
     }
 
+    @Test func `a limit set out of range is brought inside it`() {
+        let defaults = scratch.defaults()
+        let settings = AppSettings(defaults: defaults)
+        settings.balancedLimit = 0
+        settings.backgroundLimit = Int.max
+        #expect(settings.balancedLimit == SpeedMode.limitRange.lowerBound)
+        #expect(settings.backgroundLimit == SpeedMode.limitRange.upperBound)
+        #expect(AppSettings(defaults: defaults).balancedLimit == SpeedMode.limitRange.lowerBound)
+    }
+
     @Test func `no old limit becomes full speed`() {
         let defaults = scratch.defaults()
         defaults.set(0, forKey: "speedLimit")

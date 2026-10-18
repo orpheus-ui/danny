@@ -106,7 +106,7 @@ struct NetworkTests {
     @Test func `the speed limit reaches the download`() async throws {
         let engine = RecordingEngine()
         let manager = manager(path: FakeNetworkPath(isMetered: false), engine: engine) {
-            $0.speedLimit = 1_000_000
+            $0.speedMode = .background
         }
         try add(manager)
         try await settle(manager, until: .finished)

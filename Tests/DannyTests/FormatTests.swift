@@ -19,12 +19,21 @@ struct FormatTests {
     }
 
     @Test(arguments: [
-        (80_000_000.0, "80 MBps"),
-        (867_000.0, "867 KBps"),
-        (300.0, "300 Bps"),
+        (80_000_000.0, "80 MB/s"),
+        (867_000.0, "867 KB/s"),
+        (300.0, "300 B/s"),
     ])
     func `formats speeds`(bytesPerSecond: Double, expected: String) {
         #expect(Format.speed(bytesPerSecond) == expected)
+    }
+
+    @Test(arguments: [(500_000, "0.5 MB/s"), (1_000_000, "1 MB/s"), (2_500_000, "2.5 MB/s"), (10_000_000, "10 MB/s")])
+    func `formats speed limits`(bytesPerSecond: Int, expected: String) {
+        #expect(Format.limit(bytesPerSecond) == expected)
+    }
+
+    @Test func `speeds never read as MBps`() {
+        #expect([300.0, 867_000, 80_000_000].compactMap(Format.speed).allSatisfy { $0.contains("/s") })
     }
 
     @Test func `rounds percent`() {

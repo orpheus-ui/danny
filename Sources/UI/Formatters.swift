@@ -15,10 +15,15 @@ enum Format {
     static func speed(_ bytesPerSecond: Double?) -> String? {
         guard let bytesPerSecond, bytesPerSecond > 0 else { return nil }
         let mbps = bytesPerSecond / 1_000_000
-        if mbps >= 1 { return String(format: "%.0f MBps", mbps) }
+        if mbps >= 1 { return String(format: "%.0f MB/s", mbps) }
         let kbps = bytesPerSecond / 1000
-        if kbps >= 1 { return String(format: "%.0f KBps", kbps) }
-        return String(format: "%.0f Bps", bytesPerSecond)
+        if kbps >= 1 { return String(format: "%.0f KB/s", kbps) }
+        return String(format: "%.0f B/s", bytesPerSecond)
+    }
+
+    /// A speed limit: "5 MB/s", "2.5 MB/s". Limits are never below 0.5 MB/s.
+    static func limit(_ bytesPerSecond: Int) -> String {
+        "\((Double(bytesPerSecond) / 1_000_000).formatted(.number.precision(.fractionLength(0 ... 1)))) MB/s"
     }
 
     /// The speed as VoiceOver reads it: "4.1 megabytes per second".

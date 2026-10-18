@@ -89,11 +89,17 @@ struct SettingsView: View {
                 """)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                Picker("Speed limit", selection: $settings.speedLimit) {
-                    ForEach(AppSettings.speedLimits, id: \.self) { limit in
-                        Text(Format.speed(Double(limit)).map { "\($0) per download" } ?? "None").tag(limit)
-                    }
+                Picker("Speed", selection: $settings.speedMode) {
+                    ForEach(SpeedMode.allCases) { Text(settings.title(for: $0)).tag($0) }
                 }
+                SpeedLimitField(title: "Balanced limit", bytesPerSecond: $settings.balancedLimit)
+                SpeedLimitField(title: "Background limit", bytesPerSecond: $settings.backgroundLimit)
+                Text("""
+                Each download stays under the limit of the mode in use. A change reaches downloads \
+                that start after it; the ones already running keep their speed.
+                """)
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
 
             AccountsSection()
@@ -162,6 +168,39 @@ struct SettingsView: View {
         panel.directoryURL = settings.downloadDirectory
         if panel.runModal() == .OK, let url = panel.url {
             settings.downloadDirectory = url
+        }
+    }
+}
+
+/// A limit in MB/s, typed or stepped, kept inside what a mode can be set to.
+private struct SpeedLimitField: View {
+    let title: String
+    @Binding var bytesPerSecond: Int
+
+    private var megabytes: Binding<Double> {
+        Binding(
+            get: { Double(bytesPerSecond) / 1_000_000 },
+            // Clamped as a Double: a pasted 1e13 would trap in Int().
+            set: { guard $0.isFinite else { return }
+                bytesPerSecond = Int(min(
+                    max($0 * 1_000_000, Double(SpeedMode.limitRange.lowerBound)),
+                    Double(SpeedMode.limitRange.upperBound),
+                ).rounded())
+            },
+        )
+    }
+
+    var body: some View {
+        LabeledContent(title) {
+            HStack(spacing: 6) {
+                TextField(title, value: megabytes, format: .number.precision(.fractionLength(0 ... 2)))
+                    .labelsHidden()
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 64)
+                Text("MB/s").foregroundStyle(.secondary)
+                Stepper(title, value: megabytes, in: 0.5 ... 100, step: 0.5)
+                    .labelsHidden()
+            }
         }
     }
 }

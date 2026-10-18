@@ -197,6 +197,7 @@ struct MainWindow: View {
                 onPaste: pasteFromClipboard,
                 onEnterURL: { manager.pendingManualAdd = true },
                 activity: QueueActivity.of(manager.items),
+                canPauseAll: manager.canPauseAll,
                 canResumeAll: manager.canResumeAll,
                 onPauseAll: { manager.pauseAll() },
                 onResumeAll: { manager.resumeAll() },

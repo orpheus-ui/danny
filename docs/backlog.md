@@ -50,6 +50,17 @@ its own PR, delete it from here when it merges.
   Danny already has.
 - **Say when quality falls short.** If the best format is below the chosen quality,
   the card should say so instead of quietly downloading 360p.
+- **Block ads and trackers in Browser Capture.** Optional, on by default, with a
+  switch in Settings and "Allow on this site" for pages it breaks. Use WebKit's
+  `WKContentRuleList`: rules are compiled once and applied in WebKit's network
+  process, so nothing runs while idle. Pages load faster and fewer ad streams reach
+  the sniffer. Lists ship with Danny and update with the app, never in the
+  background; check the list's license before bundling (EasyList and EasyPrivacy
+  are GPLv3 / CC BY-SA). The sign-in window stays unblocked, since blockers break
+  some sign-in flows. Optional: hide cookie banners with CSS-hide rules.
+- **Leave ad media out of captures.** Independent of the blocker: media from known
+  ad hosts (pre-roll MP4s, ad HLS) is dropped from the sniffer's results, so the
+  list shows the page's own video first.
 - **Clear the web cache.** Browser Capture and sign-in fill
   `~/Library/Caches/app.danny.desktop/WebKit` (tens of MB) and nothing bounds or
   clears it. Add a "Clear Cache" button in Settings that removes cached web data

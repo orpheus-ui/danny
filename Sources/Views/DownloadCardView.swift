@@ -16,6 +16,8 @@ struct DownloadCardView: View {
     var onChoose: ((QualityChoice) -> Void)?
     var onResolveExisting: ((ExistingFilePolicy) -> Void)?
     var onKeepExisting: (() -> Void)?
+    var onPause: (() -> Void)?
+    var onResume: (() -> Void)?
 
     @State private var hovering = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -43,6 +45,7 @@ struct DownloadCardView: View {
                 ForEach(fileActions, id: \.title) { action in
                     Button(action.title, action: action.action)
                 }
+                if item.status.canPause, let onPause { Button("Pause", action: onPause) }
             }
     }
 
@@ -92,6 +95,8 @@ struct DownloadCardView: View {
                     onSignIn: onSignIn,
                     // Drawn only for the hovered card (ADR-008), never for every card at rest.
                     finishedActions: hovering ? fileActions : [],
+                    onPause: hovering ? onPause : nil,
+                    onResume: onResume,
                 )
                 .help(item.status == .failed ? item.errorMessage ?? "" : "")
                 .popover(isPresented: $showingError, arrowEdge: .top) { errorPopover }
@@ -165,6 +170,11 @@ struct DownloadCardView: View {
                 if item.fileURL != nil {
                     Button("Open", action: onOpen)
                     Button("Quick Look", action: onQuickLook)
+                }
+                if item.status.canPause, let onPause {
+                    Button("Pause", action: onPause)
+                } else if item.status == .paused, let onResume {
+                    Button("Resume", action: onResume)
                 }
                 if item.status.isActive {
                     Button("Cancel", action: onCancel)

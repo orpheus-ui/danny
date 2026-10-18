@@ -5,6 +5,11 @@ struct BottomBarView: View {
     var onBrowser: () -> Void
     var onPaste: () -> Void
     var onEnterURL: () -> Void
+    /// The activity pill beside Sort; nil hides it.
+    var activity: QueueActivity?
+    var canResumeAll = false
+    var onPauseAll: () -> Void = {}
+    var onResumeAll: () -> Void = {}
 
     var body: some View {
         ZStack {
@@ -15,6 +20,12 @@ struct BottomBarView: View {
             GlassEffectContainer {
                 HStack(spacing: 10) {
                     sortMenu
+                    if let activity {
+                        ActivityPill(
+                            activity: activity, canResumeAll: canResumeAll,
+                            onPauseAll: onPauseAll, onResumeAll: onResumeAll,
+                        )
+                    }
                     Spacer()
                     PillButton(icon: "icon-browser", style: .bar) {
                         onBrowser()
@@ -30,7 +41,7 @@ struct BottomBarView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
         }
-        .frame(height: 56)
+        .frame(height: D.Size.bottomBar)
     }
 
     private var sortMenu: some View {

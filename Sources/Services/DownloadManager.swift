@@ -5,7 +5,14 @@ import Observation
 @Observable
 @MainActor
 final class DownloadManager {
-    private(set) var items: [DownloadItem] = []
+    private(set) var items: [DownloadItem] = [] {
+        didSet { updatePauseAll() }
+    }
+
+    /// What Pause All and Resume All would change. Stored, so the menu and the bottom
+    /// bar redraw when these flip, not on every progress line.
+    private(set) var canPauseAll = false
+    private(set) var canResumeAll = false
     var sortOrder: SortOrder = .newest
     var filter = DownloadFilter()
     var pendingManualAdd = false
@@ -69,19 +76,13 @@ final class DownloadManager {
             if ProcessInfo.processInfo.arguments.contains("-sample-queue") {
                 items = DownloadItem.samples
                 isSampleQueue = true
+                updatePauseAll()
                 return
             }
         #endif
-        let restored = (persists ? PersistenceStore.load() : []).map { item -> DownloadItem in
-            var item = item
-            if item.status.isActive {
-                item.status = .queued
-                item.fractionCompleted = nil
-                item.speedBytesPerSecond = nil
-            }
-            return item
-        }
-        items = restored.sorted { $0.addedAt > $1.addedAt }
+        items = Self.restored(persists ? PersistenceStore.load() : []).sorted { $0.addedAt > $1.addedAt }
+        // `didSet` doesn't run in an initializer.
+        updatePauseAll()
         watchNetwork()
         pump()
     }
@@ -113,23 +114,17 @@ final class DownloadManager {
         return components.url ?? url
     }
 
+    /// Stops the card's run where Retry can start it again, and deletes what it downloaded.
     func cancel(id: UUID) {
-        runningTasks[id]?.cancel()
-        runningTasks[id] = nil
-        if let index = items.firstIndex(where: { $0.id == id }), items[index].status.isActive {
-            if [.choosing, .existing].contains(items[index].status) {
-                // No run is left to resume a card waiting for its pick: stop it
-                // where Retry can start it again.
-                items[index].qualityOptions = nil
-                items[index].choiceDeadline = nil
-                items[index].existingFile = nil
-                fail(itemID: id, message: "Cancelled")
-                return
-            }
-            items[index].status = .queued
-            items[index].speedBytesPerSecond = nil
-            saveSoon()
+        let run = stopRun(id)
+        guard let item = items.first(where: { $0.id == id }), item.status.isActive else { return }
+        updateItem(id) {
+            $0.qualityOptions = nil
+            $0.choiceDeadline = nil
+            $0.existingFile = nil
         }
+        fail(itemID: id, message: "Cancelled")
+        removePartials(of: item, after: run)
     }
 
     func retry(id: UUID) {
@@ -147,8 +142,7 @@ final class DownloadManager {
     /// Removes the card; an unfinished one takes its partial files with it.
     func remove(id: UUID) {
         let item = items.first { $0.id == id }
-        let run = runningTasks[id]
-        cancel(id: id)
+        let run = stopRun(id)
         items.removeAll { $0.id == id }
         saveSoon()
         if let item, item.status != .finished { removePartials(of: item, after: run) }
@@ -187,10 +181,7 @@ final class DownloadManager {
     }
 
     private func run(itemID: UUID) async {
-        defer {
-            runningTasks[itemID] = nil
-            pump()
-        }
+        defer { runEnded(itemID) }
 
         guard let index = items.firstIndex(where: { $0.id == itemID }) else { return }
         let url = items[index].sourceURL
@@ -229,6 +220,12 @@ final class DownloadManager {
             if Task.isCancelled { return }
             fail(itemID: itemID, message: Self.hinted(error.localizedDescription, updates: settings.keepsEngineCurrent))
         }
+    }
+
+    private func runEnded(_ itemID: UUID) {
+        // A stopped run's entry is gone already, and a resumed run may hold it now.
+        if !Task.isCancelled { runningTasks[itemID] = nil }
+        pump()
     }
 
     /// Downloads, retrying once with other YouTube clients when the first try is refused,
@@ -271,7 +268,7 @@ final class DownloadManager {
         let preset = items.first(where: { $0.id == itemID })?.quality ?? settings.quality.choice
         let presetArguments = preset.map { QualitySelection.arguments(for: $0, format: settings.format) } ?? []
         let metadata = try await client.probe(url: url, binaries: binaries, extraArguments: cookies + presetArguments)
-        guard let index = items.firstIndex(where: { $0.id == itemID }),
+        guard !Task.isCancelled, let index = items.firstIndex(where: { $0.id == itemID }),
               items[index].status == .resolving else { return nil }
         items[index].title = metadata.title.isEmpty ? items[index].title : metadata.title
         items[index].videoID = metadata.id
@@ -300,7 +297,9 @@ final class DownloadManager {
     private func downloadPhase(
         itemID: UUID, url: URL, extraArguments: [String], planned: [String: Int64],
     ) async throws -> String? {
-        guard !Task.isCancelled, let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
+        // Thrown, not nil: a nil path would mark a stopped card finished.
+        try Task.checkCancellation()
+        guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
         items[index].status = .downloading
         var finalPath: String?
         var progress = DownloadProgress(planned: planned)
@@ -322,6 +321,8 @@ final class DownloadManager {
                 items[index].existingFile = ExistingFile(path: path)
             }
         }
+        // A stopped run's stream just ends; it mustn't mark the card finished.
+        try Task.checkCancellation()
         return finalPath
     }
 
@@ -360,9 +361,23 @@ final class DownloadManager {
     }
 }
 
-extension URL {
-    var fileExistsAsExecutable: Bool {
-        FileManager.default.isExecutableFile(atPath: path)
+// MARK: - Run bookkeeping
+
+/// In this file for the class's private state, outside its body for its length.
+extension DownloadManager {
+    /// Ends the card's run, if any, and returns it so its files can wait for it to exit.
+    @discardableResult
+    func stopRun(_ id: UUID) -> Task<Void, Never>? {
+        let run = runningTasks.removeValue(forKey: id)
+        run?.cancel()
+        return run
+    }
+
+    private func updatePauseAll() {
+        let pausable = items.contains { $0.status.canPause }
+        let paused = items.contains { $0.status == .paused }
+        if canPauseAll != pausable { canPauseAll = pausable }
+        if canResumeAll != paused { canResumeAll = paused }
     }
 }
 

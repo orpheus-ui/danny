@@ -91,6 +91,8 @@ enum D {
         static let cardIconPadding: CGFloat = 6
         static let barIcon: CGFloat = 24
         static let barIconPadding: CGFloat = 8
+        /// The floating bottom bar, its 8 pt margins included.
+        static let bottomBar: CGFloat = 56
         static let toolbarIcon: CGFloat = 20
         /// The title bar's center line, from the window's top: Figma centers the title
         /// and toolbar icons here, and the traffic lights are moved onto it.

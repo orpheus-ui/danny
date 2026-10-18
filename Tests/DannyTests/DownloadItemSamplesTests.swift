@@ -6,7 +6,17 @@ struct DownloadItemSamplesTests {
     @Test
     func `samples show every state`() {
         let states = Set(DownloadItem.samples.map(\.status))
-        #expect(states == [.queued, .resolving, .choosing, .existing, .downloading, .processing, .finished, .failed])
+        #expect(states == [
+            .queued,
+            .resolving,
+            .choosing,
+            .existing,
+            .downloading,
+            .processing,
+            .paused,
+            .finished,
+            .failed,
+        ])
     }
 
     @Test

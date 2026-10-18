@@ -15,6 +15,9 @@ struct ProgressBarView: View {
     var onSignIn: (() -> Void)?
     /// A finished card's actions while it is hovered, as chips at the bar's trailing end.
     var finishedActions: [Chip] = []
+    /// Shown on a running bar; the card passes it only while hovered.
+    var onPause: (() -> Void)?
+    var onResume: (() -> Void)?
 
     struct Chip {
         let icon: String
@@ -40,6 +43,8 @@ struct ProgressBarView: View {
         .overlay(alignment: .trailing) {
             if item.status == .failed { failedActions }
             if item.status == .finished, !finishedActions.isEmpty { doneActions }
+            if item.status.canPause, let onPause { chip(icon: "pause.fill", title: "Pause", action: onPause) }
+            if item.status == .paused, let onResume { chip(icon: "play.fill", title: "Resume", action: onResume) }
         }
     }
 
@@ -60,6 +65,7 @@ struct ProgressBarView: View {
 
     private func fill(_ style: FillStyle, width: CGFloat, track: CGFloat) -> some View {
         DottedFill(width: width, style: style)
+            .opacity(item.status == .paused ? 0.45 : 1)
             .overlay(alignment: .leading) {
                 ProgressLight(trackWidth: track, isRunning: sweeps)
             }
@@ -91,7 +97,9 @@ struct ProgressBarView: View {
     }
 
     private func fillWidth(in total: CGFloat) -> CGFloat {
-        guard item.status == .downloading, let fraction = item.fractionCompleted else { return total }
+        guard item.status == .downloading || item.status == .paused else { return total }
+        // A card paused before its first byte has nothing to fill.
+        guard let fraction = item.fractionCompleted else { return item.status == .paused ? 0 : total }
         let clamped = CGFloat(min(max(fraction, 0), 1))
         return clamped > 0 ? max(total * clamped, D.Size.progressHeight) : 0
     }
@@ -106,7 +114,7 @@ struct ProgressBarView: View {
         switch item.status {
         case .queued, .choosing, .existing:
             nil
-        case .resolving, .downloading, .processing:
+        case .resolving, .downloading, .processing, .paused:
             FillStyle(gradient: D.progressFill, dotStart: D.progressDotStart, dotEnd: D.progressDotEnd)
         case .finished:
             FillStyle(gradient: D.doneFill, dotStart: D.doneStart, dotEnd: D.doneEnd)
@@ -146,6 +154,7 @@ struct ProgressBarView: View {
         case .resolving: ["Fetching…"]
         case .downloading: downloadingParts
         case .processing: ["Merging…"]
+        case .paused: Format.percent(item.fractionCompleted).map { ["Paused", "·", $0] } ?? ["Paused"]
         case .finished: ["Done"]
         case .failed: [item.failureReason?.text ?? "Failed"]
         }
@@ -153,8 +162,7 @@ struct ProgressBarView: View {
 
     private var downloadingParts: [String] {
         let speed = Format.speed(item.speedBytesPerSecond)
-        guard let fraction = item.fractionCompleted else { return [speed ?? "Starting…"] }
-        let percent = "\(Int((fraction * 100).rounded()))%"
+        guard let percent = Format.percent(item.fractionCompleted) else { return [speed ?? "Starting…"] }
         return speed.map { [percent, "-", $0] } ?? [percent]
     }
 
@@ -182,6 +190,13 @@ struct ProgressBarView: View {
             }
         }
         .padding(.trailing, 6)
+    }
+
+    /// Pause and Resume: one labelled chip, like Retry on a failed bar.
+    private func chip(icon: String, title: String, action: @escaping () -> Void) -> some View {
+        miniButton(icon: icon, title: title, action: action)
+            .padding(.trailing, 6)
+            .transition(.opacity)
     }
 
     // MARK: Done

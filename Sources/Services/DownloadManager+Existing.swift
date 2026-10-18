@@ -109,15 +109,14 @@ extension DownloadManager {
     }
 
     /// Deletes what an unfinished download left: `.part` files and merge parts. The
-    /// card's run is stopped first; yt-dlp gets a moment to exit before its files go.
+    /// card's run is stopped first; yt-dlp gets a moment to exit before its files go,
+    /// also when a Pause just stopped it and no run is left to wait for.
     func removePartials(of item: DownloadItem, after run: Task<Void, Never>?) {
         guard let videoID = item.videoID else { return }
         let folders = directories(for: item.sourceURL)
         Task {
-            if let run {
-                await run.value
-                try? await Task.sleep(for: .seconds(1))
-            }
+            await run?.value
+            try? await Task.sleep(for: .seconds(1))
             // Another card for the same video (another link to it) may be using them.
             guard !items.contains(where: { $0.videoID == videoID && $0.status.isActive }) else { return }
             for file in folders.flatMap({ ExistingFiles.partials(id: videoID, in: $0) }) {

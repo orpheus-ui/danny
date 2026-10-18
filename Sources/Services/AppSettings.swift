@@ -90,6 +90,9 @@ final class AppSettings {
     }
 
     /// Each download's top speed in bytes per second; 0 is no limit.
+    /// The speed limits offered, in bytes per second; 0 is no limit.
+    static let speedLimits = [0, 500_000, 1_000_000, 5_000_000, 10_000_000]
+
     var speedLimit: Int {
         didSet { defaults.set(speedLimit, forKey: Key.speedLimit) }
     }

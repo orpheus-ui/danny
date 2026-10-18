@@ -42,8 +42,7 @@ frame before the PR opens, and the PR shows before/after screenshots.
 5. **states** — the frames Figma doesn't have yet are drawn in the same language
    (glass, purple accent, halftone, bold white labels), reviewed as images, and
    added to the Figma file once approved, so Figma stays the one spec. Then
-   they're built. Paused is the visual state only; pausing the engine
-   lands with the core work in M2.
+   they're built. Paused is built with pausing itself (M1.5 pause-resume).
 6. **debt** — the resource items in `backlog.md` that touch the UI. The list
    re-render fix may come earlier if the progress bar work needs it.
 

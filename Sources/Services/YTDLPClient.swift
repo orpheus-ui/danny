@@ -379,3 +379,9 @@ nonisolated struct YTDLPClient: Sendable {
         return output
     }
 }
+
+extension URL {
+    var fileExistsAsExecutable: Bool {
+        FileManager.default.isExecutableFile(atPath: path)
+    }
+}

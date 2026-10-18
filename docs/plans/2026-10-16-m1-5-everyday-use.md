@@ -12,7 +12,7 @@
 | menu-bar — progress and paste-to-download in the menu bar | done | orpheus-ui/danny#47 |
 | organizing — folder per site, filename templates | done | orpheus-ui/danny#40 |
 | network — Wi-Fi only, speed limit | done | orpheus-ui/danny#44 |
-| settings-layout — Settings in tabs | not started | — |
+| settings-layout — Settings in tabs | done | — |
 | pause-resume — pause and resume a download, Pause All, survives quit | in progress | — |
 
 M1 makes Danny look right; this milestone makes the common paths shorter. Each

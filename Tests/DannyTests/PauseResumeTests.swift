@@ -139,6 +139,21 @@ struct PauseResumeTests {
         #expect(runs.last == runs.first)
     }
 
+    @Test func `cancel after a settings change deletes the partial file where the run started`() async throws {
+        let manager = manager()
+        let id = try add(manager)
+        try await halfway(manager, id)
+        let part = try partial()
+        manager.pause(id: id)
+
+        manager.settings.downloadDirectory = scratch.folder()
+        manager.cancel(id: id)
+        for _ in 0 ..< 300 where FileManager.default.fileExists(atPath: part.path) {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(!FileManager.default.fileExists(atPath: part.path))
+    }
+
     @Test func `a retry after a failure uses the current settings`() async throws {
         let manager = manager()
         let id = try add(manager)

@@ -193,10 +193,10 @@ private struct SpeedLimitField: View {
     var body: some View {
         LabeledContent(title) {
             HStack(spacing: 6) {
-                TextField(title, value: megabytes, format: .number.precision(.fractionLength(0 ... 1)))
+                TextField(title, value: megabytes, format: .number.precision(.fractionLength(0 ... 2)))
                     .labelsHidden()
                     .multilineTextAlignment(.trailing)
-                    .frame(width: 56)
+                    .frame(width: 64)
                 Text("MB/s").foregroundStyle(.secondary)
                 Stepper(title, value: megabytes, in: 0.5 ... 100, step: 0.5)
                     .labelsHidden()

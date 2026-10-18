@@ -167,7 +167,8 @@ at launch. With no session for the link's site, no file is written.
 
 YouTube is the exception to "signed in means cookies on every run": its links go
 signed out first and use the session only when the link asks for a sign-in,
-because some signed-in accounts get SABR-only streams capped at 360p.
+because some signed-in accounts get SABR-only streams capped at 360p. When the
+session is used, a YouTube token (ADR-018) gets those accounts the normal streams.
 
 `--cookies-from-browser` was the alternative: it reads the user's own browser,
 which needs Full Disk Access for Safari or a keychain prompt for Chrome, and
@@ -249,3 +250,33 @@ playable until then.
 
 Would change if a common container stops opening in the players Macs ship with
 or users install, or if streaming needs controls a hand-off cannot give.
+
+## ADR-018 — YouTube tokens are minted in a hidden WebKit view
+
+**2026-10-18 · Accepted**
+
+Signed in, YouTube serves some accounts only SABR streams, which yt-dlp can't
+read, so those accounts get the 360p file. yt-dlp's `mweb` client still gets the
+normal streams when its requests carry a proof-of-origin (PO) token from
+YouTube's BotGuard, bound to the video. When a run is about to send YouTube
+cookies, `YouTubeTokens` mints one: it opens a hidden `WKWebView` on a blank page
+with YouTube's origin and no stored data, runs BotGuard's challenge there, mints
+the token for the video ID, and drops the view. yt-dlp gets it as
+`--extractor-args "youtube:…;po_token=mweb.gvs+<token>"` with `mweb` among its
+clients. A mint takes about a second; the token is kept in memory for its
+lifetime (12 hours), so the probe and the download share one. Nothing runs while
+idle (ADR-008), and a failed mint leaves the run as it was before.
+
+yt-dlp's PO token guide points to provider plugins. The common one (bgutil) runs
+BotGuard in Node or Deno, 100 MB or more that Danny doesn't ship (ADR-016), plus
+a Python plugin and a local server or script for yt-dlp to call. WebKit is
+already in Danny, runs BotGuard as the browser it was written for, and needs no
+plugin: Danny passes the token on the command line.
+
+The token doesn't get a signed-out run past YouTube's "confirm you're not a bot"
+check, which comes from the connection, not the request; signed-out runs go on
+without one.
+
+Would change if yt-dlp reads tokens from a provider Danny can serve without a
+plugin, or if YouTube stops binding web tokens to the video ID (then the token
+would follow the account's data sync ID and change per session).

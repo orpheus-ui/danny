@@ -136,6 +136,19 @@ struct PauseResumeTests {
         #expect(item(manager, waiting)?.status == .queued)
     }
 
+    @Test func `the menu offers pause while something runs and resume while something is paused`() throws {
+        let manager = manager(maxConcurrent: 2)
+        let first = try add(manager, "https://example.com/watch?v=one")
+        #expect(manager.canPauseAll && !manager.canResumeAll)
+
+        let second = try add(manager, "https://example.com/watch?v=two")
+        manager.pause(id: first)
+        #expect(manager.canPauseAll && manager.canResumeAll)
+
+        manager.pause(id: second)
+        #expect(!manager.canPauseAll && manager.canResumeAll)
+    }
+
     @Test func `cancel stops the card and deletes its partial file`() async throws {
         let manager = manager()
         let id = try add(manager)

@@ -55,10 +55,6 @@ its own PR, delete it from here when it merges.
   clears it. Add a "Clear Cache" button in Settings that removes cached web data
   but keeps sign-ins (`WKWebsiteDataStore.removeData` with cache types only).
 - **UI snapshot tests** for every card state (M1).
-- **Resume after a settings change.** A resumed card recomputes its folder, filename
-  and format from the current settings, so after a change while it was paused yt-dlp
-  starts over instead of continuing the `.part` files, which stay behind. Keep the
-  started run's destination and format on the item and reuse them on Resume.
 - **App size.** The bundled tools are most of the app: yt-dlp's PyInstaller binary
   (37 MB, universal), and ffmpeg and ffprobe at 17 MB each now that they're built
   for Danny (ADR-013; the old static ffmpeg alone was 161 MB). Options: download

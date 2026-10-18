@@ -85,6 +85,7 @@ extension DownloadManager {
         updateItem(id) {
             $0.existingFilePolicy = policy
             $0.existingFile = nil
+            $0.run = nil
             $0.status = .queued
         }
         saveSoon()
@@ -104,6 +105,7 @@ extension DownloadManager {
             $0.fractionCompleted = 1
             $0.speedBytesPerSecond = nil
             $0.filePath = path
+            $0.run = nil
         }
         saveSoon()
     }

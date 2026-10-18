@@ -124,6 +124,7 @@ final class DownloadManager {
         items[index].speedBytesPerSecond = nil
         items[index].errorMessage = nil
         items[index].filePath = nil
+        items[index].run = nil
         saveSoon()
         pump()
     }
@@ -193,13 +194,10 @@ final class DownloadManager {
         do {
             guard let metadata = try await probe(itemID: itemID, url: url, signedIn: &cookies) else { return }
 
-            guard let choice = qualityChoice(for: itemID, metadata: metadata) else { return }
-            let quality = QualitySelection.arguments(for: choice, format: settings.format)
-            guard let output = try await existingFileCheck(for: itemID, videoID: metadata.id, choice: choice)
-            else { return }
+            guard let started = try await destination(for: itemID, url: url, metadata: metadata) else { return }
 
             let path = try await download(
-                itemID: itemID, url: url, arguments: cookies + quality + output, signedIn: signedIn,
+                itemID: itemID, url: url, arguments: cookies + started.format + started.output, signedIn: signedIn,
                 planned: metadata.plannedFiles,
             )
             await finish(itemID: itemID, path: path)
@@ -254,8 +252,10 @@ final class DownloadManager {
     /// the probe lists the very files the download fetches. Nil when the card was
     /// cancelled or removed meanwhile.
     private func probe(itemID: UUID, url: URL, cookies: [String]) async throws -> VideoMetadata? {
-        let preset = items.first(where: { $0.id == itemID })?.quality ?? settings.quality.choice
-        let presetArguments = preset.map { QualitySelection.arguments(for: $0, format: settings.format) } ?? []
+        let item = items.first(where: { $0.id == itemID })
+        let preset = item?.quality ?? settings.quality.choice
+        let presetArguments = item?.run?.format
+            ?? preset.map { QualitySelection.arguments(for: $0, format: settings.format) } ?? []
         let metadata = try await client.probe(url: url, binaries: binaries, extraArguments: cookies + presetArguments)
         guard !Task.isCancelled, let index = items.firstIndex(where: { $0.id == itemID }),
               items[index].status == .resolving else { return nil }
@@ -293,7 +293,7 @@ final class DownloadManager {
         var finalPath: String?
         var progress = DownloadProgress(planned: planned)
         for try await event in client.downloadStream(
-            url: url, into: downloadDirectory(for: url), binaries: binaries,
+            url: url, into: items[index].run?.directory ?? downloadDirectory(for: url), binaries: binaries,
             extraArguments: extraArguments + YTDLPClient.limitRateArguments(settings.speedLimit),
         ) {
             guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }

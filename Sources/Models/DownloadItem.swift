@@ -68,6 +68,8 @@ struct DownloadItem: Identifiable, Codable, Hashable {
     var existingFilePolicy: ExistingFilePolicy?
     /// While `.existing`: the file found and its resolution, when known.
     var existingFile: ExistingFile?
+    /// Where the download started, kept so a resume continues the same files.
+    var run: DownloadRun?
 
     init(url: URL) {
         id = UUID()
@@ -129,6 +131,15 @@ enum ClipboardPolicy: String, CaseIterable, Identifiable {
         case .off: "Off"
         }
     }
+}
+
+/// The destination and format a download started with. Resume reuses them whatever the
+/// settings say by then, so yt-dlp continues its `.part` files instead of starting over.
+struct DownloadRun: Codable, Hashable {
+    var directory: URL
+    /// The format selection, and the `-o` (folder, name template, " (2)" suffix).
+    var format: [String]
+    var output: [String]
 }
 
 struct ExistingFile: Codable, Hashable {

@@ -108,6 +108,10 @@ enum D {
         static let cardPadding: CGFloat = 10
         static let cardActions: CGFloat = 10
         static let toolbar: CGFloat = 8
+        /// Section headers: not in Figma. Close to their own cards, in line with the
+        /// cards' rounded corners.
+        static let sectionHeader: CGFloat = 8
+        static let sectionHeaderInset: CGFloat = 6
     }
 
     // MARK: Type
@@ -120,6 +124,8 @@ enum D {
         /// SF Pro at 80% width.
         static let cardMeta = SwiftUI.Font.system(size: 12, weight: .medium).width(.condensed)
         static let progressLabel = SwiftUI.Font.system(size: 14, weight: .bold)
+        /// Section headers: not in Figma. The card meta's face, one weight heavier.
+        static let sectionHeader = SwiftUI.Font.system(size: 12, weight: .semibold).width(.condensed)
     }
 
     static func spaceGrotesk(size: CGFloat) -> CTFont {

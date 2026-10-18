@@ -15,6 +15,8 @@ final class DownloadManager {
     private(set) var canResumeAll = false
     var sortOrder: SortOrder = .newest
     var filter = DownloadFilter()
+    /// The day the list groups against; the window sets it when the calendar day changes.
+    var today = Date.now
     var pendingManualAdd = false
     private(set) var lastFailureMessage: String?
     /// The last yt-dlp update check, for Settings: nil until one has run.
@@ -46,19 +48,6 @@ final class DownloadManager {
 
     var activeCount: Int {
         items.filter(\.status.isActive).count
-    }
-
-    var visibleItems: [DownloadItem] {
-        var result = filter.isEmpty ? items : items.filter(filter.matches)
-        switch sortOrder {
-        case .newest: result.sort { $0.addedAt > $1.addedAt }
-        case .oldest: result.sort { $0.addedAt < $1.addedAt }
-        case .name: result.sort { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
-        case .size:
-            result.sort { ($0.totalBytes ?? -1) > ($1.totalBytes ?? -1) }
-        case .status: result.sort { $0.status < $1.status }
-        }
-        return result
     }
 
     init(

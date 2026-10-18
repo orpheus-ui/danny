@@ -138,35 +138,22 @@ struct MediaSnifferWebView: NSViewRepresentable {
 }
 
 extension MediaSnifferWebView.Coordinator: WKScriptMessageHandler {
-    nonisolated func userContentController(
-        _: WKUserContentController, didReceive message: WKScriptMessage,
-    ) {
+    func userContentController(_: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let body = message.body as? [String: Any],
               let rawURL = body["url"] as? String
         else { return }
-        Task { @MainActor in
-            self.onCaptured(rawURL)
-        }
+        onCaptured(rawURL)
     }
 }
 
 extension MediaSnifferWebView.Coordinator: WKNavigationDelegate {
-    nonisolated func webView(_ webView: WKWebView, didCommit _: WKNavigation!) {
-        Task { @MainActor in
-            self.onCommitted(webView.url)
-        }
-    }
-
-    nonisolated func webView(
-        _: WKWebView, decidePolicyFor _: WKNavigationAction,
-        decisionHandler: @escaping (WKNavigationActionPolicy) -> Void,
-    ) {
-        decisionHandler(.allow)
+    func webView(_ webView: WKWebView, didCommit _: WKNavigation!) {
+        onCommitted(webView.url)
     }
 }
 
 extension MediaSnifferWebView.Coordinator: WKUIDelegate {
-    nonisolated func webView(
+    func webView(
         _ webView: WKWebView, createWebViewWith _: WKWebViewConfiguration,
         for navigationAction: WKNavigationAction, windowFeatures _: WKWindowFeatures,
     ) -> WKWebView? {

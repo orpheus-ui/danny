@@ -258,13 +258,15 @@ or users install, or if streaming needs controls a hand-off cannot give.
 Signed in, YouTube serves some accounts only SABR streams, which yt-dlp can't
 read, so those accounts get the 360p file. yt-dlp's `mweb` client still gets the
 normal streams when its requests carry a proof-of-origin (PO) token from
-YouTube's BotGuard, bound to the video. When a run is about to send YouTube
-cookies, `YouTubeTokens` mints one: it opens a hidden `WKWebView` on a blank page
-with YouTube's origin and no stored data, runs BotGuard's challenge there, mints
-the token for the video ID, and drops the view. yt-dlp gets it as
+YouTube's BotGuard. When a run is about to send YouTube cookies, `YouTubeTokens`
+mints one: it opens a hidden `WKWebView` on a blank page with YouTube's origin and
+the browser's sign-ins, reads the watch page to learn what YouTube binds the
+token to (the video ID, or the account's data sync ID for sessions outside that
+experiment, the same choice yt-dlp makes), runs BotGuard's challenge, mints the
+token, and drops the view. yt-dlp gets it as
 `--extractor-args "youtube:…;po_token=mweb.gvs+<token>"` with `mweb` among its
 clients. A mint takes about a second; the token is kept in memory for its
-lifetime (12 hours), so the probe and the download share one. Nothing runs while
+lifetime (12 hours) per video, so the probe and the download share one. Nothing runs while
 idle (ADR-008), and a failed mint leaves the run as it was before.
 
 yt-dlp's PO token guide points to provider plugins. The common one (bgutil) runs
@@ -278,5 +280,4 @@ check, which comes from the connection, not the request; signed-out runs go on
 without one.
 
 Would change if yt-dlp reads tokens from a provider Danny can serve without a
-plugin, or if YouTube stops binding web tokens to the video ID (then the token
-would follow the account's data sync ID and change per session).
+plugin, or if YouTube moves the binding somewhere the watch page doesn't show.

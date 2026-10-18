@@ -6,7 +6,7 @@ import WebKit
 /// `mweb` client still gets the normal streams when the request carries a token from
 /// YouTube's BotGuard. Danny mints one in a hidden `WKWebView` (no Node or Deno), only
 /// when a signed-in YouTube run is about to start, and drops the view right after.
-/// Tokens are bound to the video and kept until they expire.
+/// Tokens are kept per video until they expire.
 @MainActor
 final class YouTubeTokens {
     struct Token {
@@ -76,17 +76,16 @@ final class YouTubeTokens {
     // MARK: Minting
 
     /// Runs BotGuard's challenge in a page with YouTube's origin and mints a token for
-    /// `videoID`. Nil on any failure; the view goes when this returns.
+    /// `videoID`'s run. Nil on any failure; the view goes when this returns. The view
+    /// shares the browser's store (WebKit's default), so it reads the watch page as the
+    /// signed-in user, the way yt-dlp does with the same cookies.
     static func mint(for videoID: String) async -> Token? {
-        let configuration = WKWebViewConfiguration()
-        // Minting needs no session: the token is bound to the video, not the account.
-        configuration.websiteDataStore = .nonPersistent()
-        let view = WKWebView(frame: .zero, configuration: configuration)
+        let view = WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
         let loader = PageLoader()
         view.navigationDelegate = loader
         await loader.load("<!doctype html><title></title>", in: view, origin: URL(string: "https://www.youtube.com/")!)
         guard let result = try? await view.callAsyncJavaScript(
-            mintScript, arguments: ["identifier": videoID], contentWorld: .page,
+            mintScript, arguments: ["videoID": videoID], contentWorld: .page,
         ) as? [String: Any], let value = result["token"] as? String,
                                  let lifetime = result["ttl"] as? Double else { return nil }
         // A little early, so a token never runs out mid-download.
@@ -115,7 +114,9 @@ final class YouTubeTokens {
 
     /// BotGuard's web flow, as yt-dlp's PO token providers run it: fetch a challenge,
     /// run its interpreter, take a snapshot, trade it for an integrity token, then mint
-    /// for the identifier. Gives up after 20 s.
+    /// for what YouTube binds the token to: the video ID where the session has the
+    /// content-bound experiment, else the account's data sync ID (yt-dlp's
+    /// `fetch_po_token` makes the same choice). Gives up after 20 s.
     private static let mintScript = #"""
     const requestKey = 'O43z0dpjhgX20SCx4KAo';
     const jnn = async (method, body) => {
@@ -136,6 +137,10 @@ final class YouTubeTokens {
         (c) => c.charCodeAt(0));
     const toBase64Url = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_');
     const mint = async () => {
+        const page = await (await fetch('/watch?v=' + encodeURIComponent(videoID))).text();
+        const contentBound = /html5_generate_content_po_token(=|\\u003d)true/.test(page);
+        const dataSyncID = page.match(/"DATASYNC_ID":"([^"|]+)/)?.[1];
+        const identifier = contentBound || !dataSyncID ? videoID : dataSyncID;
         const raw = await jnn('Create', [requestKey]);
         const challenge = raw.length > 1 && typeof raw[1] === 'string'
             ? JSON.parse(new TextDecoder().decode(fromBase64(raw[1]).map((b) => b + 97)))

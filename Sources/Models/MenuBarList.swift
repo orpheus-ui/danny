@@ -12,7 +12,7 @@ struct MenuBarList: Equatable {
         let speed: Double?
         let remaining: TimeInterval?
 
-        /// "59% · 2 MBps · 1 min left", with what isn't known left out.
+        /// "59% · 2 MB/s · 1 min left", with what isn't known left out.
         var detail: String {
             [Format.percent(fraction), Format.speed(speed), Format.remaining(remaining)].compactMap(\.self)
                 .joined(separator: " · ")
@@ -42,8 +42,7 @@ struct MenuBarList: Equatable {
 
     static let maxActive = 4
     static let maxFinished = 3
-    /// Newest-added items whose files are dated; a long download can finish after later ones.
-    static let finishedCandidates = 8
+    // Newest-added items whose files are dated; a long download can finish after later ones.
 
     let active: [Active]
     /// Active items beyond `maxActive`.
@@ -54,7 +53,8 @@ struct MenuBarList: Equatable {
     let speed: Double?
     let finished: [Finished]
 
-    /// `finishedAt` says when a finished item's file landed; it is asked only for the few shown.
+    /// `finishedAt` says when a finished item's file landed; it is asked for every finished item, so callers should
+    /// cache it.
     init(items: [DownloadItem], finishedAt: (DownloadItem) -> Date) {
         let counted = items.filter(OverallProgress.counts).sorted { $0.status < $1.status }
         active = counted.prefix(Self.maxActive).map(Self.row)
@@ -65,7 +65,6 @@ struct MenuBarList: Equatable {
         let total = running.reduce(0) { $0 + ($1.speedBytesPerSecond ?? 0) }
         speed = total > 0 ? total : nil
         finished = items.filter { $0.status == .finished && $0.fileURL != nil }
-            .sorted { $0.addedAt > $1.addedAt }.prefix(Self.finishedCandidates)
             .map { Finished(
                 id: $0.id,
                 title: $0.title,
@@ -89,7 +88,7 @@ struct MenuBarList: Equatable {
         )
     }
 
-    /// "2 downloading · 4 MBps", "3 waiting", or "Nothing downloading".
+    /// "2 downloading · 4 MB/s", "3 waiting", or "Nothing downloading".
     var headline: String {
         if downloading > 0 {
             return ["\(downloading) downloading", Format.speed(speed)].compactMap(\.self).joined(separator: " · ")

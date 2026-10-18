@@ -36,7 +36,11 @@ final class AppSettings {
         static let filenameTemplate = "filenameTemplate"
         static let folderPerSite = "folderPerSite"
         static let downloadsOnlyOnWiFi = "downloadsOnlyOnWiFi"
-        static let speedLimit = "speedLimit"
+        static let speedMode = "speedMode"
+        static let balancedLimit = "balancedLimit"
+        static let backgroundLimit = "backgroundLimit"
+        /// Before speed modes: bytes per second, 0 for none.
+        static let legacySpeedLimit = "speedLimit"
         static let menuBarItem = "menuBarItem"
     }
 
@@ -90,12 +94,54 @@ final class AppSettings {
         didSet { defaults.set(downloadsOnlyOnWiFi, forKey: Key.downloadsOnlyOnWiFi) }
     }
 
-    /// Each download's top speed in bytes per second; 0 is no limit.
-    /// The speed limits offered, in bytes per second; 0 is no limit.
-    static let speedLimits = [0, 500_000, 1_000_000, 5_000_000, 10_000_000]
+    /// Applies to downloads that start after it changes; one already running keeps its limit.
+    var speedMode: SpeedMode {
+        didSet { defaults.set(speedMode.rawValue, forKey: Key.speedMode) }
+    }
 
-    var speedLimit: Int {
-        didSet { defaults.set(speedLimit, forKey: Key.speedLimit) }
+    /// Balanced's and Background's top speed per download, in bytes per second.
+    var balancedLimit: Int {
+        didSet {
+            let clamped = Self.clamped(balancedLimit)
+            if clamped != balancedLimit { balancedLimit = clamped }
+            defaults.set(clamped, forKey: Key.balancedLimit)
+        }
+    }
+
+    var backgroundLimit: Int {
+        didSet {
+            let clamped = Self.clamped(backgroundLimit)
+            if clamped != backgroundLimit { backgroundLimit = clamped }
+            defaults.set(clamped, forKey: Key.backgroundLimit)
+        }
+    }
+
+    /// The current mode's top speed per download in bytes per second; 0 is no limit.
+    var speedLimit: Int { limit(for: speedMode) }
+
+    func limit(for mode: SpeedMode) -> Int {
+        switch mode {
+        case .full: 0
+        case .balanced: balancedLimit
+        case .background: backgroundLimit
+        }
+    }
+
+    /// "Balanced · 5 MB/s": the name with what it does.
+    func title(for mode: SpeedMode) -> String {
+        mode == .full ? mode.label : "\(mode.label) · \(Format.limit(limit(for: mode)))"
+    }
+
+    /// Speed modes replaced a list of fixed limits: no limit becomes Full Speed, any other
+    /// value becomes Balanced's limit, so the same speed stays in force.
+    static func migrateSpeedLimit(in defaults: UserDefaults) {
+        guard defaults.object(forKey: Key.speedMode) == nil,
+              let legacy = defaults.object(forKey: Key.legacySpeedLimit) as? Int else { return }
+        if legacy > 0 {
+            defaults.set(SpeedMode.balanced.rawValue, forKey: Key.speedMode)
+            defaults.set(legacy, forKey: Key.balancedLimit)
+        }
+        defaults.removeObject(forKey: Key.legacySpeedLimit)
     }
 
     /// Show overall progress and Paste to Download in the menu bar.
@@ -114,7 +160,10 @@ final class AppSettings {
             ?? .title
         folderPerSite = defaults.bool(forKey: Key.folderPerSite)
         downloadsOnlyOnWiFi = defaults.bool(forKey: Key.downloadsOnlyOnWiFi)
-        speedLimit = defaults.integer(forKey: Key.speedLimit)
+        Self.migrateSpeedLimit(in: defaults)
+        speedMode = defaults.string(forKey: Key.speedMode).flatMap(SpeedMode.init(rawValue:)) ?? .full
+        balancedLimit = Self.storedLimit(Key.balancedLimit, for: .balanced, in: defaults)
+        backgroundLimit = Self.storedLimit(Key.backgroundLimit, for: .background, in: defaults)
         menuBarItem = defaults.bool(forKey: Key.menuBarItem)
         self.defaults = defaults
         let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
@@ -128,5 +177,14 @@ final class AppSettings {
         maxConcurrentDownloads = defaults.object(forKey: Key.maxConcurrent) as? Int ?? 3
         browserConsentGiven = defaults.bool(forKey: Key.browserConsent)
         keepsEngineCurrent = defaults.object(forKey: Key.keepsEngineCurrent) as? Bool ?? true
+    }
+
+    private static func storedLimit(_ key: String, for mode: SpeedMode, in defaults: UserDefaults) -> Int {
+        let stored = defaults.object(forKey: key) as? Int ?? mode.defaultLimit
+        return clamped(stored)
+    }
+
+    private static func clamped(_ limit: Int) -> Int {
+        min(max(limit, SpeedMode.limitRange.lowerBound), SpeedMode.limitRange.upperBound)
     }
 }

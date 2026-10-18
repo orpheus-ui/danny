@@ -150,19 +150,15 @@ struct MenuBarContent: View {
 
     // MARK: Footer
 
-    private static let speedLimits = [0, 1_000_000, 5_000_000, 10_000_000]
-
     private var footer: some View {
         HStack(spacing: 8) {
             Menu {
-                Picker("Speed limit", selection: $settings.speedLimit) {
-                    ForEach(Self.speedLimits, id: \.self) { limit in
-                        Text(Format.speed(Double(limit)) ?? "Unlimited").tag(limit)
-                    }
+                Picker("Speed", selection: $settings.speedMode) {
+                    ForEach(SpeedMode.allCases) { Text(settings.title(for: $0)).tag($0) }
                 }
                 .pickerStyle(.inline)
             } label: {
-                Label("Limit: \(Format.speed(Double(settings.speedLimit)) ?? "Unlimited")", systemImage: "speedometer")
+                Label(settings.title(for: settings.speedMode), systemImage: "speedometer")
             }
             .menuStyle(.button)
             .fixedSize()

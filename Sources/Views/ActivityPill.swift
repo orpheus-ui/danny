@@ -5,7 +5,8 @@ import SwiftUI
 /// a Resume button. Its text changes with the items only, never on a timer.
 struct ActivityPill: View {
     let activity: QueueActivity
-    /// Resume All joins the menu while some cards run and others are paused.
+    /// Pause All is in the menu while something can pause, Resume All while something is paused.
+    var canPauseAll = true
     var canResumeAll = false
     let onPauseAll: () -> Void
     let onResumeAll: () -> Void
@@ -18,15 +19,11 @@ struct ActivityPill: View {
         switch activity {
         case let .active(count, speed):
             Menu {
-                Button("Pause All", action: onPauseAll)
-                if canResumeAll {
-                    Button("Resume All", action: onResumeAll)
-                }
-                Divider()
-                Picker("Speed Limit", selection: $settings.speedLimit) {
-                    ForEach(AppSettings.speedLimits, id: \.self) { limit in
-                        Text(Format.speed(Double(limit)) ?? "Unlimited").tag(limit)
-                    }
+                if canPauseAll { Button("Pause All", action: onPauseAll) }
+                if canResumeAll { Button("Resume All", action: onResumeAll) }
+                if canPauseAll || canResumeAll { Divider() }
+                Picker("Speed", selection: $settings.speedMode) {
+                    ForEach(SpeedMode.allCases) { Text(settings.title(for: $0)).tag($0) }
                 }
                 .pickerStyle(.menu)
                 Toggle("Download Only on Wi-Fi", isOn: $settings.downloadsOnlyOnWiFi)

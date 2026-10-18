@@ -60,8 +60,10 @@ resource budget (ADR-008): nothing here polls, and every animation is one-shot.
    templates offer a few presets (title; title and site; date and title) mapped
    to yt-dlp output templates, with a preview of the name.
 10. **network** — "Download only on Wi-Fi" waits on cellular or tethered links
-    (path changes are observed, not polled), and a speed limit passes
-    `--limit-rate` to yt-dlp.
+    (path changes are observed, not polled). Speed modes (Full Speed,
+    Balanced at 5 MB/s, Background at 1 MB/s, the two limits editable in
+    Settings → Network) pass `--limit-rate` to yt-dlp for downloads that start
+    after the change.
 11. **settings-layout** — last, once the tasks above have added their settings,
     so nothing moves twice. Settings become tabs: General (with "Send to
     Danny"), Downloads, Quality, Network, Sources, Engine & Updates (the layout
@@ -70,7 +72,7 @@ resource budget (ADR-008): nothing here polls, and every animation is one-shot.
     stops its yt-dlp but keeps the `.part` files, which yt-dlp continues on the
     next run; the paused bar is dimmed with "Paused · 59%" and a Resume chip.
     While anything runs, an activity pill beside Sort shows the count and total
-    speed (`↓ 2 · 4 MBps`) and opens Pause All / Resume All, the speed limit
+    speed (`↓ 2 · 4 MB/s`) and opens Pause All / Resume All, the speed mode
     and Download only on Wi-Fi; with everything paused it reads `Paused · 3`
     with a Resume button. At idle there's no pill. ⌥⌘P in the Download menu
     pauses or resumes all.

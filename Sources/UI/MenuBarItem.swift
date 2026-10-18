@@ -53,6 +53,9 @@ final class MenuBarItem: NSObject, NSWindowDelegate {
             let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
             item.button?.target = self
             item.button?.action = #selector(toggle)
+            // ⌘-drag removal needs .removalAllowed; AppKit can restore an item hidden.
+            item.behavior = .removalAllowed
+            item.isVisible = true
             self.item = item
             observations = [
                 item.button!.observe(\.effectiveAppearance) { [weak self] _, _ in

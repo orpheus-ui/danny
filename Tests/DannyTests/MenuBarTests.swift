@@ -43,7 +43,7 @@ struct MenuBarTests {
         first.speedBytesPerSecond = 2_000_000
         var second = item(.downloading, fraction: 0.6)
         second.speedBytesPerSecond = 3_000_000
-        #expect(list([first, second]).headline == "2 downloading · 5 MBps")
+        #expect(list([first, second]).headline == "2 downloading · 5 MB/s")
         #expect(list([item(.queued), item(.queued)]).headline == "2 waiting")
         #expect(list([item(.paused), item(.paused)]).headline == "2 paused")
         #expect(list([item(.paused), item(.paused)]).active.isEmpty)
@@ -57,7 +57,7 @@ struct MenuBarTests {
         running.downloadedBytes = 59_000_000
         running.speedBytesPerSecond = 2_000_000
         let row = list([running]).active[0]
-        #expect(row.detail == "59% · 2 MBps · 21 s left")
+        #expect(row.detail == "59% · 2 MB/s · 21 s left")
         #expect(row.spokenLabel == "Clip, 59 percent, 2 megabytes per second")
         #expect(list([item(.resolving)]).active[0].detail == "")
         #expect(Format.remaining(150) == "3 min left")
@@ -76,6 +76,20 @@ struct MenuBarTests {
             done("b", minutesAgo: 5), done("c", minutesAgo: 30),
         ])
         #expect(list.finished.map(\.title) == ["a", "b", "c"])
+    }
+
+    @Test func `an old item that finishes last still shows among the recent`() {
+        var slow = item(.finished, "slow")
+        slow.filePath = "/f"
+        slow.addedAt = epoch.addingTimeInterval(-3600)
+        let quick = (0 ..< 10).map { index in
+            var done = item(.finished, "quick")
+            done.filePath = "/f"
+            done.addedAt = epoch.addingTimeInterval(Double(-index))
+            return done
+        }
+        let list = MenuBarList(items: [slow] + quick) { $0.title == "slow" ? epoch : epoch.addingTimeInterval(-60) }
+        #expect(list.finished.first?.title == "slow")
     }
 
     @Test func `age reads as just now, minutes, hours or days`() {

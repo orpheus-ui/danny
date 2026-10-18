@@ -28,7 +28,8 @@ struct AddURLSheet: View {
 
     private func submit() {
         guard let trimmed = URL(string: url.trimmingCharacters(in: .whitespacesAndNewlines)),
-              let scheme = trimmed.scheme?.lowercased(), ["http", "https"].contains(scheme)
+              let scheme = trimmed.scheme?.lowercased(), ["http", "https"].contains(scheme),
+              trimmed.host?.isEmpty == false
         else { return }
         onAdd(trimmed)
         dismiss()

@@ -191,9 +191,12 @@ final class DownloadManager {
         var cookies = signedIn
 
         do {
-            guard let metadata = try await probe(itemID: itemID, url: url, signedIn: &cookies) else { return }
-
-            guard let started = try await destination(for: itemID, url: url, metadata: metadata) else { return }
+            guard let metadata = try await probe(itemID: itemID, url: url, signedIn: &cookies),
+                  let started = try await destination(
+                      for: itemID,
+                      url: url,
+                      metadata: metadata,
+                  ) else { return }
 
             let path = try await download(
                 itemID: itemID, url: url, arguments: cookies + started.format + started.output, signedIn: signedIn,

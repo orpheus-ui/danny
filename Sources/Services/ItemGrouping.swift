@@ -1,14 +1,17 @@
 import Foundation
 
 extension DownloadManager {
-    static func sorted(_ items: [DownloadItem], by order: SortOrder) -> [DownloadItem] {
+    /// `size` is what Size sorts by: a running card's live total, when known.
+    static func sorted(
+        _ items: [DownloadItem], by order: SortOrder, size: (DownloadItem) -> Int64? = \.totalBytes,
+    ) -> [DownloadItem] {
         var result = items
         switch order {
         case .newest: result.sort { $0.addedAt > $1.addedAt }
         case .oldest: result.sort { $0.addedAt < $1.addedAt }
         case .name: result.sort { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
         case .size:
-            result.sort { ($0.totalBytes ?? -1) > ($1.totalBytes ?? -1) }
+            result.sort { (size($0) ?? -1) > (size($1) ?? -1) }
         case .status: result.sort { $0.status < $1.status }
         }
         return result

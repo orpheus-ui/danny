@@ -24,7 +24,8 @@ final class DownloadManager {
     /// The day the list groups against; the window sets it when the calendar day changes.
     var today = Date.now { didSet { regroup() } }
     /// The list as shown: active items, then Today, then Earlier, each in the sort order.
-    /// Stored, so reading it neither filters nor sorts; `regroup` works it out again.
+    /// Stored, so reading it neither filters nor sorts: `regroup` redoes it when the
+    /// items, the filter, the sort order or the day change.
     private(set) var visibleGroups: [ItemGroup] = []
     /// The list in display order: the sections one after the other.
     private(set) var visibleItems: [DownloadItem] = []
@@ -294,7 +295,12 @@ final class DownloadManager {
                     fraction: progress.update(file: file, downloaded: downloaded, total: total),
                     totalBytes: progress.totalBytes ?? latest.totalBytes, speed: speed,
                 )
-                if throttle.admit(latest, at: .now) { live.line = latest }
+                if throttle.admit(latest, at: .now) {
+                    let resized = live.line.totalBytes != latest.totalBytes
+                    live.line = latest
+                    // Sorted by size, the list follows the sizes as they become known.
+                    if resized, sortOrder == .size { regroup() }
+                }
             case let .outputFile(path):
                 finalPath = path
             case let .alreadyDownloaded(path):
@@ -313,13 +319,6 @@ final class DownloadManager {
     }
 
     var outputDirectory: URL { settings.downloadDirectory }
-
-    func toolVersions() async -> String {
-        async let ytdlpVersion = client.version(binaries: binaries)
-        let ffmpegInstalled = binaries.ffmpegDirectory != nil
-        let ytdlpText = await (ytdlpVersion) ?? "not found"
-        return "yt-dlp \(ytdlpText) · ffmpeg \(ffmpegInstalled ? "found" : "missing")"
-    }
 
     func fail(itemID: UUID, message: String) {
         guard let index = items.firstIndex(where: { $0.id == itemID }) else { return }
@@ -363,10 +362,10 @@ extension DownloadManager {
         }
     }
 
-    /// Runs when the items, the filter, the sort order or the day change.
     private func regroup() {
         let matching = filter.isEmpty ? items : items.filter(filter.matches)
-        visibleGroups = Self.grouped(Self.sorted(matching, by: sortOrder), now: today)
+        let sorted = Self.sorted(matching, by: sortOrder) { withProgress($0).totalBytes }
+        visibleGroups = Self.grouped(sorted, now: today)
         visibleItems = visibleGroups.flatMap(\.items)
     }
 

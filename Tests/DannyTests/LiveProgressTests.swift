@@ -54,10 +54,13 @@ struct LiveProgressTests {
     private let scratch = TestScratch()
     private let engine = ScriptedEngine()
 
-    private func manager(network: any NetworkPath = NetworkTests.FakeNetworkPath(isMetered: false)) -> DownloadManager {
+    private func manager(
+        network: any NetworkPath = NetworkTests.FakeNetworkPath(isMetered: false), maxConcurrent: Int = 3,
+    ) -> DownloadManager {
         let settings = AppSettings(defaults: scratch.defaults())
         settings.downloadDirectory = scratch.folder()
         settings.downloadsOnlyOnWiFi = true
+        settings.maxConcurrentDownloads = maxConcurrent
         return DownloadManager(
             settings: settings, client: engine,
             binaries: YTDLPClient.Binaries(ytdlp: URL(fileURLWithPath: "/bin/sh"), ffmpegDirectory: nil),
@@ -116,6 +119,19 @@ struct LiveProgressTests {
         #expect(manager.liveProgress[id] == nil)
         #expect(manager.items[0].fractionCompleted == DownloadProgress.ceiling)
         #expect(manager.items[0].totalBytes == 100)
+    }
+
+    @Test func `sorted by size, a running card moves by its live size`() async throws {
+        let manager = manager(maxConcurrent: 1)
+        let running = try await downloading(manager)
+        try manager.add(url: #require(URL(string: "https://example.com/watch?v=def")))
+        manager.sortOrder = .size
+        #expect(manager.visibleItems.map(\.id).last == running) // no size known yet: newest first
+
+        engine.send(1, of: 500)
+        try await Task.sleep(for: .milliseconds(100))
+
+        #expect(manager.visibleItems.map(\.id).first == running)
     }
 
     @Test func `the list follows the items, the filter and the sort order`() throws {

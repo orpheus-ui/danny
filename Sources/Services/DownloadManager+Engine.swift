@@ -1,8 +1,16 @@
 import Foundation
 
-// MARK: - Probe
+// MARK: - Engine
 
+/// What Danny asks yt-dlp before a download: the link's details, and the tools' versions.
 extension DownloadManager {
+    func toolVersions() async -> String {
+        async let ytdlpVersion = client.version(binaries: binaries)
+        let ffmpegInstalled = binaries.ffmpegDirectory != nil
+        let ytdlpText = await (ytdlpVersion) ?? "not found"
+        return "yt-dlp \(ytdlpText) · ffmpeg \(ffmpegInstalled ? "found" : "missing")"
+    }
+
     /// Probes signed out first where the site prefers it, and again signed in when the
     /// link asks for it. `cookies` ends as the set the download uses.
     func probe(itemID: UUID, url: URL, signedIn cookies: inout [String]) async throws -> VideoMetadata? {

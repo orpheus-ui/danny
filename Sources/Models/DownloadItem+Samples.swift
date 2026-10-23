@@ -22,6 +22,8 @@
                 item.totalBytes = 1_040_000_000
                 item.thumbnailURL = thumbnail
                 item.status = state.0
+                // The finished card is from earlier, so the list shows all three sections.
+                if state.0 == .finished { item.addedAt = Date().addingTimeInterval(-2 * 86400) }
                 item.fractionCompleted = state.1
                 item.speedBytesPerSecond = state.0 == .downloading ? 80_000_000 : nil
                 item.errorMessage = state.0 == .failed ? "ERROR: Unsupported URL: https://example.com/page" : nil

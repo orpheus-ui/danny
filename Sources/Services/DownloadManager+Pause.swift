@@ -32,6 +32,22 @@ extension DownloadManager {
         pump()
     }
 
+    /// The folder, name and format of this run. A resumed card keeps the ones its run
+    /// started with: with new settings yt-dlp would start over and leave its `.part`
+    /// files behind. Otherwise they come from the current settings, and nil means the
+    /// card now waits for an answer.
+    func destination(for itemID: UUID, url: URL, metadata: VideoMetadata) async throws -> DownloadRun? {
+        if let kept = items.first(where: { $0.id == itemID })?.run { return kept }
+        guard let choice = qualityChoice(for: itemID, metadata: metadata) else { return nil }
+        let format = QualitySelection.arguments(for: choice, format: settings.format)
+        guard let output = try await existingFileCheck(for: itemID, videoID: metadata.id, choice: choice)
+        else { return nil }
+        let started = DownloadRun(directory: downloadDirectory(for: url), format: format, output: output)
+        updateItem(itemID) { $0.run = started }
+        saveSoon()
+        return started
+    }
+
     private func hold(_ id: UUID) {
         guard items.contains(where: { $0.id == id && $0.status.canPause }) else { return }
         stopRun(id)

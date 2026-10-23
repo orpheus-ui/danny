@@ -7,6 +7,7 @@ struct BottomBarView: View {
     var onEnterURL: () -> Void
     /// The activity pill beside Sort; nil hides it.
     var activity: QueueActivity?
+    var canPauseAll = true
     var canResumeAll = false
     var onPauseAll: () -> Void = {}
     var onResumeAll: () -> Void = {}
@@ -22,7 +23,7 @@ struct BottomBarView: View {
                     sortMenu
                     if let activity {
                         ActivityPill(
-                            activity: activity, canResumeAll: canResumeAll,
+                            activity: activity, canPauseAll: canPauseAll, canResumeAll: canResumeAll,
                             onPauseAll: onPauseAll, onResumeAll: onResumeAll,
                         )
                     }

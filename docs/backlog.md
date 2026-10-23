@@ -31,9 +31,6 @@ its own PR, delete it from here when it merges.
 - **`YTDLPClient.runDownload` blocks a cooperative thread** with
   `process.waitUntilExit()`, and has a complexity waiver. Use a termination
   continuation; split parsing from process handling. (M2)
-- **Swift 6 isolation warnings** in `MediaSnifferWebView`: the popup handler reads
-  main-actor properties from a `nonisolated` method; `decidePolicyFor` never
-  matches WebKit's signature and only allows everything — delete it.
 - **Small dead code:** `_ = existing` in `DownloadManager.add`; unused `url`
   parameter in `DownloadManager.hinted`.
 - **The signed-out-then-signed-in retry has no manager test.** `DownloadEngine` now
@@ -45,15 +42,22 @@ its own PR, delete it from here when it merges.
 
 - **Say when quality falls short.** If the best format is below the chosen quality,
   the card should say so instead of quietly downloading 360p.
+- **Block ads and trackers in Browser Capture.** Optional, on by default, with a
+  switch in Settings and "Allow on this site" for pages it breaks. Use WebKit's
+  `WKContentRuleList`: rules are compiled once and applied in WebKit's network
+  process, so nothing runs while idle. Pages load faster and fewer ad streams reach
+  the sniffer. Lists ship with Danny and update with the app, never in the
+  background; check the list's license before bundling (EasyList and EasyPrivacy
+  are GPLv3 / CC BY-SA). The sign-in window stays unblocked, since blockers break
+  some sign-in flows. Optional: hide cookie banners with CSS-hide rules.
+- **Leave ad media out of captures.** Independent of the blocker: media from known
+  ad hosts (pre-roll MP4s, ad HLS) is dropped from the sniffer's results, so the
+  list shows the page's own video first.
 - **Clear the web cache.** Browser Capture and sign-in fill
   `~/Library/Caches/app.danny.desktop/WebKit` (tens of MB) and nothing bounds or
   clears it. Add a "Clear Cache" button in Settings that removes cached web data
   but keeps sign-ins (`WKWebsiteDataStore.removeData` with cache types only).
 - **UI snapshot tests** for every card state (M1).
-- **Resume after a settings change.** A resumed card recomputes its folder, filename
-  and format from the current settings, so after a change while it was paused yt-dlp
-  starts over instead of continuing the `.part` files, which stay behind. Keep the
-  started run's destination and format on the item and reuse them on Resume.
 - **App size.** The bundled tools are most of the app: yt-dlp's PyInstaller binary
   (37 MB, universal), and ffmpeg and ffprobe at 17 MB each now that they're built
   for Danny (ADR-013; the old static ffmpeg alone was 161 MB). Options: download

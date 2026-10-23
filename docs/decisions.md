@@ -194,7 +194,7 @@ so the choice at launch reads two small files instead of running two binaries.
 
 The signed app bundle is never modified. The rename is atomic, so a download
 already running keeps the old binary and the next one uses the new. One request
-at launch and nothing while idle (ADR-008). Settings › Engine turns it off.
+at launch and nothing while idle (ADR-008). Settings › Engine & Updates turns it off.
 
 Accepted risk: the checksum file comes from the same GitHub release as the
 binary, so it proves the download is intact, not who made it. Someone able to

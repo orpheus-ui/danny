@@ -21,7 +21,7 @@ Danny is an open-source video downloader for macOS, inspired by [Downie](https:/
 - **Smart queue** — configurable concurrent downloads, retry, cancel, per-item actions
 - **Search** — one field filters your downloads; paste a link into it and press Return to download
 - **Persistent history** — the queue survives relaunches
-- **Native & private** — SwiftUI + Liquid Glass, no telemetry, no accounts; what leaves your machine is the video request itself and, each time Danny opens, a check of GitHub for a newer yt-dlp (off in Settings › Engine)
+- **Native & private** — SwiftUI + Liquid Glass, no telemetry, no accounts; what leaves your machine is the video request itself and, each time Danny opens, a check of GitHub for a newer yt-dlp (off in Settings › Engine & Updates)
 
 ![Downloading state](docs/screenshots/states.png)
 

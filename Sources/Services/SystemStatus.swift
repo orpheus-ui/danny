@@ -3,25 +3,28 @@ import Foundation
 import Observation
 import UserNotifications
 
-/// Shows the queue outside the window: overall progress on the Dock icon while
-/// anything downloads, and a notification when a download finishes. It reacts to
+/// Shows the queue outside the window: overall progress on the Dock icon and the
+/// menu-bar icon while anything downloads, and a notification when a download finishes. It reacts to
 /// changes of the manager's items only, so nothing runs while the queue is idle.
 @MainActor
 final class SystemStatus {
     private let manager: DownloadManager
     private let dock: any DockProgress
     private let notifier: any FinishNotifier
+    private let menuBar: MenuBarState
     private let now: () -> ContinuousClock.Instant
     private var throttle = DockThrottle()
     private var statuses: [UUID: ItemStatus]
 
     init(
         manager: DownloadManager, dock: any DockProgress = DockTile(),
-        notifier: any FinishNotifier = FinishNotifications(), now: @escaping () -> ContinuousClock.Instant = { .now },
+        notifier: any FinishNotifier = FinishNotifications(), menuBar: MenuBarState = MenuBarState(),
+        now: @escaping () -> ContinuousClock.Instant = { .now },
     ) {
         self.manager = manager
         self.dock = dock
         self.notifier = notifier
+        self.menuBar = menuBar
         self.now = now
         statuses = Self.statuses(of: manager.items)
         observe()
@@ -50,12 +53,15 @@ final class SystemStatus {
         }
         statuses = Self.statuses(of: items)
         let progress = OverallProgress.of(items)
-        if throttle.admit(progress, at: now()) { dock.show(progress) }
+        if throttle.admit(progress, at: now()) {
+            dock.show(progress)
+            menuBar.show(progress)
+        }
     }
 }
 
-/// Lets a Dock update through at most once per `interval`. Appearing and clearing go
-/// through at once; a repeat of what is shown never does.
+/// Lets a Dock or menu-bar update through at most once per `interval`. Appearing and
+/// clearing go through at once; a repeat of what is shown never does.
 struct DockThrottle {
     var interval: Duration = .seconds(1)
     private(set) var shown: OverallProgress?

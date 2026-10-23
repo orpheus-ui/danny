@@ -8,11 +8,18 @@ import Testing
 /// across a quit.
 @MainActor
 struct PauseResumeTests {
+    /// Where a run was told to download, and with which arguments.
+    struct Destination: Equatable {
+        var directory: URL
+        var arguments: [String]
+    }
+
     /// Stands in for yt-dlp: a download that reports half its bytes, then waits until
     /// its run is stopped, like a long download.
     final class HangingEngine: DownloadEngine {
         private let runs = Mutex(0)
         var downloadRuns: Int { runs.withLock { $0 } }
+        let destinations = Mutex<[Destination]>([])
 
         @concurrent
         func probe(url _: URL, binaries _: YTDLPClient.Binaries, extraArguments _: [String]) async throws
@@ -25,9 +32,10 @@ struct PauseResumeTests {
         func version(binaries _: YTDLPClient.Binaries) async -> String? { nil }
 
         func downloadStream(
-            url _: URL, into _: URL, binaries _: YTDLPClient.Binaries, extraArguments _: [String],
+            url _: URL, into directory: URL, binaries _: YTDLPClient.Binaries, extraArguments: [String],
         ) -> AsyncThrowingStream<DownloadEvent, Error> {
             runs.withLock { $0 += 1 }
+            destinations.withLock { $0.append(Destination(directory: directory, arguments: extraArguments)) }
             return AsyncThrowingStream { continuation in
                 continuation.yield(.progress(downloaded: 50, total: 100, speedBytesPerSecond: 1000))
             }
@@ -108,6 +116,78 @@ struct PauseResumeTests {
         #expect(item(manager, id)?.status == .downloading)
     }
 
+    /// Settings changed while paused must not move the card: yt-dlp would start over and
+    /// the `.part` files would stay behind.
+    @Test func `resume keeps the destination and format the run started with`() async throws {
+        let manager = manager()
+        let id = try add(manager)
+        try await halfway(manager, id)
+        manager.pause(id: id)
+
+        manager.settings.downloadDirectory = scratch.folder()
+        manager.settings.folderPerSite = true
+        manager.settings.filenameTemplate = .dateAndTitle
+        manager.settings.format = .highest
+        manager.settings.quality = .upTo720
+        manager.resume(id: id)
+        for _ in 0 ..< 200 where engine.downloadRuns < 2 {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let runs = engine.destinations.withLock { $0 }
+        #expect(runs.count == 2)
+        #expect(runs.first?.directory == folder)
+        #expect(runs.last == runs.first)
+    }
+
+    @Test func `cancel after a settings change deletes the partial file where the run started`() async throws {
+        let manager = manager()
+        let id = try add(manager)
+        try await halfway(manager, id)
+        let part = try partial()
+        manager.pause(id: id)
+
+        manager.settings.downloadDirectory = scratch.folder()
+        manager.cancel(id: id)
+        for _ in 0 ..< 300 where FileManager.default.fileExists(atPath: part.path) {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(!FileManager.default.fileExists(atPath: part.path))
+    }
+
+    @Test func `a retry after a failure uses the current settings`() async throws {
+        let manager = manager()
+        let id = try add(manager)
+        try await halfway(manager, id)
+        manager.pause(id: id)
+        manager.fail(itemID: id, message: "Network down")
+
+        manager.settings.folderPerSite = true
+        manager.retry(id: id)
+        for _ in 0 ..< 200 where engine.downloadRuns < 2 {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(engine.destinations.withLock { $0.last?.directory.path } == folder.appendingPathComponent("example.com")
+            .path)
+    }
+
+    @Test func `a saved run without a stored destination still loads`() throws {
+        let item = try DownloadItem(url: #require(URL(string: "https://example.com/watch?v=abc")))
+        let encoded = try JSONEncoder().encode([item])
+        var json = try #require(JSONSerialization.jsonObject(with: encoded) as? [[String: Any]])
+        json[0].removeValue(forKey: "run")
+        let old = try JSONSerialization.data(withJSONObject: json)
+        #expect(try JSONDecoder().decode([DownloadItem].self, from: old).first?.run == nil)
+    }
+
+    @Test func `a paused card's destination survives a quit`() throws {
+        var item = try DownloadItem(url: #require(URL(string: "https://example.com/watch?v=abc")))
+        item.status = .paused
+        item.run = DownloadRun(directory: folder, format: ["-f", "best"], output: ["-o", "x"])
+        let file = folder.appendingPathComponent("history.json")
+        PersistenceStore.save([item], to: file)
+        #expect(PersistenceStore.load(from: file).first?.run == item.run)
+    }
+
     @Test func `a paused card frees its slot for the next one`() throws {
         let manager = manager(maxConcurrent: 1)
         let first = try add(manager, "https://example.com/watch?v=one")
@@ -134,6 +214,19 @@ struct PauseResumeTests {
         // The older card gets the one slot again.
         #expect(item(manager, running)?.status == .resolving)
         #expect(item(manager, waiting)?.status == .queued)
+    }
+
+    @Test func `the menu offers pause while something runs and resume while something is paused`() throws {
+        let manager = manager(maxConcurrent: 2)
+        let first = try add(manager, "https://example.com/watch?v=one")
+        #expect(manager.canPauseAll && !manager.canResumeAll)
+
+        let second = try add(manager, "https://example.com/watch?v=two")
+        manager.pause(id: first)
+        #expect(manager.canPauseAll && manager.canResumeAll)
+
+        manager.pause(id: second)
+        #expect(!manager.canPauseAll && manager.canResumeAll)
     }
 
     @Test func `cancel stops the card and deletes its partial file`() async throws {

@@ -8,11 +8,11 @@
 | keyboard — select, remove and retry from the keyboard | not started | — |
 | system — Dock progress, notification when a download finishes | done | orpheus-ui/danny#41 |
 | failures — plain-language errors with one suggested fix | done | orpheus-ui/danny#39 |
-| grouping — active first, then Today and Earlier | not started | — |
-| menu-bar — progress and paste-to-download in the menu bar | not started | — |
+| grouping — active first, then Today and Earlier | done | orpheus-ui/danny#52 |
+| menu-bar — progress and paste-to-download in the menu bar | done | orpheus-ui/danny#47 |
 | organizing — folder per site, filename templates | done | orpheus-ui/danny#40 |
 | network — Wi-Fi only, speed limit | done | orpheus-ui/danny#44 |
-| settings-layout — Settings in tabs | not started | — |
+| settings-layout — Settings in tabs | done | — |
 | pause-resume — pause and resume a download, Pause All, survives quit | in progress | — |
 
 M1 makes Danny look right; this milestone makes the common paths shorter. Each
@@ -49,15 +49,21 @@ resource budget (ADR-008): nothing here polls, and every animation is one-shot.
    with tests, built from real error lines.
 7. **grouping** — active items first, then Today and Earlier, with small section
    headers. Sorting still applies inside each group.
-8. **menu-bar** — an optional menu-bar item: a ring that fills with overall
-   progress, the active items, and Paste to Download. Off by default.
+8. **menu-bar** — an optional menu-bar item, off by default: the Danny mark that
+   fills from the bottom with overall progress, with the percentage beside it. Its
+   popover (system glass) shows a headline and speed, an add row for the clipboard's
+   link or a typed one, up to four active downloads (click shows the card in the
+   window), the last three finished files (click opens, draggable), and quick
+   toggles for the speed limit and Wi-Fi only. It exists only while open.
 9. **organizing** — Settings keep the download folder; a new option saves into
    a subfolder per site (`Downloads/youtube.com/…`), off by default. Filename
    templates offer a few presets (title; title and site; date and title) mapped
    to yt-dlp output templates, with a preview of the name.
 10. **network** — "Download only on Wi-Fi" waits on cellular or tethered links
-    (path changes are observed, not polled), and a speed limit passes
-    `--limit-rate` to yt-dlp.
+    (path changes are observed, not polled). Speed modes (Full Speed,
+    Balanced at 5 MB/s, Background at 1 MB/s, the two limits editable in
+    Settings → Network) pass `--limit-rate` to yt-dlp for downloads that start
+    after the change.
 11. **settings-layout** — last, once the tasks above have added their settings,
     so nothing moves twice. Settings become tabs: General (with "Send to
     Danny"), Downloads, Quality, Network, Sources, Engine & Updates (the layout
@@ -66,7 +72,7 @@ resource budget (ADR-008): nothing here polls, and every animation is one-shot.
     stops its yt-dlp but keeps the `.part` files, which yt-dlp continues on the
     next run; the paused bar is dimmed with "Paused · 59%" and a Resume chip.
     While anything runs, an activity pill beside Sort shows the count and total
-    speed (`↓ 2 · 4 MBps`) and opens Pause All / Resume All, the speed limit
+    speed (`↓ 2 · 4 MB/s`) and opens Pause All / Resume All, the speed mode
     and Download only on Wi-Fi; with everything paused it reads `Paused · 3`
     with a Resume button. At idle there's no pill. ⌥⌘P in the Download menu
     pauses or resumes all.
@@ -83,4 +89,5 @@ resource budget (ADR-008): nothing here polls, and every animation is one-shot.
 ## Open
 
 - Whether the menu-bar item and the Dock progress should both exist by default.
-  Both are built; Settings decide.
+  Both are built; Settings decide. The menu-bar item ships off by default; the
+  Dock progress is always on.

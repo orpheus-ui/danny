@@ -85,6 +85,7 @@ extension DownloadManager {
         updateItem(id) {
             $0.existingFilePolicy = policy
             $0.existingFile = nil
+            $0.run = nil
             $0.status = .queued
         }
         saveSoon()
@@ -104,6 +105,7 @@ extension DownloadManager {
             $0.fractionCompleted = 1
             $0.speedBytesPerSecond = nil
             $0.filePath = path
+            $0.run = nil
         }
         saveSoon()
     }
@@ -113,7 +115,8 @@ extension DownloadManager {
     /// also when a Pause just stopped it and no run is left to wait for.
     func removePartials(of item: DownloadItem, after run: Task<Void, Never>?) {
         guard let videoID = item.videoID else { return }
-        let folders = directories(for: item.sourceURL)
+        // The run's own folder too: the settings may have moved on since it started.
+        let folders = (item.run.map { [$0.directory] } ?? []) + directories(for: item.sourceURL)
         Task {
             await run?.value
             try? await Task.sleep(for: .seconds(1))
@@ -135,6 +138,7 @@ extension DownloadManager {
             $0.resolution = existing.resolution ?? $0.resolution
             $0.fractionCompleted = 1
             $0.existingFile = nil
+            $0.run = nil
         }
         saveSoon()
     }

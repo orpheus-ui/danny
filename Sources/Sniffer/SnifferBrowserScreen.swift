@@ -98,9 +98,7 @@ struct SnifferBrowserScreen: View {
             .padding(.vertical, 6)
             .background(Capsule().fill(Color.primary.opacity(0.06)))
 
-            if settings.blocksAds, let host = currentHost {
-                adsButton(host: host)
-            }
+            adsMenu
 
             Button("Send to Danny") {
                 if let url = resolvedAddressURL {
@@ -119,22 +117,37 @@ struct SnifferBrowserScreen: View {
         reference.webView?.url?.host()?.lowercased()
     }
 
-    /// "Allow on this site" for a page the blocker breaks; the page reloads with the new choice.
-    private func adsButton(host: String) -> some View {
-        let allowed = settings.adsAllowedSites.contains(host)
-        let label = allowed ? "Block Ads on This Site" : "Allow Ads on This Site"
-        return Button {
-            if allowed {
-                settings.adsAllowedSites.remove(host)
-            } else {
-                settings.adsAllowedSites.insert(host)
+    /// The blocker's switch, and "Allow on this site" for a page it breaks. A change
+    /// reloads the page so the rules match it.
+    private var adsMenu: some View {
+        @Bindable var settings = settings
+        let host = currentHost
+        let blocksHere = settings.blocksAds(on: host)
+        return Menu {
+            Toggle("Block Ads and Trackers", isOn: $settings.blocksAds)
+            if let host {
+                Toggle("Allow on \(host)", isOn: Binding(
+                    get: { settings.adsAllowedSites.contains(host) },
+                    set: { allowed in
+                        if allowed {
+                            settings.adsAllowedSites.insert(host)
+                        } else {
+                            settings.adsAllowedSites.remove(host)
+                        }
+                        reference.webView?.reload()
+                    },
+                ))
+                .disabled(!settings.blocksAds)
             }
-            reference.webView?.reload()
         } label: {
-            Image(systemName: allowed ? "shield.slash" : "shield.lefthalf.filled")
+            Image(systemName: blocksHere ? "shield.lefthalf.filled" : "shield.slash")
         }
-        .help(label)
-        .accessibilityLabel(label)
+        .menuStyle(.button)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help(blocksHere ? "Ads and trackers blocked" : "Ads and trackers allowed")
+        .accessibilityLabel("Ad blocking")
+        .accessibilityValue(blocksHere ? "On" : "Off")
     }
 
     private var resolvedAddressURL: URL? {

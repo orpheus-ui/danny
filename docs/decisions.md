@@ -283,3 +283,27 @@ without one.
 
 Would change if yt-dlp reads tokens from a provider Danny can serve without a
 plugin, or if YouTube moves the binding somewhere the watch page doesn't show.
+
+## ADR-019 — Browser Capture blocks ads with a host list of its own
+
+**2026-10-24 · Accepted**
+
+Browser Capture blocks ad and tracker requests, on by default, with a switch in
+Settings → Sources and "Allow ads on this site" in the capture browser's toolbar.
+The rules are a `WKContentRuleList`: WebKit compiles them once, keeps them in
+`WKContentRuleListStore` under an identifier named after a digest of the rules, and
+blocks in its network process, so nothing of Danny's runs while idle (ADR-008). The
+same hosts drop ad media (pre-roll MP4s, ad HLS) from the captured list, whether
+the blocker is on or not. The sign-in window loads without the rules, since
+blockers break some sign-in flows.
+
+The list is `AdHosts`, about eighty major ad, ad-video and tracker hosts written
+for Danny under its MIT license, and it changes only with app releases. EasyList
+and EasyPrivacy would block more, but they are GPLv3 / CC BY-SA, and their
+share-alike terms would reach a bundled, converted copy in an MIT app. Their tens of
+thousands of rules also need a converter for WebKit's rule format and its rule
+limit. Blocking whole hosts covers the ad servers and video ad CDNs that slow pages
+and fill the captured list, which is what Browser Capture needs.
+
+Would change if a permissively licensed list of the same quality appears, or if
+missed ads become a common complaint.

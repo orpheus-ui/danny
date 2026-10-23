@@ -29,6 +29,8 @@ final class AppSettings {
         static let clipboard = "clipboardLinks"
         static let maxConcurrent = "maxConcurrentDownloads"
         static let browserConsent = "browserConsentGiven"
+        static let blocksAds = "blocksAds"
+        static let adsAllowedSites = "adsAllowedSites"
         static let quality = "quality"
         static let format = "format"
         static let keepsEngineCurrent = "keepsEngineCurrent"
@@ -59,6 +61,20 @@ final class AppSettings {
 
     var browserConsentGiven: Bool {
         didSet { defaults.set(browserConsentGiven, forKey: Key.browserConsent) }
+    }
+
+    /// Browser Capture blocks ad and tracker hosts, except on the sites in `adsAllowedSites`.
+    var blocksAds: Bool {
+        didSet { defaults.set(blocksAds, forKey: Key.blocksAds) }
+    }
+
+    /// Hosts the user allowed ads on from Browser Capture's toolbar.
+    var adsAllowedSites: Set<String> {
+        didSet { defaults.set(adsAllowedSites.sorted(), forKey: Key.adsAllowedSites) }
+    }
+
+    func blocksAds(on host: String?) -> Bool {
+        blocksAds && !adsAllowedSites.contains(host?.lowercased() ?? "")
     }
 
     var quality: QualityPreference {
@@ -176,6 +192,8 @@ final class AppSettings {
         }
         maxConcurrentDownloads = defaults.object(forKey: Key.maxConcurrent) as? Int ?? 3
         browserConsentGiven = defaults.bool(forKey: Key.browserConsent)
+        blocksAds = defaults.object(forKey: Key.blocksAds) as? Bool ?? true
+        adsAllowedSites = Set(defaults.stringArray(forKey: Key.adsAllowedSites) ?? [])
         keepsEngineCurrent = defaults.object(forKey: Key.keepsEngineCurrent) as? Bool ?? true
     }
 

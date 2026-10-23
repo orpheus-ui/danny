@@ -10,6 +10,9 @@ struct SnifferBrowserScreen: View {
     @State private var addressField = ""
     @State private var startURL = SnifferBrowserScreen.initialURL()
     @State private var reference = WebViewReference()
+    /// Outer nil until the rules are looked up, so the first page already loads blocked;
+    /// inner nil when WebKit couldn't compile them.
+    @State private var ruleList: WKContentRuleList??
 
     static func initialURL() -> URL {
         LinkIntake.pasteboardLink() ?? URL(string: "https://duckduckgo.com")!
@@ -20,20 +23,27 @@ struct SnifferBrowserScreen: View {
             VStack(spacing: 0) {
                 toolbar
                 Divider().opacity(0.15)
-                MediaSnifferWebView(
-                    startURL: startURL,
-                    reference: reference,
-                    onCaptured: { store.capture(rawURL: $0) },
-                    onCommitted: { url in
-                        currentURLSync(url)
-                    },
-                )
+                if let ruleList {
+                    MediaSnifferWebView(
+                        startURL: startURL,
+                        reference: reference,
+                        ruleList: ruleList,
+                        blocksAds: { settings.blocksAds(on: $0) },
+                        onCaptured: { store.capture(rawURL: $0) },
+                        onCommitted: { url in
+                            currentURLSync(url)
+                        },
+                    )
+                } else {
+                    Color.clear
+                }
             }
             Divider().opacity(0.2)
             sidebar
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .frame(minWidth: 860, minHeight: 540)
+        .task { ruleList = await ContentBlocker.ruleList() }
         .task(id: model.snifferStartURL) {
             if let url = model.snifferStartURL {
                 model.snifferStartURL = nil
@@ -82,6 +92,10 @@ struct SnifferBrowserScreen: View {
             .padding(.vertical, 6)
             .background(Capsule().fill(Color.primary.opacity(0.06)))
 
+            if settings.blocksAds, let host = currentHost {
+                adsButton(host: host)
+            }
+
             Button("Send to Danny") {
                 if let url = resolvedAddressURL {
                     _ = manager.add(url: url)
@@ -93,6 +107,28 @@ struct SnifferBrowserScreen: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .buttonStyle(.plain)
+    }
+
+    private var currentHost: String? {
+        reference.webView?.url?.host()?.lowercased()
+    }
+
+    /// "Allow on this site" for a page the blocker breaks; the page reloads with the new choice.
+    private func adsButton(host: String) -> some View {
+        let allowed = settings.adsAllowedSites.contains(host)
+        let label = allowed ? "Block Ads on This Site" : "Allow Ads on This Site"
+        return Button {
+            if allowed {
+                settings.adsAllowedSites.remove(host)
+            } else {
+                settings.adsAllowedSites.insert(host)
+            }
+            reference.webView?.reload()
+        } label: {
+            Image(systemName: allowed ? "shield.slash" : "shield.lefthalf.filled")
+        }
+        .help(label)
+        .accessibilityLabel(label)
     }
 
     private var resolvedAddressURL: URL? {

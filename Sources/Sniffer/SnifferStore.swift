@@ -51,6 +51,7 @@ final class SnifferStore {
         else { return }
         let path = url.path.lowercased()
         if Self.ignoredExtensions.contains(where: { path.hasSuffix("." + $0) }) { return }
+        if AdHosts.contains(url) { return }
         guard !captured.contains(where: { $0.url == url }) else { return }
         let kind = Self.classify(url)
         captured.insert(CapturedMedia(url: url, kind: kind), at: 0)

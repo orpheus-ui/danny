@@ -51,7 +51,10 @@ Tests/DannyTests/       Swift Testing unit tests
 
 Browser Capture injects a script into the page that reports every media URL it
 sees (`<video>` sources, network requests matching media patterns) through a
-`WKScriptMessageHandler`; `SnifferStore` classifies them as HLS, DASH or file.
+`WKScriptMessageHandler`; `SnifferStore` classifies them as HLS, DASH or file and
+leaves out media from known ad hosts. Unless switched off, a `WKContentRuleList` built
+from the same hosts blocks ads and trackers in WebKit's network process (ADR-019); the
+sign-in window loads without it.
 
 ### State
 

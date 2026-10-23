@@ -13,12 +13,18 @@ Danny is an open-source video downloader for macOS, inspired by [Downie](https:/
 
 - **Downloads from anywhere** — powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp): YouTube, X/Twitter, Instagram, TikTok, Vimeo, and 1000+ extractors
 - **Browser Capture** — a built-in browser that sniffs network traffic, `<video>` elements, HLS (`m3u8`) and DASH (`mpd`) manifests while you browse. Every detected stream appears in the sidebar with a one-click **+** to download
-- **Live progress** — percentage and real-time speed on a liquid-glass progress bar
+- **Live progress** — percentage and real-time speed on a liquid-glass progress bar, overall progress in the Dock icon, and a notification when a download finishes
+- **Menu-bar item** (off by default) — overall progress, paste to download, the last finished files and quick speed and Wi-Fi toggles
+- **Speed modes** — Full Speed, Balanced (5 MB/s) or Background (1 MB/s), or your own limits; optionally download only on Wi-Fi
+- **Clear failures** — a short reason for a failed download and the one action that can help
+- **Organized folders** — optionally a folder per site, and filename templates with a preview
 - **Quality and format** — a default in Settings (best, a resolution cap or audio only, in a format that plays everywhere or the highest quality), or **Ask** to pick from the formats on the card
 - **Already downloaded?** — before fetching a video that's already in the folder, Danny asks: replace it, keep both, or show the one you have
 - **Sign in to sites** — downloads that need an account work as you, signed in on the site's own page; YouTube goes signed out first and uses the sign-in only when a video asks for it
 - **Add links your way** — ⌘V in the window, drag a link or `.webloc` onto it, paste from the `+` menu, or copy one in another app and Danny offers it when you switch back
-- **Smart queue** — configurable concurrent downloads, retry, cancel, per-item actions
+- **Smart queue** — configurable concurrent downloads, pause and resume (Pause All, ⌥⌘P), retry, cancel, per-item actions; a paused download resumes into the folder and format it started with
+- **Keyboard** — arrows move the selection, ⌫ removes, ⌘R retries, Return opens a finished video, Space opens Quick Look
+- **Grouped list** — active downloads first, then Today and Earlier
 - **Search** — one field filters your downloads; paste a link into it and press Return to download
 - **Persistent history** — the queue survives relaunches
 - **Native & private** — SwiftUI + Liquid Glass, no telemetry, no accounts; what leaves your machine is the video request itself and, each time Danny opens, a check of GitHub for a newer yt-dlp (off in Settings › Engine & Updates)
@@ -69,8 +75,9 @@ Danny looks for `yt-dlp` and `ffmpeg` in this order:
 - **`+`** — paste a link from the clipboard or type a URL
 - **⌘⇧V** — paste and download from the Download menu
 - **Browser Capture** (globe icon or ⌘⇧B) — for sites where extraction fails. Browse, play the video, then pick the stream from the sidebar. The first launch asks for your consent
-- **Settings › Accounts** — sign in to YouTube, Instagram, X, Facebook or any site you add, so downloads work as you. Sign-in happens on the site's own page in Danny's browser
-- **⌘N** — enter a URL manually · **⌘, ** — settings (save folder, concurrency, copied links)
+- **Settings › Sources** — sign in to YouTube, Instagram, X, Facebook or any site you add, so downloads work as you. Sign-in happens on the site's own page in Danny's browser
+- **Double-click** a finished video to open it; hover a card for Reveal in Finder, Copy Link and Play
+- **⌘N** — enter a URL manually · **⌘, ** — settings, in tabs: General, Downloads, Quality, Network, Sources, Engine & Updates
 
 ## Contributing
 

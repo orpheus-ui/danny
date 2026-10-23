@@ -19,9 +19,6 @@ its own PR, delete it from here when it merges.
   and observe per item. (`DownloadManager.downloadPhase`)
 - **`visibleItems` filters and sorts on every read** from the view body. Cache it
   and recompute when items, query or sort order change. (`DownloadManager.visibleItems`)
-- **Idle wakeups.** An empty, hidden window still wakes ~4 times a second (~15 before the clipboard timer went)
-  (budget: under 1), and ~30 with six cards — no animation runs then, so it's
-  timers or observation. Profile with `/perf-check` §4.
 
 ## Debt — structure
 

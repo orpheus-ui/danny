@@ -26,6 +26,7 @@ final class DownloadManager {
     let settings: AppSettings
     /// Signed-in sites; a run passes the link's site cookies to yt-dlp when present.
     var sessions: SiteSessions?
+    let youTubeTokens = YouTubeTokens()
 
     let client: any DownloadEngine
     private var binaries: YTDLPClient.Binaries = .missing
@@ -46,9 +47,7 @@ final class DownloadManager {
     /// Replace's way to drop the old file; tests delete their own file instead.
     var moveToTrash: (URL) throws -> Void = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) }
 
-    var activeCount: Int {
-        items.filter(\.status.isActive).count
-    }
+    var activeCount: Int { items.count { $0.status.isActive } }
 
     init(
         settings: AppSettings, client: any DownloadEngine = YTDLPClient(),
@@ -256,7 +255,8 @@ final class DownloadManager {
         let preset = item?.quality ?? settings.quality.choice
         let presetArguments = item?.run?.format
             ?? preset.map { QualitySelection.arguments(for: $0, format: settings.format) } ?? []
-        let metadata = try await client.probe(url: url, binaries: binaries, extraArguments: cookies + presetArguments)
+        let arguments = await youTubeTokens.arguments(cookies + presetArguments, for: url)
+        let metadata = try await client.probe(url: url, binaries: binaries, extraArguments: arguments)
         guard !Task.isCancelled, let index = items.firstIndex(where: { $0.id == itemID }),
               items[index].status == .resolving else { return nil }
         items[index].title = metadata.title.isEmpty ? items[index].title : metadata.title
@@ -287,6 +287,7 @@ final class DownloadManager {
         itemID: UUID, url: URL, extraArguments: [String], planned: [String: Int64],
     ) async throws -> String? {
         // Thrown, not nil: a nil path would mark a stopped card finished.
+        let arguments = await youTubeTokens.arguments(extraArguments, for: url)
         try Task.checkCancellation()
         guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
         items[index].status = .downloading
@@ -294,7 +295,7 @@ final class DownloadManager {
         var progress = DownloadProgress(planned: planned)
         for try await event in client.downloadStream(
             url: url, into: items[index].run?.directory ?? downloadDirectory(for: url), binaries: binaries,
-            extraArguments: extraArguments + YTDLPClient.limitRateArguments(settings.speedLimit),
+            extraArguments: arguments + YTDLPClient.limitRateArguments(settings.speedLimit),
         ) {
             guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
             switch event {

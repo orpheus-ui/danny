@@ -40,11 +40,6 @@ its own PR, delete it from here when it merges.
 
 ## Missing
 
-- **YouTube tokens (PO tokens).** When YouTube serves an account only its newer
-  streaming format (SABR), yt-dlp is left with the 360p file. A token from YouTube's
-  BotGuard restores the normal streams. The common provider (bgutil) needs Node or
-  Deno; minting the token in a hidden `WKWebView` needs neither and uses WebKit
-  Danny already has.
 - **Say when quality falls short.** If the best format is below the chosen quality,
   the card should say so instead of quietly downloading 360p.
 - **Block ads and trackers in Browser Capture.** Optional, on by default, with a

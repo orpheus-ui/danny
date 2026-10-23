@@ -23,7 +23,7 @@ final class MenuBarPopoverModel {
     }
 
     private func observe() {
-        let items = withObservationTracking { manager.items } onChange: { [weak self] in
+        let items = withObservationTracking { manager.itemsWithProgress } onChange: { [weak self] in
             Task { @MainActor in self?.observe() }
         }
         list = MenuBarList(items: items, finishedAt: finishedDate)

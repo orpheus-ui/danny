@@ -5,7 +5,7 @@ import UserNotifications
 
 /// Shows the queue outside the window: overall progress on the Dock icon and the
 /// menu-bar icon while anything downloads, and a notification when a download finishes. It reacts to
-/// changes of the manager's items only, so nothing runs while the queue is idle.
+/// changes of the manager's items and their progress only, so nothing runs while the queue is idle.
 @MainActor
 final class SystemStatus {
     private let manager: DownloadManager
@@ -13,7 +13,7 @@ final class SystemStatus {
     private let notifier: any FinishNotifier
     private let menuBar: MenuBarState
     private let now: () -> ContinuousClock.Instant
-    private var throttle = DockThrottle()
+    private var throttle = Throttle<OverallProgress>()
     private var statuses: [UUID: ItemStatus]
 
     init(
@@ -37,7 +37,7 @@ final class SystemStatus {
     /// Observation fires once per registration, so each change registers again;
     /// changes between a fire and the next read arrive together.
     private func observe() {
-        let items = withObservationTracking { manager.items } onChange: { [weak self] in
+        let items = withObservationTracking { manager.itemsWithProgress } onChange: { [weak self] in
             Task { @MainActor in self?.observe() }
         }
         changed(items)
@@ -57,24 +57,6 @@ final class SystemStatus {
             dock.show(progress)
             menuBar.show(progress)
         }
-    }
-}
-
-/// Lets a Dock or menu-bar update through at most once per `interval`. Appearing and
-/// clearing go through at once; a repeat of what is shown never does.
-struct DockThrottle {
-    var interval: Duration = .seconds(1)
-    private(set) var shown: OverallProgress?
-    private var shownAt: ContinuousClock.Instant?
-
-    // shortcut: a dropped update waits for the next progress line rather than a
-    // timer, so a stalled download can show a value up to a second old.
-    mutating func admit(_ progress: OverallProgress?, at now: ContinuousClock.Instant) -> Bool {
-        guard progress != shown else { return false }
-        if shown != nil, progress != nil, let shownAt, now - shownAt < interval { return false }
-        shown = progress
-        shownAt = now
-        return true
     }
 }
 

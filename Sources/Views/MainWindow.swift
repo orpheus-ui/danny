@@ -195,7 +195,7 @@ struct MainWindow: View {
                 onBrowser: { requestBrowser(url: nil) },
                 onPaste: pasteFromClipboard,
                 onEnterURL: { manager.pendingManualAdd = true },
-                activity: QueueActivity.of(manager.items),
+                activity: { QueueActivity.of(manager.itemsWithProgress) },
                 canPauseAll: manager.canPauseAll,
                 canResumeAll: manager.canResumeAll,
                 onPauseAll: { manager.pauseAll() },

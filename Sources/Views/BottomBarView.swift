@@ -5,8 +5,9 @@ struct BottomBarView: View {
     var onBrowser: () -> Void
     var onPaste: () -> Void
     var onEnterURL: () -> Void
-    /// The activity pill beside Sort; nil hides it.
-    var activity: QueueActivity?
+    /// The activity pill beside Sort; nil hides it. Read in this body, so the pill's
+    /// speed redraws the bar and not the list above it.
+    var activity: () -> QueueActivity? = { nil }
     var canPauseAll = true
     var canResumeAll = false
     var onPauseAll: () -> Void = {}
@@ -21,7 +22,7 @@ struct BottomBarView: View {
             GlassEffectContainer {
                 HStack(spacing: 10) {
                     sortMenu
-                    if let activity {
+                    if let activity = activity() {
                         ActivityPill(
                             activity: activity, canPauseAll: canPauseAll, canResumeAll: canResumeAll,
                             onPauseAll: onPauseAll, onResumeAll: onResumeAll,

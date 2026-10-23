@@ -6,17 +6,28 @@ import Observation
 @MainActor
 final class DownloadManager {
     private(set) var items: [DownloadItem] = [] {
-        didSet { updatePauseAll() }
+        didSet {
+            updatePauseAll()
+            regroup()
+        }
     }
+
+    /// Running downloads' progress, by item (`LiveProgress`).
+    private(set) var liveProgress: [UUID: LiveProgress] = [:]
 
     /// What Pause All and Resume All would change. Stored, so the menu and the bottom
     /// bar redraw when these flip, not on every progress line.
     private(set) var canPauseAll = false
     private(set) var canResumeAll = false
-    var sortOrder: SortOrder = .newest
-    var filter = DownloadFilter()
+    var sortOrder: SortOrder = .newest { didSet { regroup() } }
+    var filter = DownloadFilter() { didSet { regroup() } }
     /// The day the list groups against; the window sets it when the calendar day changes.
-    var today = Date.now
+    var today = Date.now { didSet { regroup() } }
+    /// The list as shown: active items, then Today, then Earlier, each in the sort order.
+    /// Stored, so reading it neither filters nor sorts; `regroup` works it out again.
+    private(set) var visibleGroups: [ItemGroup] = []
+    /// The list in display order: the sections one after the other.
+    private(set) var visibleItems: [DownloadItem] = []
     var pendingManualAdd = false
     private(set) var lastFailureMessage: String?
     /// The last yt-dlp update check, for Settings: nil until one has run.
@@ -29,7 +40,7 @@ final class DownloadManager {
     let youTubeTokens = YouTubeTokens()
 
     let client: any DownloadEngine
-    private var binaries: YTDLPClient.Binaries = .missing
+    private(set) var binaries: YTDLPClient.Binaries = .missing
     /// The runs in flight; the Mac stays awake while there are any.
     private var runningTasks: [UUID: Task<Void, Never>] = [:] {
         didSet { keepAwake.isHeld = !runningTasks.isEmpty }
@@ -65,12 +76,14 @@ final class DownloadManager {
                 items = DownloadItem.samples
                 isSampleQueue = true
                 updatePauseAll()
+                regroup()
                 return
             }
         #endif
         items = Self.restored(persists ? PersistenceStore.load() : []).sorted { $0.addedAt > $1.addedAt }
         // `didSet` doesn't run in an initializer.
         updatePauseAll()
+        regroup()
         watchNetwork()
         pump()
     }
@@ -234,40 +247,6 @@ final class DownloadManager {
         }
     }
 
-    /// Probes signed out first where the site prefers it, and again signed in when the
-    /// link asks for it. `cookies` ends as the set the download uses.
-    private func probe(itemID: UUID, url: URL, signedIn cookies: inout [String]) async throws -> VideoMetadata? {
-        let signedIn = cookies
-        cookies = Self.firstTryCookies(for: url, signedIn: signedIn)
-        do {
-            return try await probe(itemID: itemID, url: url, cookies: cookies)
-        } catch let error as YTDLPError where cookies != signedIn && DownloadItem.asksForSignIn(error.message) {
-            cookies = signedIn
-            return try await probe(itemID: itemID, url: url, cookies: cookies)
-        }
-    }
-
-    /// Reads the link's details and puts them on the card. With the quality known,
-    /// the probe lists the very files the download fetches. Nil when the card was
-    /// cancelled or removed meanwhile.
-    private func probe(itemID: UUID, url: URL, cookies: [String]) async throws -> VideoMetadata? {
-        let item = items.first(where: { $0.id == itemID })
-        let preset = item?.quality ?? settings.quality.choice
-        let presetArguments = item?.run?.format
-            ?? preset.map { QualitySelection.arguments(for: $0, format: settings.format) } ?? []
-        let arguments = await youTubeTokens.arguments(cookies + presetArguments, for: url)
-        let metadata = try await client.probe(url: url, binaries: binaries, extraArguments: arguments)
-        guard !Task.isCancelled, let index = items.firstIndex(where: { $0.id == itemID }),
-              items[index].status == .resolving else { return nil }
-        items[index].title = metadata.title.isEmpty ? items[index].title : metadata.title
-        items[index].videoID = metadata.id
-        items[index].resolution = metadata.resolutionLabel
-        items[index].totalBytes = metadata.filesizeApprox
-        items[index].thumbnailURL = metadata.thumbnail.flatMap(URL.init(string:))
-        saveSoon()
-        return metadata
-    }
-
     // MARK: Quality
 
     /// Fails the item with install steps when yt-dlp can't be found.
@@ -293,6 +272,17 @@ final class DownloadManager {
         items[index].status = .downloading
         var finalPath: String?
         var progress = DownloadProgress(planned: planned)
+        let live = LiveProgress(.init(fraction: items[index].fractionCompleted, totalBytes: items[index].totalBytes))
+        liveProgress[itemID] = live
+        var throttle = Throttle<LiveProgress.Line>(interval: LiveProgress.interval)
+        var latest = live.line
+        // The last line reaches the item; a stopped run's was handed over by `stopRun`.
+        defer {
+            if liveProgress[itemID] === live {
+                live.line = latest
+                endLiveProgress(itemID)
+            }
+        }
         for try await event in client.downloadStream(
             url: url, into: items[index].run?.directory ?? downloadDirectory(for: url), binaries: binaries,
             extraArguments: arguments + YTDLPClient.limitRateArguments(settings.speedLimit),
@@ -300,11 +290,11 @@ final class DownloadManager {
             guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
             switch event {
             case let .progress(downloaded, total, speed, file):
-                items[index].fractionCompleted = progress.update(file: file, downloaded: downloaded, total: total)
-                if let totalBytes = progress.totalBytes {
-                    items[index].totalBytes = totalBytes
-                }
-                items[index].speedBytesPerSecond = speed
+                latest = LiveProgress.Line(
+                    fraction: progress.update(file: file, downloaded: downloaded, total: total),
+                    totalBytes: progress.totalBytes ?? latest.totalBytes, speed: speed,
+                )
+                if throttle.admit(latest, at: .now) { live.line = latest }
             case let .outputFile(path):
                 finalPath = path
             case let .alreadyDownloaded(path):
@@ -360,7 +350,24 @@ extension DownloadManager {
     func stopRun(_ id: UUID) -> Task<Void, Never>? {
         let run = runningTasks.removeValue(forKey: id)
         run?.cancel()
+        endLiveProgress(id)
         return run
+    }
+
+    /// Hands a run's last progress to its item, which keeps it from here on.
+    private func endLiveProgress(_ id: UUID) {
+        guard let line = liveProgress.removeValue(forKey: id)?.line else { return }
+        updateItem(id) {
+            $0.fractionCompleted = line.fraction
+            $0.totalBytes = line.totalBytes
+        }
+    }
+
+    /// Runs when the items, the filter, the sort order or the day change.
+    private func regroup() {
+        let matching = filter.isEmpty ? items : items.filter(filter.matches)
+        visibleGroups = Self.grouped(Self.sorted(matching, by: sortOrder), now: today)
+        visibleItems = visibleGroups.flatMap(\.items)
     }
 
     private func updatePauseAll() {

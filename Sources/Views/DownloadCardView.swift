@@ -20,6 +20,8 @@ struct DownloadCardView: View {
     var onResume: (() -> Void)?
 
     @State private var hovering = false
+    /// Optional, like the bar's, so a card draws without a queue.
+    @Environment(DownloadManager.self) private var manager: DownloadManager?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showingError = false
 
@@ -51,6 +53,12 @@ struct DownloadCardView: View {
                 }
                 if item.status.canPause, let onPause { Button("Pause", action: onPause) }
             }
+    }
+
+    /// The item with its run's latest progress. Read here, a progress line redraws this
+    /// card and no other.
+    private var current: DownloadItem {
+        manager?.withProgress(item) ?? item
     }
 
     /// A finished file's actions: chips on the Done bar while hovered, and accessibility actions.
@@ -93,7 +101,7 @@ struct DownloadCardView: View {
                 ExistingFileChoices(existing: existing, onResolve: onResolveExisting, onKeep: onKeepExisting)
             } else {
                 ProgressBarView(
-                    item: item,
+                    item: current,
                     onRetry: onRetry,
                     onBrowserCapture: onBrowserCapture,
                     onSignIn: onSignIn,
@@ -154,7 +162,7 @@ struct DownloadCardView: View {
                 separatorDot
                 Text(resolution)
             }
-            if let size = Format.size(item.totalBytes) {
+            if let size = Format.size(current.totalBytes) {
                 separatorDot
                 Text(size)
             }

@@ -65,8 +65,9 @@ struct PauseResumeTests {
         return try #require(manager.items.first?.id)
     }
 
+    /// The card as shown: with its run's progress while it runs.
     private func item(_ manager: DownloadManager, _ id: UUID) -> DownloadItem? {
-        manager.items.first { $0.id == id }
+        manager.items.first { $0.id == id }.map(manager.withProgress)
     }
 
     /// Waits until the card is downloading and has reported its half.
@@ -92,6 +93,7 @@ struct PauseResumeTests {
 
         manager.pause(id: id)
         #expect(item(manager, id)?.status == .paused)
+        #expect(manager.liveProgress[id] == nil)
         #expect(item(manager, id)?.fractionCompleted == 0.5)
         #expect(item(manager, id)?.speedBytesPerSecond == nil)
 

@@ -48,9 +48,15 @@ struct SnifferBrowserScreen: View {
             if let url = model.snifferStartURL {
                 model.snifferStartURL = nil
                 addressField = url.absoluteString
-                reference.webView?.load(URLRequest(url: url))
+                if let webView = reference.webView {
+                    webView.load(URLRequest(url: url))
+                } else {
+                    startURL = url
+                }
             }
         }
+        // The reload adds or removes the rules for the page on screen.
+        .onChange(of: settings.blocksAds) { reference.webView?.reload() }
     }
 
     private func currentURLSync(_ url: URL?) {

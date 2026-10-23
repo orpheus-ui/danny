@@ -49,7 +49,7 @@ enum ContentBlocker {
             ]
             return rule
         }
-        let data = try? JSONSerialization.data(withJSONObject: rules)
+        let data = try? JSONSerialization.data(withJSONObject: rules, options: .sortedKeys)
         return data.flatMap { String(bytes: $0, encoding: .utf8) } ?? "[]"
     }()
 

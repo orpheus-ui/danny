@@ -8,6 +8,9 @@ XCODEBUILD = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination 'plat
              -derivedDataPath $(DERIVED) CODE_SIGNING_ALLOWED=NO
 BEAUTIFY  := $(shell command -v xcbeautify >/dev/null && echo "| xcbeautify --quiet --disable-logging" || echo "")
 
+# SwiftFormat is pinned: newer releases change the output, and CI must agree with local runs.
+SWIFTFORMAT_VERSION := 0.63.1
+
 .DEFAULT_GOAL := help
 .PHONY: help bootstrap project format lint test build run check clean version changelog package
 
@@ -27,6 +30,7 @@ format: ## Format all Swift code
 	swiftformat .
 
 lint: ## Check formatting and lint (what CI runs)
+	@swiftformat --version | grep -qx "$(SWIFTFORMAT_VERSION)" || { echo "SwiftFormat $(SWIFTFORMAT_VERSION) is required (docs/engineering.md)"; exit 1; }
 	swiftformat --lint . --quiet
 	swiftlint lint --strict --quiet
 

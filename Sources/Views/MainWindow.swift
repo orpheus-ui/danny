@@ -14,7 +14,7 @@ struct MainWindow: View {
     @State private var manualURL = ""
     @State private var isSearching = false
     @State private var isDropTargeted = false
-    /// The last clicked card, so Space knows what to preview. Clicks only: arrow keys are the keyboard task.
+    /// The card the keys act on: clicked, or moved to with the arrow keys. Shown by its stroke.
     @State private var selection: DownloadItem.ID?
     @State private var previewURL: URL?
     @FocusState private var listFocused: Bool
@@ -138,14 +138,12 @@ struct MainWindow: View {
                 .focusable()
                 .focusEffectDisabled()
                 .focused($listFocused)
-                .onKeyPress(.space) {
-                    if previewURL != nil {
-                        previewURL = nil
-                        return .handled
-                    }
-                    previewURL = manager.visibleItems.previewURL(selection: selection)
-                    return previewURL == nil ? .ignored : .handled
-                }
+                .onKeyPress(.downArrow) { moveSelection(by: 1, proxy: proxy) }
+                .onKeyPress(.upArrow) { moveSelection(by: -1, proxy: proxy) }
+                .onKeyPress(.delete) { removeSelected() }
+                .onKeyPress(.return) { openSelected() }
+                .onKeyPress(keys: ["r"], phases: .down) { $0.modifiers == .command ? retrySelected() : .ignored }
+                .onKeyPress(.space) { spaceOnSelected() }
                 .quickLookPreview($previewURL)
                 // Midnight, a clock change or waking up: Today becomes Earlier without a timer.
                 .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
@@ -295,38 +293,61 @@ struct MainWindow: View {
     }
 }
 
-struct AddURLSheet: View {
-    @Binding var url: String
-    let onAdd: (URL) -> Void
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Download from URL")
-                .font(.system(size: 15, weight: .bold))
-            TextField("https://…", text: $url)
-                .textFieldStyle(.roundedBorder)
-                .font(.system(size: 12, design: .monospaced))
-                .onSubmit(submit)
-            HStack {
-                Spacer()
-                Button("Cancel", role: .cancel) { dismiss() }
-                    .keyboardShortcut(.cancelAction)
-                Button("Add") { submit() }
-                    .keyboardShortcut(.defaultAction)
-                    .tint(.purple)
-            }
-        }
-        .padding(18)
-        .frame(width: 420)
+/// The list's keys: they act on the selected card.
+private extension MainWindow {
+    var selectedItem: DownloadItem? {
+        manager.visibleItems.first { $0.id == selection }
     }
 
-    private func submit() {
-        guard let trimmed = URL(string: url.trimmingCharacters(in: .whitespacesAndNewlines)),
-              let scheme = trimmed.scheme?.lowercased(), ["http", "https"].contains(scheme)
-        else { return }
-        onAdd(trimmed)
-        dismiss()
+    func moveSelection(by step: Int, proxy: ScrollViewProxy) -> KeyPress.Result {
+        let items = manager.visibleItems
+        guard let next = items.selection(movingFrom: selection, by: step),
+              let item = items.first(where: { $0.id == next })
+        else { return .ignored }
+        selection = next
+        proxy.scrollTo(next)
+        // VoiceOver's cursor doesn't follow the keyboard selection, so say where it went.
+        AccessibilityNotification.Announcement(item.title).post()
+        return .handled
+    }
+
+    func removeSelected() -> KeyPress.Result {
+        guard let id = selectedItem?.id else { return .ignored }
+        let next = manager.visibleItems.selection(afterRemoving: id)
+        manager.remove(id: id)
+        selection = next
+        return .handled
+    }
+
+    func openSelected() -> KeyPress.Result {
+        guard let item = selectedItem, item.fileURL != nil else { return .ignored }
+        manager.open(id: item.id)
+        return .handled
+    }
+
+    func retrySelected() -> KeyPress.Result {
+        guard let item = selectedItem, item.status == .failed else { return .ignored }
+        manager.retry(id: item.id)
+        return .handled
+    }
+
+    /// Space pauses or resumes an active card and previews a finished one; again, it closes the preview.
+    func spaceOnSelected() -> KeyPress.Result {
+        if previewURL != nil {
+            previewURL = nil
+            return .handled
+        }
+        guard let item = selectedItem else { return .ignored }
+        if item.status.canPause {
+            manager.pause(id: item.id)
+        } else if item.status == .paused {
+            manager.resume(id: item.id)
+        } else if let url = item.fileURL {
+            previewURL = url
+        } else {
+            return .ignored
+        }
+        return .handled
     }
 }
 

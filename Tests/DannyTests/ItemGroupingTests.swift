@@ -51,11 +51,4 @@ struct ItemGroupingTests {
         #expect(grouped([]).isEmpty)
         #expect(grouped([item(.finished)]).map(\.section) == [.today])
     }
-
-    @Test func `quick Look finds the selected item in any section`() {
-        var done = item(.finished, hoursAgo: 48)
-        done.filePath = "/tmp/video.mp4"
-        let groups = grouped([item(.downloading), done])
-        #expect(groups.flatMap(\.items).previewURL(selection: done.id) == done.fileURL)
-    }
 }

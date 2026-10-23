@@ -19,9 +19,11 @@ its own PR, delete it from here when it merges.
   and observe per item. (`DownloadManager.downloadPhase`)
 - **`visibleItems` filters and sorts on every read** from the view body. Cache it
   and recompute when items, query or sort order change. (`DownloadManager.visibleItems`)
-- **Idle wakeups.** An empty, hidden window still wakes ~4 times a second (~15 before the clipboard timer went)
-  (budget: under 1), and ~30 with six cards — no animation runs then, so it's
-  timers or observation. Profile with `/perf-check` §4.
+- **Idle wakeups.** An idle window with finished cards still wakes ~5–8 times a
+  second while hidden and ~12 while shown (budget: under 1). A System Trace finds
+  no timer of Danny's left: the wakes are bursts of window-restoration saves and
+  layout passes, and a few on worker threads. Count them with a System Trace's
+  context switches; `top`'s `idlew` reads several times higher. (`/perf-check` §4)
 
 ## Debt — structure
 

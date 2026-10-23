@@ -188,7 +188,7 @@ nonisolated struct YTDLPClient: Sendable {
         let progressTemplate =
             // The exact size when yt-dlp has it, else its estimate (fragmented streams).
             "download:\u{40}P|%(progress.downloaded_bytes)s|%(progress.total_bytes,progress.total_bytes_estimate)s"
-                + "|%(progress._speed_str)s|%(info.format_id)s"
+            + "|%(progress._speed_str)s|%(info.format_id)s"
 
         var arguments = Self.downloadArguments(in: directory, progressTemplate: progressTemplate)
         if let ffmpeg = binaries.ffmpegDirectory {

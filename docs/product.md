@@ -2,8 +2,13 @@
 
 ## What Danny is
 
-A native macOS download manager for video. Paste a link, watch clean live
-progress, get a file. Inspired by Downie; open source.
+A native macOS download manager, built for video first. Paste a link, watch clean
+live progress, get a file. Inspired by Downie; open source.
+
+Video is what Danny ships with; plugins take it further. A plugin can fetch any
+kind of file a site offers — audio, images, icons, documents — and the queue,
+progress, folders and Browser Capture work the same for all of them. Danny ships
+the video plugins; anyone can write the rest.
 
 Three things make it Danny:
 
@@ -13,7 +18,9 @@ Three things make it Danny:
 2. **Torrents with streaming** — add a magnet or `.torrent` and start watching
    while it downloads (M3).
 3. **Pluggable** — anyone can write an extractor or engine plugin in any
-   language, without touching the app (M2).
+   language, without touching the app (M2). Plugins aren't limited to video:
+   they return files with a type, so the same app downloads whatever a plugin
+   understands.
 
 ## Who it's for
 
@@ -34,6 +41,7 @@ want a tool that looks and feels like it belongs on macOS, not a terminal.
 
 ## Not doing
 
-- DRM circumvention.
+- DRM circumvention, by Danny or by its plugins: a plugin that returns
+  DRM-protected media is refused, and Danny says so.
 - A cloud service, accounts or sync.
 - Windows or Linux builds.

@@ -65,6 +65,20 @@ its own PR, delete it from here when it merges.
   roadmap M2), or one copy of the ffmpeg libraries shared by both tools instead of
   two static ones.
 
+- **Grab all from a page.** Browser Capture lists every image, PDF, archive and
+  media file on the page, filtered by type and size, and downloads the selection
+  into one folder. Works without AI.
+- **Rules by file type.** Extends folder-per-site: each type gets a folder
+  (Documents, Archives, Images) and an action when it finishes (unzip, open,
+  reveal, run a Shortcut). A few presets, no rule editor at first.
+- **Verify downloads.** When the page or plugin provides a checksum (SHA-256, MD5),
+  Danny checks the finished file and marks the card "Verified", or says it failed.
+- **Scheduled queues.** Queues such as "Overnight" or "Wi-Fi only" that start and
+  pause on a schedule, built on pause/resume and the network conditions.
+- **Connections per download.** With the native engine (roadmap M2): automatic by
+  default, a stepper under Network → Advanced, and a per-download override in
+  the card's context menu. Replaces the concurrent fragments stepper below.
+
 ## Settings and features
 
 Settings stay small: General (with "Send to Danny"), Downloads, Quality, Network,

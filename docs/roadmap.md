@@ -60,6 +60,16 @@ Shorter paths for the things done every day. Plan: [plans/2026-10-16-m1-5-everyd
       protocol change later. The item model and card follow the same shape.
 - [ ] yt-dlp as plugin #1; site-specific workarounds leave the app and live in plugins
 - [ ] Plugin discovery, install and permissions UI
+- [ ] Native HTTP engine (engine plugin #2): plain files (PDF, ZIP, DMG, images,
+      direct MP4) download without yt-dlp, split into byte ranges over several
+      connections. Each range resumes and retries on its own. The connection count is
+      automatic: it starts at 4, grows while throughput rises, and backs off on
+      throttling or HTTP 429. yt-dlp keeps site extraction and can hand resolved URLs
+      to this engine. The speed limit is shared across downloads and changes live.
+- [ ] Lanes on the progress bar: while a file downloads in ranges, the shader draws
+      one thin lane per connection, each filling at its own pace, merging into one
+      bar when done. The details line reads "48 MB of 210 · 6 connections · 12 MB/s".
+      Figma state first.
 
 ## M3 — Torrents and streaming
 

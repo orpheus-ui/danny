@@ -64,26 +64,35 @@ struct ProgressBarView: View {
     }
 
     private func fill(_ style: FillStyle, width: CGFloat, track: CGFloat) -> some View {
-        DottedFill(width: width, style: style)
+        EasedFill(width: width, style: style)
             .opacity(item.status == .paused ? 0.45 : 1)
             .overlay(alignment: .leading) {
                 ProgressLight(trackWidth: track, isRunning: sweeps)
             }
             .clipShape(Capsule())
-            .animation(.easeOut(duration: 0.45), value: width)
     }
 
-    /// The fill and its shader take the same animated width: a `Shader.Argument` isn't
-    /// interpolated, so passing the target width while the frame animates would lay the
-    /// dots out for the wrong size until the animation ends.
-    private struct DottedFill: View, Animatable {
-        var width: CGFloat
+    /// The fill easing to each new width (`FillEase`), 30 frames a second at most.
+    private struct EasedFill: View {
+        let width: CGFloat
         let style: FillStyle
+        @State private var ease = FillEase()
 
-        var animatableData: CGFloat {
-            get { width }
-            set { width = newValue }
+        var body: some View {
+            TimelineView(FillEase.Schedule(frames: ease.frames)) { context in
+                DottedFill(width: ease.width(at: context.date), style: style)
+            }
+            .onChange(of: width, initial: true) { _, width in
+                ease.move(to: width, at: .now)
+            }
         }
+    }
+
+    /// The fill and its shader take the same width, so the dots are laid out for the
+    /// size drawn in every frame of an ease.
+    private struct DottedFill: View {
+        let width: CGFloat
+        let style: FillStyle
 
         var body: some View {
             Capsule()

@@ -12,9 +12,9 @@ final class LiveProgress {
         var speed: Double?
     }
 
-    /// How often a card's line may change: twice a second, enough for its numbers and
-    /// its bar's 0.45 s ease.
-    static let interval = Duration.milliseconds(500)
+    /// How often a card's line may change: once a second, like the Dock. Each change
+    /// eases the bar for 0.45 s (`FillEase`), so the bar rests between changes.
+    static let interval = Duration.seconds(1)
 
     var line: Line
 

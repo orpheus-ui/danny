@@ -4,7 +4,7 @@ import Observation
 import Synchronization
 import Testing
 
-/// A progress line changes its own card's `LiveProgress`, at most twice a second, and
+/// A progress line changes its own card's `LiveProgress`, at most once a second, and
 /// never the list; the item takes the last line when the run ends. The list itself is
 /// stored and worked out again when what it depends on changes.
 @MainActor
@@ -101,7 +101,7 @@ struct LiveProgressTests {
         try await Task.sleep(for: .milliseconds(100))
 
         #expect(!listChanged.raised.withLock { $0 })
-        // The first line shows at once; the 49 after it, well within half a second, wait.
+        // The first line shows at once; the 49 after it, well within a second, wait.
         #expect(manager.liveProgress[id]?.line == LiveProgress.Line(fraction: 0.02, totalBytes: 100, speed: 1))
         #expect(manager.withProgress(manager.items[0]).fractionCompleted == 0.02)
         #expect(manager.items[0].fractionCompleted == nil)

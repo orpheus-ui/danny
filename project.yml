@@ -29,6 +29,9 @@ targets:
       - path: Resources/Fonts
         type: folder
         buildPhase: resources
+      - path: Resources/Keys
+        type: folder
+        buildPhase: resources
     info:
       path: Sources/Support/Info.plist
       properties:

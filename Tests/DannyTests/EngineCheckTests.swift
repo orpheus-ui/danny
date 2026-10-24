@@ -25,11 +25,13 @@ struct EngineCheckTests {
             switch url.lastPathComponent {
             case "latest": return Data(#"{"tag_name": "2026.09.01"}"#.utf8)
             case "SHA2-256SUMS": return Data("\(YTDLPUpdater.sha256(binary))  yt-dlp_macos\n".utf8)
+            case "SHA2-256SUMS.sig": return Data()
             case "yt-dlp_macos": return binary
             default: throw URLError(.fileDoesNotExist)
             }
         }
         updater.versionOf = { _ in "2026.09.01" }
+        updater.isSigned = { _, _ in true }
         return updater
     }
 

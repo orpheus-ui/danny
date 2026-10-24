@@ -6,12 +6,14 @@ import OSLog
 /// Homebrew copy. Sites change weekly and yt-dlp follows them, so a release of
 /// Danny would otherwise carry a yt-dlp that ages until the next one.
 ///
-/// A new release is installed only after its file matches yt-dlp's published
-/// SHA-256 and the binary runs and reports the expected version. The file is
+/// A new release is installed only after its checksum list carries a valid
+/// signature from yt-dlp's release key (bundled with Danny), its file matches the
+/// SHA-256 in that list, and the binary runs and reports the expected version. The file is
 /// renamed into place, so a download already running keeps the old one.
 nonisolated struct YTDLPUpdater: Sendable {
     typealias Fetch = @Sendable (URL) async throws -> Data
     typealias VersionOf = @Sendable (URL) async -> String?
+    typealias Verify = @Sendable (_ file: Data, _ signature: Data) -> Bool
 
     enum Outcome: Equatable {
         case current(String)
@@ -45,6 +47,8 @@ nonisolated struct YTDLPUpdater: Sendable {
         await YTDLPClient().version(binaries: .init(ytdlp: url, ffmpegDirectory: nil))
     }
 
+    var isSigned: Verify = { file, signature in OpenPGPKey.ytdlp?.verifies(signature, of: file) ?? false }
+
     /// Installs the latest release when it is newer than `installed`, the version
     /// of the yt-dlp Danny uses now (nil when there is none).
     func update(from installed: String?) async -> Outcome {
@@ -70,6 +74,10 @@ nonisolated struct YTDLPUpdater: Sendable {
     private func install(_ release: String) async throws {
         let base = URL(string: "https://github.com/yt-dlp/yt-dlp/releases/download/\(release)/")!
         let sums = try await fetch(base.appendingPathComponent("SHA2-256SUMS"))
+        let signature = try await fetch(base.appendingPathComponent("SHA2-256SUMS.sig"))
+        guard isSigned(sums, signature) else {
+            throw YTDLPError(message: "yt-dlp \(release)'s checksums aren't signed with yt-dlp's release key.")
+        }
         guard let list = String(bytes: sums, encoding: .utf8), let expected = Self.checksum(
             of: Self.assetName,
             in: list,

@@ -196,12 +196,22 @@ The signed app bundle is never modified. The rename is atomic, so a download
 already running keeps the old binary and the next one uses the new. One request
 at launch and nothing while idle (ADR-008). Settings › Engine & Updates turns it off.
 
-Accepted risk: the checksum file comes from the same GitHub release as the
-binary, so it proves the download is intact, not who made it. Someone able to
-change yt-dlp's releases could ship a binary that passes, and Danny runs it
-(the version check) before installing it. Users who install yt-dlp from GitHub
-or Homebrew take the same trust today. Verifying `SHA2-256SUMS.sig` against
-yt-dlp's signing key, bundled with Danny, closes it (backlog).
+The checksum file comes from the same GitHub release as the binary, so on its
+own it proves the download is intact, not who made it. Before the binary is
+downloaded, `SHA2-256SUMS.sig` must be a valid signature of `SHA2-256SUMS` by
+yt-dlp's release key: the `public.key` in yt-dlp's repository (RSA 4096,
+fingerprint `AC0C BBE6 848D 6A87 3464 AF4E 57CF 6593 3B5A 7581`), bundled
+unchanged as `Resources/Keys/yt-dlp.asc`. A Mac has no GnuPG, so `OpenPGPKey`
+reads the key and the detached signature itself (RFC 4880 packets) and checks
+the RSA PKCS #1 v1.5 signature with Security; no dependency. It accepts only
+what yt-dlp makes: a v4 signature of a binary file over SHA-256, -384 or -512.
+Anything else fails the check, as does a signature expiry or an unknown critical
+subpacket. A missing or bad signature keeps the yt-dlp in use and reports the
+failure like any other.
+
+Accepted risk: the key is pinned. If yt-dlp replaces or revokes it, updates
+fail until a Danny release bundles the new key, and the copy in use keeps
+working; Danny doesn't read revocations.
 
 Would change if yt-dlp becomes a plugin (M2): the plugin host updates plugins,
 and this moves there.

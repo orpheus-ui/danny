@@ -4,14 +4,6 @@ What's missing, known-broken or worth cleaning. **Nothing here outranks
 [roadmap.md](roadmap.md)** — this is a menu, not a plan. Pick an item, make it
 its own PR, delete it from here when it merges.
 
-## Gaps — security
-
-- **yt-dlp updates aren't signature-checked.** `YTDLPUpdater` verifies the binary
-  against the release's `SHA2-256SUMS`, which comes from the same release. Check
-  `SHA2-256SUMS.sig` against yt-dlp's public key, bundled with Danny, before
-  running or installing the download (ADR-015). Needs an OpenPGP verifier that
-  doesn't require GnuPG on the user's Mac.
-
 ## Debt — resource use
 
 - **Every progress line re-renders the list.** Each yt-dlp progress event mutates

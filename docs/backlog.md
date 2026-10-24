@@ -6,11 +6,10 @@ its own PR, delete it from here when it merges.
 
 ## Debt — resource use
 
-- **The progress bar's ease costs ~30% CPU with three downloads.** Each progress
-  change animates the fill's width over 0.45 s at the display's rate, and the bar's
-  text is drawn again every frame; a Time Profiler capture puts ~85% of the main
-  thread in SwiftUI render and Core Animation commits. Cap the animation at 30 fps,
-  or move the width change to the GPU like `ProgressLight`. (`ProgressBarView.fill`)
+- **~110 MB of graphics memory while downloading.** It appears with the first
+  running card and is freed seconds after the last one stops; it isn't the bar's
+  ease, the progress light, the Dock or the menu bar. Find what holds it with an
+  Allocations or Metal capture. (`/perf-check` §3)
 - **Idle wakeups.** An idle window with finished cards still wakes ~5–8 times a
   second while hidden and ~12 while shown (budget: under 1). A System Trace finds
   no timer of Danny's left: the wakes are bursts of window-restoration saves and

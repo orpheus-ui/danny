@@ -18,6 +18,13 @@ struct ProgressLight: NSViewRepresentable {
         view.update(trackWidth: trackWidth, isRunning: isRunning)
     }
 
+    /// A bar that leaves the list stops its passes: a card that finishes moves to
+    /// another section as a new view, and the old one's pass task would keep it alive,
+    /// waking every period for as long as Danny runs.
+    static func dismantleNSView(_ view: LightView, coordinator _: ()) {
+        view.stop()
+    }
+
     final class LightView: NSView {
         private let glow = CAGradientLayer()
         private let sparkle = CAGradientLayer()
@@ -64,10 +71,14 @@ struct ProgressLight: NSViewRepresentable {
             if isRunning, passes == nil {
                 passes = Task { [weak self] in await self?.runPasses() }
             } else if !isRunning {
-                passes?.cancel()
-                passes = nil
-                [glow, sparkle].forEach { $0.removeAllAnimations() }
+                stop()
             }
+        }
+
+        func stop() {
+            passes?.cancel()
+            passes = nil
+            [glow, sparkle].forEach { $0.removeAllAnimations() }
         }
 
         private func layout(height: CGFloat) {

@@ -54,7 +54,10 @@ Shorter paths for the things done every day. Plan: [plans/2026-10-16-m1-5-everyd
 ## M2 — Clean core and plugins
 
 - [ ] `DannyCore` Swift package: queue, engine, persistence — no SwiftUI
-- [ ] Plugin protocol: out-of-process, JSON over stdin/stdout (ADR-004); `docs/plugins.md`
+- [ ] Plugin protocol: out-of-process, JSON over stdin/stdout (ADR-004); `docs/plugins.md`.
+      Media-agnostic from the start: a plugin returns files with a type (video, audio,
+      image, document…), not "a video with formats", so non-video plugins need no
+      protocol change later. The item model and card follow the same shape.
 - [ ] yt-dlp as plugin #1; site-specific workarounds leave the app and live in plugins
 - [ ] Plugin discovery, install and permissions UI
 

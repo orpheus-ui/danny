@@ -6,11 +6,11 @@ its own PR, delete it from here when it merges.
 
 ## Debt — resource use
 
-- **Every progress line re-renders the list.** Each yt-dlp progress event mutates
-  `DownloadManager.items`, so every card observes every change. Throttle updates
-  and observe per item. (`DownloadManager.downloadPhase`)
-- **`visibleItems` filters and sorts on every read** from the view body. Cache it
-  and recompute when items, query or sort order change. (`DownloadManager.visibleItems`)
+- **The progress bar's ease costs ~30% CPU with three downloads.** Each progress
+  change animates the fill's width over 0.45 s at the display's rate, and the bar's
+  text is drawn again every frame; a Time Profiler capture puts ~85% of the main
+  thread in SwiftUI render and Core Animation commits. Cap the animation at 30 fps,
+  or move the width change to the GPU like `ProgressLight`. (`ProgressBarView.fill`)
 - **Idle wakeups.** An idle window with finished cards still wakes ~5–8 times a
   second while hidden and ~12 while shown (budget: under 1). A System Trace finds
   no timer of Danny's left: the wakes are bursts of window-restoration saves and

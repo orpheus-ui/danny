@@ -48,7 +48,7 @@ struct SystemStatusTests {
 
     /// `#expect` can't call a mutating method on its argument.
     private func admit(
-        _ throttle: inout DockThrottle,
+        _ throttle: inout Throttle<OverallProgress>,
         _ progress: OverallProgress?,
         at now: ContinuousClock.Instant,
     )
@@ -58,7 +58,7 @@ struct SystemStatusTests {
     }
 
     @Test func `throttle lets at most one update a second through`() {
-        var throttle = DockThrottle()
+        var throttle = Throttle<OverallProgress>()
         let start = ContinuousClock.now
         let half = OverallProgress(fraction: 0.5, count: 1)
         #expect(admit(&throttle, OverallProgress(fraction: 0.1, count: 1), at: start))
@@ -69,7 +69,7 @@ struct SystemStatusTests {
     }
 
     @Test func `throttle clears at once and stays quiet while idle`() {
-        var throttle = DockThrottle()
+        var throttle = Throttle<OverallProgress>()
         let start = ContinuousClock.now
         #expect(!admit(&throttle, nil, at: start))
         #expect(admit(&throttle, OverallProgress(fraction: nil, count: 1), at: start))

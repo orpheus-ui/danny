@@ -8,6 +8,7 @@ Branches and PRs: [CONTRIBUTING.md](../CONTRIBUTING.md).
 - **Xcode 26+**, Swift 6 language mode, macOS 26 SDK.
 - **XcodeGen** — `project.yml` is the source of truth; `Danny.xcodeproj` is generated and not committed.
 - **SwiftFormat** formats, **SwiftLint** catches the rest. Both run in CI.
+- **SwiftFormat is pinned to 0.63.1**, in the Makefile (`SWIFTFORMAT_VERSION`, checked by `make lint`) and in CI (the GitHub release zip, checksum-verified). Newer releases reformat this code, so they fail the lint. Homebrew installs the latest, so use the pinned release: `brew switch swiftformat 0.63.1` if Homebrew still has it, or the release zip from the [SwiftFormat releases](https://github.com/nicklockwood/SwiftFormat/releases/tag/0.63.1) on your `PATH`. Move the pin in both places, in one PR, after checking `make format` on the new version.
 - Tools install with `make bootstrap` (Homebrew, `Brewfile`).
 
 | Command | Does |

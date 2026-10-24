@@ -3,7 +3,7 @@
 Milestones are sequential. `docs/roadmap.md` says *what* and *in which order*;
 a plan in [plans/](plans/) says *how* for anything bigger than a PR.
 
-**Current milestones: M1 — Match the design, with M1.5 — Everyday use alongside.**
+**Current milestone: M1 — Match the design. M0 and M1.5 — Everyday use are done.**
 
 ---
 
@@ -32,22 +32,22 @@ The Figma file is the spec. Plan: [plans/2026-10-14-m1-match-the-design.md](plan
 - [ ] Resource debt from `backlog.md` that touches the UI (clipboard timer, list re-renders)
 - [x] Search that finds and adds: one glass field, scope chips, paste a link to download
 
-## M1.5 — Everyday use
+## M1.5 — Everyday use (done)
 
 Shorter paths for the things done every day. Plan: [plans/2026-10-16-m1-5-everyday-use.md](plans/2026-10-16-m1-5-everyday-use.md).
 
 - [x] ⌘V in the window and drag and drop add links
 - [x] Clipboard toast asks before adding a copied link; no clipboard timer
 - [x] Finished items: Quick Look (Space), double-click to open, hover actions
-- [ ] Keyboard: arrows select, ⌫ removes, ⌘R retries, Return opens
+- [x] Keyboard: arrows select, ⌫ removes, ⌘R retries, Return opens
 - [x] Dock progress and a notification when a download finishes
 - [x] Plain-language failures with one suggested fix
-- [ ] List grouped: active first, then Today and Earlier
+- [x] List grouped: active first, then Today and Earlier
 - [x] Optional menu-bar item with progress and Paste to Download
 - [x] Optional folder per site inside the download folder; filename templates
 - [x] Download only on Wi-Fi; speed limit
 - [x] Settings in tabs: General, Downloads, Quality, Network, Sources, Engine & Updates
-- [ ] Pause and resume a download, Pause All (⌥⌘P); paused cards survive a quit
+- [x] Pause and resume a download, Pause All (⌥⌘P); paused cards survive a quit
 - [x] yt-dlp kept current: checked each time Danny opens, verified against yt-dlp's
       published checksums, used from the next download on (ADR-015)
 
@@ -60,6 +60,16 @@ Shorter paths for the things done every day. Plan: [plans/2026-10-16-m1-5-everyd
       protocol change later. The item model and card follow the same shape.
 - [ ] yt-dlp as plugin #1; site-specific workarounds leave the app and live in plugins
 - [ ] Plugin discovery, install and permissions UI
+- [ ] Native HTTP engine (engine plugin #2): plain files (PDF, ZIP, DMG, images,
+      direct MP4) download without yt-dlp, split into byte ranges over several
+      connections. Each range resumes and retries on its own. The connection count is
+      automatic: it starts at 4, grows while throughput rises, and backs off on
+      throttling or HTTP 429. yt-dlp keeps site extraction and can hand resolved URLs
+      to this engine. The speed limit is shared across downloads and changes live.
+- [ ] Lanes on the progress bar: while a file downloads in ranges, the shader draws
+      one thin lane per connection, each filling at its own pace, merging into one
+      bar when done. The details line reads "48 MB of 210 · 6 connections · 12 MB/s".
+      Figma state first.
 
 ## M3 — Torrents and streaming
 

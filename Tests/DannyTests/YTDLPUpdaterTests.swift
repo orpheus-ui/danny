@@ -6,25 +6,34 @@ struct YTDLPUpdaterTests {
     private let scratch = TestScratch()
     private let binary = Data("#!/bin/sh\necho 2026.09.01\n".utf8)
 
-    /// A fake GitHub: the latest release, its checksums and its binary.
+    nonisolated static let signature = Data("signature".utf8)
+
+    /// A fake GitHub: the latest release, its checksums, their signature and its binary.
     private func updater(
-        latest: String = "2026.09.01", checksum: String? = nil, runs: Bool = true, fetched: Recorder = Recorder(),
+        latest: String = "2026.09.01", checksum: String? = nil, signature: Data? = Self.signature, signed: Bool = true,
+        runs: Bool = true, fetched: Recorder = Recorder(),
     ) -> (YTDLPUpdater, URL) {
         let directory = scratch.folder()
         let binary = binary
         let sum = checksum ?? YTDLPUpdater.sha256(binary)
+        let sums = Data("\(sum)  yt-dlp_macos\nabc  yt-dlp.exe\n".utf8)
+        let expected = Self.signature
         var updater = YTDLPUpdater()
         updater.directory = directory
         updater.fetch = { url in
             await fetched.add(url)
             switch url.lastPathComponent {
             case "latest": return Data(#"{"tag_name": "\#(latest)"}"#.utf8)
-            case "SHA2-256SUMS": return Data("\(sum)  yt-dlp_macos\nabc  yt-dlp.exe\n".utf8)
+            case "SHA2-256SUMS": return sums
+            case "SHA2-256SUMS.sig":
+                guard let signature else { throw URLError(.fileDoesNotExist) }
+                return signature
             case "yt-dlp_macos": return binary
             default: throw URLError(.fileDoesNotExist)
             }
         }
         updater.versionOf = { _ in runs ? latest : nil }
+        updater.isSigned = { file, signature in signed && file == sums && signature == expected }
         return (updater, directory)
     }
 
@@ -62,6 +71,18 @@ struct YTDLPUpdaterTests {
             return
         }
         #expect(!FileManager.default.fileExists(atPath: directory.appendingPathComponent("yt-dlp").path))
+    }
+
+    @Test(arguments: [(YTDLPUpdaterTests.signature, false), (nil, true)] as [(Data?, Bool)])
+    func `checksums without a good signature install nothing`(signature: Data?, signed: Bool) async {
+        let fetched = Recorder()
+        let (updater, directory) = updater(signature: signature, signed: signed, fetched: fetched)
+        guard case .failed = await updater.update(from: "2026.08.19") else {
+            Issue.record("expected a failure")
+            return
+        }
+        #expect(await !fetched.urls.map(\.lastPathComponent).contains("yt-dlp_macos"))
+        #expect(!FileManager.default.fileExists(atPath: directory.path))
     }
 
     @Test

@@ -46,7 +46,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Tools
-        run: brew install xcodegen swiftformat swiftlint xcbeautify
+        run: brew install xcodegen swiftlint xcbeautify
+      - name: SwiftFormat 0.63.1
+        # Pinned to match `SWIFTFORMAT_VERSION` in the Makefile; Homebrew would install the latest.
+        run: |
+          curl -fsSL -o swiftformat.zip https://github.com/nicklockwood/SwiftFormat/releases/download/0.63.1/swiftformat.zip
+          echo "385ef1a263ba28685157b98c5536b9c9105e124518f28b7ef8a2bee4b167eaeb  swiftformat.zip" | shasum -a 256 -c -
+          unzip -q swiftformat.zip -d "$RUNNER_TEMP/swiftformat"
+          echo "$RUNNER_TEMP/swiftformat" >> "$GITHUB_PATH"
       - name: Metal toolchain
         run: xcrun metal --version > /dev/null 2>&1 || xcodebuild -downloadComponent MetalToolchain
       - name: Lint

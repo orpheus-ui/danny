@@ -4,14 +4,6 @@ What's missing, known-broken or worth cleaning. **Nothing here outranks
 [roadmap.md](roadmap.md)** — this is a menu, not a plan. Pick an item, make it
 its own PR, delete it from here when it merges.
 
-## Gaps — security
-
-- **yt-dlp updates aren't signature-checked.** `YTDLPUpdater` verifies the binary
-  against the release's `SHA2-256SUMS`, which comes from the same release. Check
-  `SHA2-256SUMS.sig` against yt-dlp's public key, bundled with Danny, before
-  running or installing the download (ADR-015). Needs an OpenPGP verifier that
-  doesn't require GnuPG on the user's Mac.
-
 ## Debt — resource use
 
 - **The progress bar's ease costs ~30% CPU with three downloads.** Each progress
@@ -44,17 +36,6 @@ its own PR, delete it from here when it merges.
 
 - **Say when quality falls short.** If the best format is below the chosen quality,
   the card should say so instead of quietly downloading 360p.
-- **Block ads and trackers in Browser Capture.** Optional, on by default, with a
-  switch in Settings and "Allow on this site" for pages it breaks. Use WebKit's
-  `WKContentRuleList`: rules are compiled once and applied in WebKit's network
-  process, so nothing runs while idle. Pages load faster and fewer ad streams reach
-  the sniffer. Lists ship with Danny and update with the app, never in the
-  background; check the list's license before bundling (EasyList and EasyPrivacy
-  are GPLv3 / CC BY-SA). The sign-in window stays unblocked, since blockers break
-  some sign-in flows. Optional: hide cookie banners with CSS-hide rules.
-- **Leave ad media out of captures.** Independent of the blocker: media from known
-  ad hosts (pre-roll MP4s, ad HLS) is dropped from the sniffer's results, so the
-  list shows the page's own video first.
 - **Clear the web cache.** Browser Capture and sign-in fill
   `~/Library/Caches/app.danny.desktop/WebKit` (tens of MB) and nothing bounds or
   clears it. Add a "Clear Cache" button in Settings that removes cached web data
@@ -66,6 +47,20 @@ its own PR, delete it from here when it merges.
   yt-dlp on first run instead of bundling it (it's updated separately anyway,
   roadmap M2), or one copy of the ffmpeg libraries shared by both tools instead of
   two static ones.
+
+- **Grab all from a page.** Browser Capture lists every image, PDF, archive and
+  media file on the page, filtered by type and size, and downloads the selection
+  into one folder. Works without AI.
+- **Rules by file type.** Extends folder-per-site: each type gets a folder
+  (Documents, Archives, Images) and an action when it finishes (unzip, open,
+  reveal, run a Shortcut). A few presets, no rule editor at first.
+- **Verify downloads.** When the page or plugin provides a checksum (SHA-256, MD5),
+  Danny checks the finished file and marks the card "Verified", or says it failed.
+- **Scheduled queues.** Queues such as "Overnight" or "Wi-Fi only" that start and
+  pause on a schedule, built on pause/resume and the network conditions.
+- **Connections per download.** With the native engine (roadmap M2): automatic by
+  default, a stepper under Network → Advanced, and a per-download override in
+  the card's context menu. Replaces the concurrent fragments stepper below.
 
 ## Settings and features
 

@@ -5,15 +5,15 @@
 | add-anywhere — ⌘V in the window, drag and drop | done | orpheus-ui/danny#31 |
 | clipboard-toast — ask before adding a copied link | done | orpheus-ui/danny#36 |
 | finished-items — Quick Look, hover actions, open on double-click | done | orpheus-ui/danny#43 |
-| keyboard — select, remove and retry from the keyboard | not started | — |
+| keyboard — select, remove and retry from the keyboard | done | orpheus-ui/danny#54 |
 | system — Dock progress, notification when a download finishes | done | orpheus-ui/danny#41 |
 | failures — plain-language errors with one suggested fix | done | orpheus-ui/danny#39 |
 | grouping — active first, then Today and Earlier | done | orpheus-ui/danny#52 |
 | menu-bar — progress and paste-to-download in the menu bar | done | orpheus-ui/danny#47 |
 | organizing — folder per site, filename templates | done | orpheus-ui/danny#40 |
-| network — Wi-Fi only, speed limit | done | orpheus-ui/danny#44 |
-| settings-layout — Settings in tabs | done | — |
-| pause-resume — pause and resume a download, Pause All, survives quit | in progress | — |
+| network — Wi-Fi only, speed limit | done | orpheus-ui/danny#44, speed modes #46 |
+| settings-layout — Settings in tabs | done | orpheus-ui/danny#51 |
+| pause-resume — pause and resume a download, Pause All, survives quit | done | orpheus-ui/danny#45, resume keeps its destination #49 |
 
 M1 makes Danny look right; this milestone makes the common paths shorter. Each
 task is one PR, built in the M1 visual language and checked against the
@@ -85,6 +85,10 @@ resource budget (ADR-008): nothing here polls, and every animation is one-shot.
 - Each task is merged with tests for its logic (filter, mapping, templates,
   drop parsing) and before/after screenshots for its UI.
 - Idle Danny still uses 0% CPU and has under one wakeup per second.
+  Measured 2026-10-24 on a Release build, 30 s per row after launch (`proc_pid_rusage`,
+  so CPU time and package idle wakeups, not `top`): window open 0.00% and 0.02% CPU,
+  0 and 0.03 idle wakeups/s over two runs; window hidden 0.00% CPU, 0 idle wakeups/s.
+  Both pass. Seconds right after launch are not counted. The six-card case was not measured.
 
 ## Open
 

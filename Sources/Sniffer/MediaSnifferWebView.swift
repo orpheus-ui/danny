@@ -94,11 +94,14 @@ final class SniffingWebView: WKWebView {
 struct MediaSnifferWebView: NSViewRepresentable {
     let startURL: URL
     let reference: WebViewReference
+    /// Ad and tracker rules, applied to each page whose host `blocksAds` returns true for.
+    let ruleList: WKContentRuleList?
+    let blocksAds: @MainActor (String?) -> Bool
     let onCaptured: @MainActor (String) -> Void
     let onCommitted: @MainActor (URL?) -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onCaptured: onCaptured, onCommitted: onCommitted)
+        Coordinator(ruleList: ruleList, blocksAds: blocksAds, onCaptured: onCaptured, onCommitted: onCommitted)
     }
 
     func makeNSView(context: Context) -> WKWebView {
@@ -116,6 +119,7 @@ struct MediaSnifferWebView: NSViewRepresentable {
         webView.allowsBackForwardNavigationGestures = true
         context.coordinator.webView = webView
         reference.webView = webView
+        context.coordinator.applyRules(to: webView, host: startURL.host())
         webView.load(URLRequest(url: startURL))
         return webView
     }
@@ -127,12 +131,30 @@ struct MediaSnifferWebView: NSViewRepresentable {
     @MainActor
     final class Coordinator: NSObject {
         weak var webView: WKWebView?
+        private let ruleList: WKContentRuleList?
+        private let blocksAds: @MainActor (String?) -> Bool
         private let onCaptured: @MainActor (String) -> Void
         private let onCommitted: @MainActor (URL?) -> Void
+        private var rulesApplied = false
 
-        init(onCaptured: @escaping @MainActor (String) -> Void, onCommitted: @escaping @MainActor (URL?) -> Void) {
+        init(
+            ruleList: WKContentRuleList?, blocksAds: @escaping @MainActor (String?) -> Bool,
+            onCaptured: @escaping @MainActor (String) -> Void, onCommitted: @escaping @MainActor (URL?) -> Void,
+        ) {
+            self.ruleList = ruleList
+            self.blocksAds = blocksAds
             self.onCaptured = onCaptured
             self.onCommitted = onCommitted
+        }
+
+        /// Adds or removes the rules for the page about to load; they apply to its requests.
+        func applyRules(to webView: WKWebView, host: String?) {
+            guard let ruleList else { return }
+            let blocks = blocksAds(host)
+            guard blocks != rulesApplied else { return }
+            rulesApplied = blocks
+            let controller = webView.configuration.userContentController
+            if blocks { controller.add(ruleList) } else { controller.remove(ruleList) }
         }
     }
 }
@@ -147,6 +169,15 @@ extension MediaSnifferWebView.Coordinator: WKScriptMessageHandler {
 }
 
 extension MediaSnifferWebView.Coordinator: WKNavigationDelegate {
+    func webView(
+        _ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
+    ) async -> WKNavigationActionPolicy {
+        if navigationAction.targetFrame?.isMainFrame == true {
+            applyRules(to: webView, host: navigationAction.request.url?.host())
+        }
+        return .allow
+    }
+
     func webView(_ webView: WKWebView, didCommit _: WKNavigation!) {
         onCommitted(webView.url)
     }

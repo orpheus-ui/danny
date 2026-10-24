@@ -9,7 +9,7 @@ XCODEBUILD = xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination 'plat
 BEAUTIFY  := $(shell command -v xcbeautify >/dev/null && echo "| xcbeautify --quiet --disable-logging" || echo "")
 
 # SwiftFormat is pinned: newer releases change the output, and CI must agree with local runs.
-SWIFTFORMAT_VERSION := 0.63.1
+SWIFTFORMAT_VERSION := 0.64.0
 
 .DEFAULT_GOAL := help
 .PHONY: help bootstrap project format lint test build run check clean version changelog package

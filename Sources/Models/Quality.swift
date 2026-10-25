@@ -129,8 +129,9 @@ nonisolated enum QualitySelection {
             return arguments
         case .audio:
             switch format {
-            case .compatible: return ["-f", "ba[acodec^=mp4a]/ba", "-x", "--audio-format", "m4a"]
-            case .highest: return ["-f", "ba", "-x"]
+            // `b` last: a page with only combined streams still gives its audio to `-x`.
+            case .compatible: return ["-f", "ba[acodec^=mp4a]/ba/b", "-x", "--audio-format", "m4a"]
+            case .highest: return ["-f", "ba/b", "-x"]
             }
         }
     }

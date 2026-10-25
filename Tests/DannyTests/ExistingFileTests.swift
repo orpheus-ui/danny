@@ -174,6 +174,12 @@ struct ExistingFileTests {
         #expect(same(item.existingFile?.path, other))
         #expect(FileManager.default.fileExists(atPath: other.path))
         #expect(engine.calledSuffixes.isEmpty)
+
+        // Answering Replace on the card is the user's say: the file goes.
+        manager.resolveExisting(id: item.id, with: .replace)
+        _ = try await settle(manager, until: .finished)
+        #expect(!FileManager.default.fileExists(atPath: other.path))
+        #expect(engine.calledSuffixes == [""])
     }
 
     @Test func `keeping the old file ends the card on it`() async throws {

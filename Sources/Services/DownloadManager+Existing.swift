@@ -14,8 +14,8 @@ extension DownloadManager {
         switch item.existingFilePolicy ?? settings.existingFiles {
         case .replace:
             // Two sites can use the same video ID: only a file the history ties to this
-            // link's site goes to the Trash. Any other is asked about.
-            guard downloadedFromSameSite(existing, as: item) else {
+            // link's site goes to the Trash on its own. Any other is asked about.
+            guard item.existingFilePolicy != nil || downloadedFromSameSite(existing, as: item) else {
                 await askAboutExisting(itemID, file: existing)
                 return nil
             }

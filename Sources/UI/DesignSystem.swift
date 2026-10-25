@@ -21,6 +21,8 @@ enum D {
     static let cardStroke = Color.black.opacity(0.8)
     /// Behind the thumbnail, and where there is none.
     static let cardBackdrop = Color.black
+    /// The empty list's outline card. Not in Figma: designed in M1.
+    static let emptyCardFill = ink.opacity(0.4)
 
     /// Round icon buttons on cards: dots, trash.
     static let pillFill = ink.opacity(0.8)
@@ -33,6 +35,9 @@ enum D {
     static let progressRim = Color.white.opacity(0.1)
     static let progressInnerShadow = Color.black.opacity(0.2)
     static let progressLabel = Color.white.opacity(0.9)
+    /// The fill's opacity while it shows no progress yet (Fetching) or stopped progress (Paused).
+    /// Not in Figma: designed in M1 for those states.
+    static let dimmedFill = 0.45
 
     // MARK: Gradients
 
@@ -53,7 +58,7 @@ enum D {
     static let doneStart = rgb(16, 215, 76).opacity(0.6)
     static let doneEnd = rgb(97, 255, 147).opacity(0.6)
 
-    /// Not in Figma yet — the Failed state is designed in M1.
+    /// Not in Figma: the Failed state, designed in M1 in the progress bar's style.
     static let failedStart = Color(red: 0.85, green: 0.25, blue: 0.30).opacity(0.75)
     static let failedEnd = Color(red: 0.95, green: 0.42, blue: 0.45).opacity(0.75)
 
@@ -88,6 +93,8 @@ enum D {
         static let cardHeight: CGFloat = 105
         static let progressHeight: CGFloat = 20
         static let cardIcon: CGFloat = 18
+        /// The dot between the meta line's parts.
+        static let metaDot: CGFloat = 4
         static let cardIconPadding: CGFloat = 6
         static let barIcon: CGFloat = 24
         static let barIconPadding: CGFloat = 8
@@ -107,6 +114,9 @@ enum D {
         static let listTop: CGFloat = 12
         static let cardPadding: CGFloat = 10
         static let cardActions: CGFloat = 10
+        static let cardTitleMeta: CGFloat = 10
+        /// Between the meta line's parts and its dots: Figma's 2 pt gap plus the dot's 8 pt frame.
+        static let cardMeta: CGFloat = 4
         static let toolbar: CGFloat = 8
         /// Section headers: not in Figma. Close to their own cards, in line with the
         /// cards' rounded corners.

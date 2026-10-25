@@ -118,7 +118,7 @@ struct DownloadCardView: View {
 
     private var headerRow: some View {
         HStack(alignment: .top, spacing: 10) {
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: D.Spacing.cardTitleMeta) {
                 Text(item.title)
                     .font(D.Font.cardTitle)
                     .foregroundStyle(D.textPrimary)
@@ -156,7 +156,7 @@ struct DownloadCardView: View {
     }
 
     private var metaRow: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: D.Spacing.cardMeta) {
             Text(item.host.replacingOccurrences(of: "www.", with: ""))
             if let resolution = item.resolution {
                 separatorDot
@@ -173,7 +173,7 @@ struct DownloadCardView: View {
     }
 
     private var separatorDot: some View {
-        Circle().frame(width: 3, height: 3).foregroundStyle(D.textSecondary)
+        Circle().frame(width: D.Size.metaDot, height: D.Size.metaDot).foregroundStyle(D.textSecondary)
     }
 
     private var actionPills: some View {
@@ -216,3 +216,31 @@ struct DownloadCardView: View {
         }
     }
 }
+
+#if DEBUG
+    extension DownloadCardView {
+        /// A card with no-op actions, for previews and snapshot tests.
+        init(preview item: DownloadItem) {
+            self.init(
+                item: item, onRemove: {}, onCancel: {}, onRetry: {}, onReveal: {}, onBrowserCapture: {},
+                onOpen: {}, onQuickLook: {}, onCopyLink: {}, onOpenPage: {},
+                onChoose: { _ in }, onResolveExisting: { _ in }, onKeepExisting: {}, onPause: {}, onResume: {},
+            )
+        }
+    }
+
+    #Preview("Every state") {
+        ScrollView {
+            VStack(spacing: D.Spacing.list) {
+                ForEach(DownloadItem.samples) { DownloadCardView(preview: $0) }
+            }
+            .padding(D.Spacing.listInset)
+        }
+        .frame(width: 640, height: 1100)
+        .background(D.ink)
+    }
+
+    #Preview("Failed") {
+        DownloadCardView(preview: .sample(.failed)).padding().frame(width: 640)
+    }
+#endif

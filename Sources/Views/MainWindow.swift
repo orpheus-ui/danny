@@ -115,7 +115,7 @@ struct MainWindow: View {
                             }
                         }
                         if manager.visibleItems.isEmpty {
-                            emptyState
+                            EmptyListView(filter: manager.filter, items: manager.items)
                         }
                     }
                     .padding(.horizontal, D.Spacing.listInset)
@@ -235,40 +235,6 @@ struct MainWindow: View {
             selection = item.id
             listFocused = true
         })
-    }
-
-    private var emptyState: some View {
-        VStack(spacing: 8) {
-            Image(manager.filter.isEmpty ? "icon-plus" : "icon-search")
-                .resizable()
-                .frame(width: 28, height: 28)
-                .opacity(0.3)
-            Text(emptyTitle)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(Color.white.opacity(0.35))
-            if manager.filter.link != nil, !manager.filter.linkIsListed(in: manager.items) {
-                Text("Press Return to download it")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Color.white.opacity(0.22))
-            } else if manager.filter.isEmpty {
-                Text("Paste a URL, or use Browser Capture for tricky sites")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Color.white.opacity(0.22))
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 120)
-    }
-
-    private var emptyTitle: String {
-        let filter = manager.filter
-        if filter.link != nil {
-            return filter.linkIsListed(in: manager.items)
-                ? "No downloads match these filters" : "Not in your downloads yet"
-        }
-        if filter.isEmpty { return "Press + to add a video link" }
-        let text = filter.text.trimmingCharacters(in: .whitespaces)
-        return text.isEmpty ? "Nothing here" : "No downloads match “\(text)”"
     }
 
     /// Opens the sign-in window for the item's site; nil when the site is unknown.

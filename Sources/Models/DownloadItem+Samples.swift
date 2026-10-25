@@ -44,5 +44,10 @@
                 return item
             }
         }
+
+        /// The sample in one state, to render a single card.
+        static func sample(_ status: ItemStatus) -> DownloadItem {
+            samples.first { $0.status == status }!
+        }
     }
 #endif

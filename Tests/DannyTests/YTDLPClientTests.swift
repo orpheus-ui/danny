@@ -84,9 +84,10 @@ struct YTDLPClientTests {
         let folder = scratch.folder()
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let log = folder.appendingPathComponent("runs.log")
+        // The stop handler is set before `start` is written, so `start` means ready.
         let slowToStop = try fakeYTDLP("""
-        echo start >> '\(log.path)'
         trap 'sleep 0.5; echo end >> "\(log.path)"; exit 0' TERM
+        echo start >> '\(log.path)'
         while :; do sleep 0.1; done
         """)
         let client = YTDLPClient()
@@ -94,16 +95,23 @@ struct YTDLPClientTests {
         let download = { Task { for try await _ in
                 client.downloadStream(url: url, into: folder, binaries: slowToStop) {}
         } }
+        func lines() -> [String] {
+            ((try? String(contentsOf: log, encoding: .utf8)) ?? "").split(separator: "\n").map(String.init)
+        }
+        func wait(for count: Int) async throws {
+            for _ in 0 ..< 500 where lines().count < count {
+                try await Task.sleep(for: .milliseconds(10))
+            }
+        }
 
         let first = download()
-        try await Task.sleep(for: .milliseconds(400))
+        try await wait(for: 1)
         first.cancel()
         let second = download()
-        try await Task.sleep(for: .milliseconds(1500))
+        try await wait(for: 3)
         second.cancel()
 
-        let lines = try String(contentsOf: log, encoding: .utf8).split(separator: "\n").map(String.init)
-        #expect(Array(lines.prefix(3)) == ["start", "end", "start"])
+        #expect(Array(lines().prefix(3)) == ["start", "end", "start"])
     }
 
     @Test func `a stalled version check is stopped and its process killed`() async throws {

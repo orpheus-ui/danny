@@ -21,7 +21,13 @@ struct SignInView: View {
         .ignoresSafeArea(edges: .top)
         .navigationTitle("Sign in to \(site.name)")
         // Done or the close button: the downloads that asked for this sign-in go again.
-        .onDisappear { if signedIn { manager.retrySignInFailures(on: site) } }
+        // Refresh first: the cookie observer's refresh is debounced and may not have run yet.
+        .onDisappear {
+            Task {
+                await sessions.refresh()
+                if signedIn { manager.retrySignInFailures(on: site) }
+            }
+        }
     }
 
     private var signedIn: Bool { sessions.isSignedIn(site) }

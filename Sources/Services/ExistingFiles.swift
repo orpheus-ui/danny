@@ -35,6 +35,13 @@ nonisolated enum ExistingFiles {
         return "\(Int(size.width))x\(Int(size.height))"
     }
 
+    /// The host of the newest card whose file is this one, comparing paths with symlinks
+    /// resolved, off the main actor.
+    @concurrent static func owner(of file: URL, newestFirst cards: [(path: String, host: String)]) async -> String? {
+        let path = file.resolvingSymlinksInPath().path
+        return cards.first { URL(fileURLWithPath: $0.path).resolvingSymlinksInPath().path == path }?.host
+    }
+
     /// An unfinished download's files: more than one extension after the id, as in
     /// `… [id].mp4.part`, `… [id].f137.mp4` or `… [id].mp4.ytdl`.
     static func partials(id: String, in directory: URL) -> [URL] {

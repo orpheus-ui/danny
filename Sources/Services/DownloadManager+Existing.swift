@@ -13,6 +13,14 @@ extension DownloadManager {
         else { return outputArguments(for: url) }
         switch item.existingFilePolicy ?? settings.existingFiles {
         case .replace:
+            // Two sites can use the same video ID: only a file the history ties to this
+            // link's site goes to the Trash on its own. Any other is asked about.
+            if item.existingFilePolicy == nil, await !downloadedFromSameSite(existing, as: item) {
+                await askAboutExisting(itemID, file: existing)
+                return nil
+            }
+            // The history check awaited: a cancel since then keeps the old file.
+            guard !Task.isCancelled else { return nil }
             do {
                 try moveToTrash(existing)
             } catch {
@@ -62,6 +70,14 @@ extension DownloadManager {
     /// The file already downloaded for this video, in any of those folders.
     func existingFile(id: String, audio: Bool, url: URL) -> URL? {
         directories(for: url).lazy.compactMap { ExistingFiles.find(id: id, audio: audio, in: $0) }.first
+    }
+
+    /// Whether a card from the same site last wrote this file. The newest card on a file is
+    /// the one that last wrote it: a replacement from another site takes the file over.
+    func downloadedFromSameSite(_ file: URL, as item: DownloadItem) async -> Bool {
+        let cards = items.sorted { $0.addedAt > $1.addedAt }
+            .compactMap { card in card.filePath.map { (path: $0, host: card.host) } }
+        return await ExistingFiles.owner(of: file, newestFirst: cards) == item.host
     }
 
     /// Puts the card in `.existing`, showing the file found. Like a quality pick, the

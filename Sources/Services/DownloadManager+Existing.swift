@@ -70,13 +70,15 @@ extension DownloadManager {
         directories(for: url).lazy.compactMap { ExistingFiles.find(id: id, audio: audio, in: $0) }.first
     }
 
-    /// Whether a finished card from the same site ended on this file.
+    /// Whether a card from the same site last wrote this file. The newest card on a file is the one that last wrote it:
+    /// a replacement from
+    /// another site takes the file over from older cards.
     func downloadedFromSameSite(_ file: URL, as item: DownloadItem) -> Bool {
         let path = file.resolvingSymlinksInPath().path
-        return items.contains { other in
-            other.host == item.host
-                && other.filePath.map { URL(fileURLWithPath: $0).resolvingSymlinksInPath().path } == path
-        }
+        let owner = items
+            .filter { $0.filePath.map { URL(fileURLWithPath: $0).resolvingSymlinksInPath().path } == path }
+            .max { $0.addedAt < $1.addedAt }
+        return owner?.host == item.host
     }
 
     /// Puts the card in `.existing`, showing the file found. Like a quality pick, the

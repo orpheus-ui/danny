@@ -182,6 +182,41 @@ struct ExistingFileTests {
         #expect(engine.calledSuffixes == [""])
     }
 
+    /// A replacement from another site takes the file over: the first site's old card
+    /// no longer lets Always Replace trash it.
+    @Test func `replace follows the site that last wrote the file`() async throws {
+        let engine = FakeEngine()
+        let manager = try manager(engine, policy: .replace)
+        manager.moveToTrash = { try FileManager.default.removeItem(at: $0) }
+        func download(_ link: String) throws {
+            try manager.add(url: #require(URL(string: link)))
+        }
+        func newest(until status: ItemStatus) async throws -> DownloadItem {
+            for _ in 0 ..< 200 where manager.items.max(by: { $0.addedAt < $1.addedAt })?.status != status {
+                try await Task.sleep(for: .milliseconds(10))
+            }
+            let item = try #require(manager.items.max { $0.addedAt < $1.addedAt })
+            #expect(item.status == status)
+            return item
+        }
+
+        try download("https://example.com/watch?v=abc")
+        _ = try await newest(until: .finished)
+        let file = try file("Clip [abc].mp4")
+
+        // Site B's same-ID video replaces it, by the user's answer.
+        try download("https://other.example.org/watch?v=abc")
+        let asked = try await newest(until: .existing)
+        manager.resolveExisting(id: asked.id, with: .replace)
+        _ = try await newest(until: .finished)
+        try Data("b".utf8).write(to: file)
+
+        // Site A again: B wrote the file last, so it is asked about, not trashed.
+        try download("https://example.com/watch?v=abc")
+        _ = try await newest(until: .existing)
+        #expect(FileManager.default.fileExists(atPath: file.path))
+    }
+
     @Test func `keeping the old file ends the card on it`() async throws {
         let old = try file("Clip [abc].mp4")
         let manager = try manager(FakeEngine())

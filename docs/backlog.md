@@ -16,6 +16,11 @@ its own PR, delete it from here when it merges.
   layout passes, and a few on worker threads. Count them with a System Trace's
   context switches; `top`'s `idlew` reads several times higher. (`/perf-check` §4)
 
+- **The quality countdown animates while hidden.** `QualityChips` runs its one-second
+  countdown and animation when the window is hidden or covered, and `EasedFill`
+  schedules frames on progress changes regardless of visibility. Gate both on
+  `windowIsVisible`; the manager's automatic pick stays independent of the view.
+
 ## Debt — structure
 
 - **`DownloadManager` does too much**: queue, process orchestration, persistence,
@@ -24,6 +29,10 @@ its own PR, delete it from here when it merges.
 - **`YTDLPClient.runDownload` blocks a cooperative thread** with
   `process.waitUntilExit()`, and has a complexity waiver. Use a termination
   continuation; split parsing from process handling. (M2)
+- **Disk work on the main actor.** `Favicons.image` reads and writes files on
+  `@MainActor`, as do the already-downloaded scans and Trash moves in
+  `DownloadManager+Existing.swift` and the cookie files in `SiteSessions`. Move the
+  disk work to worker functions that return results to the UI.
 - **User-facing strings are hardcoded.** Move to a String Catalog before any localization.
 
 ## Missing
@@ -51,6 +60,14 @@ its own PR, delete it from here when it merges.
 - **Connections per download.** With the native engine (roadmap M2): automatic by
   default, a stepper under Network → Advanced, and a per-download override in
   the card's context menu. Replaces the concurrent fragments stepper below.
+
+- **Sign-ins on a custom subdomain.** Adding `video.example.com` stores that exact
+  domain, so a login cookie set on `.example.com` isn't counted: the sign-in window is
+  logged in while Danny says Not signed in and passes no session. Count parent-domain
+  cookies that apply to the host, without sibling-only ones.
+- **Time left in the menu bar.** The menu's row needs `downloadedBytes`, which live
+  progress doesn't carry, so no time estimate ever shows. Carry the byte count
+  through live updates and test the menu list against a running manager.
 
 ## Settings and features
 

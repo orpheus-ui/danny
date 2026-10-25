@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SourcesSettings: View {
     @Environment(AppSettings.self) private var settings
+    @State private var cacheCleared = false
 
     var body: some View {
         @Bindable var settings = settings
@@ -20,6 +21,18 @@ struct SourcesSettings: View {
                 allow it with the shield in the capture browser's toolbar. Sign-in pages \
                 are never blocked.
                 """)
+                HStack {
+                    Button("Clear Cache") {
+                        Task {
+                            await WebCache.clear()
+                            cacheCleared = true
+                        }
+                    }
+                    if cacheCleared {
+                        Text("Cleared").foregroundStyle(.secondary)
+                    }
+                }
+                SettingsNote("Frees the space pages took in the capture browser. Sign-ins stay.")
             }
         }
         .formStyle(.grouped)

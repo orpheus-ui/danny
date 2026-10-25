@@ -35,10 +35,6 @@ its own PR, delete it from here when it merges.
 
 - **Say when quality falls short.** If the best format is below the chosen quality,
   the card should say so instead of quietly downloading 360p.
-- **Clear the web cache.** Browser Capture and sign-in fill
-  `~/Library/Caches/app.danny.desktop/WebKit` (tens of MB) and nothing bounds or
-  clears it. Add a "Clear Cache" button in Settings that removes cached web data
-  but keeps sign-ins (`WKWebsiteDataStore.removeData` with cache types only).
 - **UI snapshot tests** for every card state (M1).
 - **App size.** The bundled tools are most of the app: yt-dlp's PyInstaller binary
   (37 MB, universal), and ffmpeg and ffprobe at 17 MB each now that they're built

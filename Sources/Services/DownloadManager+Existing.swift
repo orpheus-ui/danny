@@ -19,6 +19,8 @@ extension DownloadManager {
                 await askAboutExisting(itemID, file: existing)
                 return nil
             }
+            // The history check awaited: a cancel since then keeps the old file.
+            guard !Task.isCancelled else { return nil }
             do {
                 try moveToTrash(existing)
             } catch {

@@ -163,6 +163,22 @@ struct ExistingFileTests {
         #expect(engine.calledSuffixes == ["", ""])
     }
 
+    /// A cancel while the history is checked leaves the old file where it is.
+    @Test func `a cancelled replace doesn't trash the old file`() async throws {
+        let manager = try manager(FakeEngine(), policy: .replace)
+        manager.moveToTrash = { try FileManager.default.removeItem(at: $0) }
+        try add(manager)
+        let first = try await settle(manager, until: .finished)
+        let old = try file("Clip [abc].mp4")
+
+        let cancelled = Task {
+            try await manager.existingFileCheck(for: first.id, videoID: "abc", choice: .video(maxHeight: nil))
+        }
+        cancelled.cancel()
+        #expect(try await cancelled.value == nil)
+        #expect(FileManager.default.fileExists(atPath: old.path))
+    }
+
     /// Another site may use the same video ID: Replace mustn't trash its file.
     @Test func `replace asks about a file the history doesn't tie to the site`() async throws {
         let other = try file("Someone else's video [abc].mp4")

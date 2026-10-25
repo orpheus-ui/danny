@@ -87,6 +87,16 @@ struct YTDLPClientTests {
         #expect(ContinuousClock.now - start < .seconds(5))
     }
 
+    /// A yt-dlp that ignores the stop request is killed after the grace period.
+    @Test func `a version check that ignores the stop is killed`() async throws {
+        let stubborn = try fakeYTDLP("trap '' TERM; while :; do sleep 0.1; done")
+        var client = YTDLPClient()
+        client.versionTimeout = .milliseconds(300)
+        let start = ContinuousClock.now
+        #expect(await client.version(binaries: stubborn) == nil)
+        #expect(ContinuousClock.now - start < .seconds(5))
+    }
+
     /// Each yt-dlp's output is read on its own: a quiet one (a cold start, a slow
     /// page) used to hold back every other one's, downloads' progress included.
     @Test func `a quiet yt-dlp doesn't hold back another one's output`() async throws {

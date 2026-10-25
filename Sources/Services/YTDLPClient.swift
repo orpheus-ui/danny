@@ -74,6 +74,10 @@ struct YTDLPError: LocalizedError {
 
 nonisolated struct YTDLPClient: Sendable {
     private static let log = Logger(subsystem: "app.danny.desktop", category: "yt-dlp")
+    /// How long `--version` may take before yt-dlp is killed. The macOS build unpacks
+    /// itself on every run, which can take 20 s on a busy Mac.
+    var versionTimeout: Duration = .seconds(60)
+
     struct Binaries: Sendable {
         let ytdlp: URL
         let ffmpegDirectory: URL?
@@ -150,7 +154,8 @@ nonisolated struct YTDLPClient: Sendable {
 
     @concurrent
     func version(binaries: Binaries) async -> String? {
-        guard let output = try? await runProcess(binaries.ytdlp, ["--version"]) else { return nil }
+        guard let output = try? await runProcess(binaries.ytdlp, ["--version"], timeout: versionTimeout)
+        else { return nil }
         return output.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
@@ -215,7 +220,7 @@ nonisolated struct YTDLPClient: Sendable {
         var outputPath: String?
 
         try await Self.running(process) {
-            for try await line in stdout.fileHandleForReading.bytes.lines {
+            for await line in stdout.lines {
                 if line.hasPrefix("FILE:") {
                     let path = String(line.dropFirst(5))
                     if !path.isEmpty { outputPath = path }
@@ -333,12 +338,6 @@ nonisolated struct YTDLPClient: Sendable {
         }
     }
 
-    @concurrent
-    private static func readAll(_ pipe: Pipe) async -> String {
-        let data = (try? pipe.fileHandleForReading.readToEnd()) ?? Data()
-        return String(bytes: data, encoding: .utf8) ?? ""
-    }
-
     private static func meaningfulError(_ lines: [String]) -> String? {
         lines.first?
             .replacingOccurrences(of: "ERROR: ", with: "")
@@ -346,7 +345,7 @@ nonisolated struct YTDLPClient: Sendable {
     }
 
     @concurrent
-    private func runProcess(_ executable: URL, _ arguments: [String]) async throws -> String {
+    private func runProcess(_ executable: URL, _ arguments: [String], timeout: Duration? = nil) async throws -> String {
         let process = Process()
         process.executableURL = executable
         process.arguments = arguments
@@ -357,11 +356,23 @@ nonisolated struct YTDLPClient: Sendable {
         process.standardOutput = pipe
         process.standardError = errors
 
+        // A run past `timeout` is stopped, and killed if it ignores that, so a stalled
+        // yt-dlp neither holds its caller nor outlives it.
+        let watchdog = timeout.map { timeout in
+            Task {
+                try await Task.sleep(for: timeout)
+                if process.isRunning { process.terminate() }
+                try await Task.sleep(for: .seconds(2))
+                if process.isRunning { kill(process.processIdentifier, SIGKILL) }
+            }
+        }
+        defer { watchdog?.cancel() }
+
         // Read stderr alongside stdout, so neither pipe fills and stalls yt-dlp.
         var output = ""
         let errorText = try await Self.running(process) {
-            async let errorText = Self.readAll(errors)
-            for try await line in pipe.fileHandleForReading.bytes.lines {
+            async let errorText = errors.text()
+            for await line in pipe.lines {
                 output += line + "\n"
             }
             return await errorText

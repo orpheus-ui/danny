@@ -52,7 +52,7 @@ final class DownloadManager {
     let network: any NetworkPath
     private var fallbackAttempted: Set<UUID> = []
     private var saveDebounce: Task<Void, Never>?
-    /// `-sample-queue` (debug builds): one card per state, in memory only.
+    /// `-sample-queue` (one card per state) or `-showcase-queue` (README shots), debug builds: in memory only.
     private var isSampleQueue = false
     /// False in tests: the queue neither loads nor saves the history file.
     private let persists: Bool
@@ -73,8 +73,9 @@ final class DownloadManager {
         self.persists = persists
         self.binaries = binaries ?? YTDLPClient.locateBinaries()
         #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("-sample-queue") {
-                items = DownloadItem.samples
+            let arguments = ProcessInfo.processInfo.arguments
+            if arguments.contains("-sample-queue") || arguments.contains("-showcase-queue") {
+                items = arguments.contains("-showcase-queue") ? DownloadItem.showcase : DownloadItem.samples
                 isSampleQueue = true
                 updatePauseAll()
                 regroup()

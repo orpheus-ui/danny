@@ -1,5 +1,6 @@
 import Foundation
 import OSLog
+import Synchronization
 
 /// One file of a merged download, as the probe lists it.
 nonisolated struct RequestedFormat: Decodable {
@@ -74,6 +75,10 @@ struct YTDLPError: LocalizedError {
 
 nonisolated struct YTDLPClient: Sendable {
     private static let log = Logger(subsystem: "app.danny.desktop", category: "yt-dlp")
+    /// The latest yt-dlp run per folder and link, for the next run of it to wait on.
+    /// shortcut: entries stay after their run ends (one small task per download), fine
+    /// until a session runs many thousands of downloads.
+    private static let lastRuns = Mutex<[String: Task<Void, Never>]>([:])
     /// How long `--version` may take before yt-dlp is killed. The macOS build unpacks
     /// itself on every run, which can take 20 s on a busy Mac.
     var versionTimeout: Duration = .seconds(60)
@@ -162,19 +167,28 @@ nonisolated struct YTDLPClient: Sendable {
     func downloadStream(
         url: URL, into directory: URL, binaries: Binaries, extraArguments: [String] = [],
     ) -> AsyncThrowingStream<DownloadEvent, Error> {
-        AsyncThrowingStream { continuation in
-            let task = Task {
-                do {
-                    try await runDownload(
-                        url: url, into: directory, binaries: binaries,
-                        extraArguments: extraArguments,
-                    ) { event in
-                        continuation.yield(event)
+        let key = directory.path + "\n" + url.absoluteString
+        return AsyncThrowingStream { continuation in
+            let task = Self.lastRuns.withLock { runs in
+                let previous = runs[key]
+                let task = Task {
+                    // A stopped run's yt-dlp may still be exiting: two must never write
+                    // the same `.part` files (a quick Pause and Resume).
+                    await previous?.value
+                    do {
+                        try await runDownload(
+                            url: url, into: directory, binaries: binaries,
+                            extraArguments: extraArguments,
+                        ) { event in
+                            continuation.yield(event)
+                        }
+                        continuation.finish()
+                    } catch {
+                        continuation.finish(throwing: error)
                     }
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
                 }
+                runs[key] = task
+                return task
             }
             continuation.onTermination = { _ in
                 task.cancel()
@@ -271,54 +285,6 @@ nonisolated struct YTDLPClient: Sendable {
         -> [String]
     {
         ["-o", directory.appendingPathComponent("\(template.ytdlp)\(suffix).%(ext)s", isDirectory: false).path]
-    }
-
-    static func parseEvent(_ line: some StringProtocol) -> DownloadEvent? {
-        alreadyDownloadedPath(line).map(DownloadEvent.alreadyDownloaded) ?? parseProgressLine(line)
-    }
-
-    /// The path in yt-dlp's `[download] <path> has already been downloaded` line.
-    static func alreadyDownloadedPath(_ line: some StringProtocol) -> String? {
-        let prefix = "[download] ", suffix = " has already been downloaded"
-        guard line.hasPrefix(prefix), line.hasSuffix(suffix) else { return nil }
-        let path = line.dropFirst(prefix.count).dropLast(suffix.count)
-        return path.isEmpty ? nil : String(path)
-    }
-
-    static func parseProgressLine(_ line: some StringProtocol) -> DownloadEvent? {
-        guard line.hasPrefix("@P|") else { return nil }
-        let fields = line.dropFirst(3).split(separator: "|", omittingEmptySubsequences: false)
-        guard fields.count == 3 || fields.count == 4 else { return nil }
-        let downloaded = Int64(fields[0]) ?? 0
-        let total = Int64(fields[1]).flatMap { $0 > 0 ? $0 : nil }
-        let speed = parseSpeed(String(fields[2]))
-        let file = fields.count == 4 && !fields[3].isEmpty && fields[3] != "NA" ? String(fields[3]) : nil
-        return .progress(downloaded: downloaded, total: total, speedBytesPerSecond: speed, file: file)
-    }
-
-    static func parseSpeed(_ raw: String) -> Double? {
-        let trimmed = raw.trimmingCharacters(in: .whitespaces)
-        guard let value = leadingNumber(trimmed), value >= 0 else { return nil }
-        let lower = trimmed.lowercased()
-        if lower.contains("gib") { return value * 1_073_741_824 }
-        if lower.contains("mib") { return value * 1_048_576 }
-        if lower.contains("kib") { return value * 1024 }
-        if lower.contains("gb") { return value * 1_000_000_000 }
-        if lower.contains("mb") { return value * 1_000_000 }
-        if lower.contains("kb") { return value * 1000 }
-        return value
-    }
-
-    private static func leadingNumber(_ text: String) -> Double? {
-        var end = text.startIndex
-        while end < text.endIndex,
-              let scalar = text[end].unicodeScalars.first,
-              scalar == "." || CharacterSet.decimalDigits.contains(scalar)
-        {
-            end = text.index(after: end)
-        }
-        guard end > text.startIndex else { return nil }
-        return Double(text[text.startIndex ..< end].replacingOccurrences(of: ",", with: "."))
     }
 
     /// Launches `process` and runs `body` while it lives. Cancelling terminates it at

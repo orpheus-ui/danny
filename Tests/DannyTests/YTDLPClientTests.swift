@@ -78,6 +78,34 @@ struct YTDLPClientTests {
 
     /// A yt-dlp that never answers. Its output ends only when the process does, so
     /// an early answer means it was killed.
+    /// A quick Pause and Resume: the second yt-dlp starts only once the first, which
+    /// takes a moment to stop, has exited, so the two never write the same files.
+    @Test func `a restarted download waits for the stopped yt-dlp to exit`() async throws {
+        let folder = scratch.folder()
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let log = folder.appendingPathComponent("runs.log")
+        let slowToStop = try fakeYTDLP("""
+        echo start >> '\(log.path)'
+        trap 'sleep 0.5; echo end >> "\(log.path)"; exit 0' TERM
+        while :; do sleep 0.1; done
+        """)
+        let client = YTDLPClient()
+        let url = try #require(URL(string: "https://example.com/watch?v=abc"))
+        let download = { Task { for try await _ in
+                client.downloadStream(url: url, into: folder, binaries: slowToStop) {}
+        } }
+
+        let first = download()
+        try await Task.sleep(for: .milliseconds(400))
+        first.cancel()
+        let second = download()
+        try await Task.sleep(for: .milliseconds(1500))
+        second.cancel()
+
+        let lines = try String(contentsOf: log, encoding: .utf8).split(separator: "\n").map(String.init)
+        #expect(Array(lines.prefix(3)) == ["start", "end", "start"])
+    }
+
     @Test func `a stalled version check is stopped and its process killed`() async throws {
         let stalled = try fakeYTDLP("exec sleep 10")
         var client = YTDLPClient()

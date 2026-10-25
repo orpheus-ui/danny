@@ -5,10 +5,10 @@
 | tokens — Figma colors, gradients, radii and type into `D` | done | orpheus-ui/danny#8 |
 | snapshots — snapshot tests for every card state | not started | — |
 | progress-bar — Metal shader dots, passing light, eased progress | done | orpheus-ui/danny#9 |
-| card — full-bleed thumbnail, scrim, title/meta/actions | done | this PR |
+| card — full-bleed thumbnail, scrim, title/meta/actions | done | orpheus-ui/danny#69 |
 | bars — title bar and bottom bar | done | orpheus-ui/danny#11, orpheus-ui/danny#13 |
 | search — one field that finds and adds, scope chips | done | orpheus-ui/danny#12 |
-| states — Queued, Fetching, Merging, Paused, Failed, empty list | done | this PR |
+| states — Queued, Fetching, Merging, Paused, Failed, empty list | done | orpheus-ui/danny#69 |
 | debt — clipboard timer, list re-renders, `visibleItems` cache | not started | — |
 
 The Figma file is the spec: main window `519:189` (640×487), cards under `519:190`,

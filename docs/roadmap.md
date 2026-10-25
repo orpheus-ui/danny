@@ -10,7 +10,7 @@ in the order listed.
 
 | Release | Milestones | Headline |
 |---|---|---|
-| `v0.1.0` preview | what `development` has today | First public build, ad-hoc signed |
+| `v0.1.0` preview | released 2026-10-25 | First public build, ad-hoc signed |
 | `v1.0.0` | rest of M1 → M4 (v1.0 part) → M5 | The video downloader, finished |
 | `v1.1.0` | M3 | Torrents you watch while they download |
 | `v2.0.0` | M2 → rest of M4 | Plugins: any site, any file type, AI extraction |
@@ -114,7 +114,7 @@ Shorter paths for the things done every day. Plan: [plans/2026-10-16-m1-5-everyd
       DMG + zip, checksums, changelog and draft GitHub Release (docs/releasing.md)
 - [x] Bundled yt-dlp and ffmpeg pinned and checksum-verified; ffmpeg native universal
 - [x] Bundled ffmpeg built from source: LGPL only, checked against yt-dlp's commands on every build (ADR-013)
-- [ ] `v0.1.0` preview from `development`, ad-hoc signed (docs/releasing.md)
+- [x] `v0.1.0` preview from `development`, ad-hoc signed (docs/releasing.md)
 - [ ] Signed and notarized releases — signing secrets configured (ADR-010)
 - [ ] Sparkle auto-updates with an EdDSA-signed appcast
 - [ ] Homebrew tap `orpheus-ui/homebrew-tap`, bumped by the release workflow (ADR-011)

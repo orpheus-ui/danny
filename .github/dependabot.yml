@@ -1,0 +1,16 @@
+# Keeps the GitHub Actions used by CI and releases current. Swift has no
+# package dependencies yet; yt-dlp is pinned by hand in
+# scripts/fetch-dependencies.sh, ffmpeg's source in scripts/build-ffmpeg.sh
+# (ADR-012, ADR-013).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: development
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci

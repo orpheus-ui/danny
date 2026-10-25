@@ -13,7 +13,7 @@ cat > "$ASSETS/Contents.json" <<'EOF'
 EOF
 
 make_vector_imageset () {
-  local name="$1" file="$2"
+  local name="$1" file="$2" intent="${3:-original}"
   local dir="$ASSETS/$name.imageset"
   mkdir -p "$dir"
   cp "Resources/Icons/$file" "$dir/"
@@ -25,7 +25,7 @@ make_vector_imageset () {
   "info" : { "author" : "xcode", "version" : 1 },
   "properties" : {
     "preserves-vector-representation" : true,
-    "template-rendering-intent" : "original"
+    "template-rendering-intent" : "$intent"
   }
 }
 EOF
@@ -54,7 +54,9 @@ make_vector_imageset "icon-arrows-sort" "icon-arrows-sort.svg"
 make_vector_imageset "icon-browser"     "icon-browser.svg"
 make_vector_imageset "icon-settings"    "icon-settings.svg"
 
+# Drawn by the menu-bar item, which the system tints for light, dark and tinted bars.
+make_vector_imageset "menu-bar-mark"    "menu-bar-mark.svg" "template"
+
 make_raster_imageset "noise-texture"    "noise-texture.png"
-make_raster_imageset "sample-thumbnail" "sample-thumbnail.png"
 
 echo "Asset catalog built at $ASSETS"

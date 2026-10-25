@@ -2,61 +2,63 @@ import AppKit
 import Foundation
 import Observation
 
+/// Looks at the clipboard when Danny becomes active, never on a timer (ADR-008):
+/// a link copied in another app is there by the time the user switches back.
 @Observable
 @MainActor
 final class ClipboardWatcher {
-    private var timer: Timer?
+    /// The copied link waiting for the user's answer, when the setting is Ask.
+    var offer: URL?
+
     private var lastChangeCount: Int
-    private var lastHandledURL: URL?
+    private var activation: NSObjectProtocol?
 
     let settings: AppSettings
     let manager: DownloadManager
+    private let pasteboard: NSPasteboard
 
-    init(settings: AppSettings, manager: DownloadManager) {
+    init(settings: AppSettings, manager: DownloadManager, pasteboard: NSPasteboard = .general) {
         self.settings = settings
         self.manager = manager
-        lastChangeCount = NSPasteboard.general.changeCount
+        self.pasteboard = pasteboard
+        lastChangeCount = pasteboard.changeCount
     }
 
     func start() {
-        guard timer == nil else { return }
-        let timer = Timer(timeInterval: 0.6, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.poll()
-            }
+        guard activation == nil else { return }
+        activation = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main,
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.check() }
         }
-        RunLoop.main.add(timer, forMode: .common)
-        self.timer = timer
     }
 
-    func stop() {
-        timer?.invalidate()
-        timer = nil
-    }
-
-    private func poll() {
-        guard settings.monitorClipboard else { return }
-        let pasteboard = NSPasteboard.general
-        guard pasteboard.changeCount != lastChangeCount else { return }
+    func check() {
+        guard settings.clipboard != .off, pasteboard.changeCount != lastChangeCount else { return }
         lastChangeCount = pasteboard.changeCount
         guard let string = pasteboard.string(forType: .string),
-              let url = Self.firstURL(in: string),
-              url != lastHandledURL
+              let url = LinkIntake.link(from: string)
         else { return }
-        lastHandledURL = url
-        if manager.add(url: url) {}
+        if settings.clipboard == .ask {
+            offer = url
+        } else {
+            manager.add(url: url)
+        }
     }
 
-    static func firstURL(in text: String) -> URL? {
-        let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
-        let matches = detector?.matches(in: text, range: NSRange(text.startIndex..., in: text))
-        for match in matches ?? [] {
-            if let url = match.url, let scheme = url.scheme?.lowercased(),
-               scheme == "http" || scheme == "https"
-            {
-                return url
-            }
-        }
-        return nil
+    func acceptOffer() {
+        if let offer { manager.add(url: offer) }
+        offer = nil
+    }
+
+    func dismissOffer() {
+        offer = nil
+    }
+
+    /// Copies a link from Danny itself, so coming back to Danny doesn't offer it as new.
+    func copy(_ url: URL) {
+        pasteboard.clearContents()
+        pasteboard.setString(url.absoluteString, forType: .string)
+        lastChangeCount = pasteboard.changeCount
     }
 }

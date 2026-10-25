@@ -5,53 +5,56 @@ struct BottomBarView: View {
     var onBrowser: () -> Void
     var onPaste: () -> Void
     var onEnterURL: () -> Void
+    /// The activity pill beside Sort; nil hides it. Read in this body, so the pill's
+    /// speed redraws the bar and not the list above it.
+    var activity: () -> QueueActivity? = { nil }
+    var canPauseAll = true
+    var canResumeAll = false
+    var onPauseAll: () -> Void = {}
+    var onResumeAll: () -> Void = {}
 
     var body: some View {
-        ZStack(alignment: .top) {
+        ZStack {
             D.bottomFade
-                .frame(height: 80)
-                .offset(y: -24)
                 .allowsHitTesting(false)
 
-            HStack(spacing: 10) {
-                sortMenu
-                Spacer()
-                PillButton(icon: "icon-browser", iconSize: 24, padding: 8) {
-                    onBrowser()
-                }
-                .help("Browser Capture")
+            // One container, so the bar's glass shares a single backdrop pass.
+            GlassEffectContainer {
+                HStack(spacing: 10) {
+                    sortMenu
+                    if let activity = activity() {
+                        ActivityPill(
+                            activity: activity, canPauseAll: canPauseAll, canResumeAll: canResumeAll,
+                            onPauseAll: onPauseAll, onResumeAll: onResumeAll,
+                        )
+                    }
+                    Spacer()
+                    PillButton(icon: "icon-browser", style: .bar) {
+                        onBrowser()
+                    }
+                    .help("Browser Capture")
 
-                PillMenu(icon: "icon-plus", iconSize: 24, padding: 8) {
-                    Button("Paste from Clipboard", action: onPaste)
-                    Button("Enter URL…", action: onEnterURL)
+                    PillMenu(icon: "icon-plus", style: .bar) {
+                        Button("Paste from Clipboard", action: onPaste)
+                        Button("Enter URL…", action: onEnterURL)
+                    }
                 }
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
         }
-        .frame(height: 56)
+        .frame(height: D.Size.bottomBar)
     }
 
     private var sortMenu: some View {
-        Menu {
+        PillMenu(icon: "icon-arrows-sort", style: .bar) {
             Picker("Sort", selection: $sortOrder) {
                 ForEach(SortOrder.allCases) { order in
                     Text(order.label).tag(order)
                 }
             }
             .pickerStyle(.inline)
-        } label: {
-            Image("icon-arrows-sort")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 24, height: 24)
-                .padding(8)
-                .dannyGlass(tint: Color.black.opacity(0.30), in: .capsule, interactive: true)
         }
-        .menuStyle(.button)
-        .menuIndicator(.hidden)
-        .buttonStyle(.plain)
-        .fixedSize()
         .help("Sort downloads")
     }
 }

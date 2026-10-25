@@ -1,0 +1,62 @@
+name: CI
+
+# Public repo: macOS runners are free, so every PR gets lint + tests.
+# Docs-only changes skip the macOS job. PR titles are checked in pr-title.yml,
+# which is the only workflow that runs when a PR is edited.
+on:
+  pull_request:
+    branches: [development, main]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [development, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect code changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          predicate-quantifier: every
+          filters: |
+            code:
+              - '**'
+              - '!**/*.md'
+              - '!docs/**'
+
+  check:
+    name: Lint and test
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Tools
+        run: brew install xcodegen swiftlint xcbeautify
+      - name: SwiftFormat 0.64.0
+        # Pinned to match `SWIFTFORMAT_VERSION` in the Makefile; Homebrew would install the latest.
+        run: |
+          curl -fsSL -o swiftformat.zip https://github.com/nicklockwood/SwiftFormat/releases/download/0.64.0/swiftformat.zip
+          echo "95ea62625d0b898a7af870293311ae6f09e4a3147ecd900593687e4b9ab2fd98  swiftformat.zip" | shasum -a 256 -c -
+          unzip -q swiftformat.zip -d "$RUNNER_TEMP/swiftformat"
+          echo "$RUNNER_TEMP/swiftformat" >> "$GITHUB_PATH"
+      - name: Metal toolchain
+        run: xcrun metal --version > /dev/null 2>&1 || xcodebuild -downloadComponent MetalToolchain
+      - name: Lint
+        run: make lint
+      - name: Test
+        run: make test

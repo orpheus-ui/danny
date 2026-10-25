@@ -1,154 +1,245 @@
 import SwiftUI
 
+/// The progress bar from Figma: a glassy track, a fill with halftone dots drawn by a
+/// Metal shader (`ProgressBar.metal`), and a light that passes through the dots
+/// (`ProgressLight`).
+///
+/// Light work (ADR-008): the fill is static and only redrawn when progress changes;
+/// the light is moved by Core Animation outside the app, and stops while the window
+/// is hidden or Reduce Motion is on.
 struct ProgressBarView: View {
     let item: DownloadItem
     var onRetry: (() -> Void)?
     var onBrowserCapture: (() -> Void)?
-    var barHeight: CGFloat = 20
+    /// Shown instead of Browser Capture when the site wants a signed-in user.
+    var onSignIn: (() -> Void)?
+    /// A finished card's actions while it is hovered, as chips at the bar's trailing end.
+    var finishedActions: [Chip] = []
+    /// Shown on a running bar; the card passes it only while hovered.
+    var onPause: (() -> Void)?
+    var onResume: (() -> Void)?
+
+    struct Chip {
+        let icon: String
+        let title: String
+        let action: () -> Void
+    }
+
+    @Environment(\.windowIsVisible) private var windowIsVisible
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(DownloadManager.self) private var manager: DownloadManager?
 
     var body: some View {
         GeometryReader { geo in
-            let width = geo.size.width
             ZStack(alignment: .leading) {
                 track
-                fill(width: width)
-                if let label {
-                    labelText(label)
-                        .position(x: labelX(fillWidth: fillWidth(in: width), totalWidth: width), y: barHeight / 2)
-                }
-            }
-            .frame(height: barHeight)
-            .overlay(alignment: .trailing) {
-                if item.status == .failed {
-                    failedActions
+                if let style = fillStyle {
+                    fill(style, width: fillWidth(in: geo.size.width), track: geo.size.width)
                 }
             }
         }
-        .frame(height: barHeight)
-        .animation(.easeOut(duration: 0.3), value: item.status)
+        .frame(height: D.Size.progressHeight)
+        .overlay { label }
+        .overlay(alignment: .trailing) {
+            if item.status == .failed { failedActions }
+            if item.status == .finished, !finishedActions.isEmpty { doneActions }
+            if item.status.canPause, let onPause { chip(icon: "pause.fill", title: "Pause", action: onPause) }
+            if item.status == .paused, let onResume { chip(icon: "play.fill", title: "Resume", action: onResume) }
+        }
     }
+
+    // MARK: Track and fill
 
     private var track: some View {
         Capsule()
-            .fill(Color.white.opacity(0.08))
+            .fill(D.progressTrack)
             .overlay {
-                Capsule().strokeBorder(Color.white.opacity(0.07), lineWidth: 1)
+                Capsule()
+                    .stroke(D.progressInnerShadow, lineWidth: 2)
+                    .blur(radius: 1)
+                    .offset(y: 1)
+                    .clipShape(Capsule())
             }
+            .shadow(color: D.progressRim, radius: 0, y: 1)
     }
 
-    @ViewBuilder
-    private func fill(width: CGFloat) -> some View {
-        switch item.status {
-        case .queued:
-            EmptyView()
-        case .resolving:
-            Capsule()
-                .fill(D.progressFill)
-                .frame(width: width)
-                .opacity(0.4)
-        case .downloading:
-            if let fraction = item.fractionCompleted {
-                Capsule()
-                    .fill(D.progressFill)
-                    .frame(width: max(width * CGFloat(min(max(fraction, 0), 1)), barHeight))
-            } else {
-                Capsule()
-                    .fill(D.progressFill)
-                    .frame(width: width)
-                    .opacity(0.45)
+    private func fill(_ style: FillStyle, width: CGFloat, track: CGFloat) -> some View {
+        EasedFill(width: width, style: style)
+            .opacity(Self.fillOpacity(for: item.status))
+            .overlay(alignment: .leading) {
+                ProgressLight(trackWidth: track, isRunning: sweeps)
             }
-        case .processing:
-            ProcessingCapsule(width: width)
-        case .finished:
-            Capsule().fill(D.doneFill).frame(width: width)
-        case .failed:
-            Capsule().fill(D.failedFill).frame(width: width)
+            .clipShape(Capsule())
+    }
+
+    /// The fill easing to each new width (`FillEase`), 30 frames a second at most.
+    private struct EasedFill: View {
+        let width: CGFloat
+        let style: FillStyle
+        @State private var ease = FillEase()
+
+        var body: some View {
+            TimelineView(FillEase.Schedule(frames: ease.frames)) { context in
+                DottedFill(width: ease.width(at: context.date), style: style)
+            }
+            .onChange(of: width, initial: true) { _, width in
+                ease.move(to: width, at: .now)
+            }
         }
     }
 
-    private struct ProcessingCapsule: View {
+    /// The fill and its shader take the same width, so the dots are laid out for the
+    /// size drawn in every frame of an ease.
+    private struct DottedFill: View {
         let width: CGFloat
+        let style: FillStyle
 
         var body: some View {
-            TimelineView(.animation(minimumInterval: 1 / 20)) { timeline in
-                let t = timeline.date.timeIntervalSinceReferenceDate
-                Capsule()
-                    .fill(D.progressFill)
-                    .frame(width: width)
-                    .opacity(0.55 + 0.3 * sin(t * 4))
-            }
+            Capsule()
+                .fill(style.gradient)
+                .colorEffect(ShaderLibrary.progressFill(
+                    .float2(width, D.Size.progressHeight),
+                    .color(style.dotStart), .color(style.dotEnd),
+                ))
+                .frame(width: width)
         }
     }
 
     private func fillWidth(in total: CGFloat) -> CGFloat {
-        guard let fraction = item.fractionCompleted else { return 0 }
-        return total * CGFloat(min(max(fraction, 0), 1))
+        guard item.status == .downloading || item.status == .paused else { return total }
+        // A card paused before its first byte has nothing to fill.
+        guard let fraction = item.fractionCompleted else { return item.status == .paused ? 0 : total }
+        let clamped = CGFloat(min(max(fraction, 0), 1))
+        return clamped > 0 ? max(total * clamped, D.Size.progressHeight) : 0
     }
 
-    private func labelX(fillWidth edge: CGFloat, totalWidth: CGFloat) -> CGFloat {
-        if item.status == .finished || item.status == .failed || item.status == .processing || item.status == .resolving {
-            return totalWidth / 2
-        }
-        let half: CGFloat = 55
-        return min(max(edge - 31, half), max(half, totalWidth - half))
+    private struct FillStyle {
+        let gradient: LinearGradient
+        let dotStart: Color
+        let dotEnd: Color
     }
 
-    private var label: String? {
+    /// Dimmed while the fill stands for no progress yet (Fetching) or for stopped progress (Paused).
+    static func fillOpacity(for status: ItemStatus) -> Double {
+        status == .resolving || status == .paused ? D.dimmedFill : 1
+    }
+
+    private var fillStyle: FillStyle? {
         switch item.status {
-        case .queued:
-            return nil
-        case .resolving:
-            return "Fetching…"
-        case .downloading:
-            return progressLabel
-        case .processing:
-            return "Merging…"
+        case .queued, .choosing, .existing:
+            nil
+        case .resolving, .downloading, .processing, .paused:
+            FillStyle(gradient: D.progressFill, dotStart: D.progressDotStart, dotEnd: D.progressDotEnd)
         case .finished:
-            return "Done :)"
+            FillStyle(gradient: D.doneFill, dotStart: D.doneStart, dotEnd: D.doneEnd)
         case .failed:
-            return "Failed :("
+            FillStyle(gradient: D.failedFill, dotStart: D.failedStart, dotEnd: D.failedEnd)
         }
     }
 
-    private var progressLabel: String {
-        if let fraction = item.fractionCompleted {
-            let percent = "\(Int((fraction * 100).rounded()))%"
-            if let speed = Format.speed(item.speedBytesPerSecond) {
-                return "\(percent) - \(speed)"
+    // MARK: The passing light
+
+    /// Whether the light passes at all now.
+    private var sweeps: Bool {
+        let working = item.status == .downloading || item.status == .resolving || item.status == .processing
+        return working && windowIsVisible && !reduceMotion
+    }
+
+    // MARK: Label
+
+    private var label: some View {
+        HStack(spacing: 10) {
+            ForEach(Array(labelParts.enumerated()), id: \.offset) { _, part in
+                Text(part)
             }
-            return percent
         }
-        if let speed = Format.speed(item.speedBytesPerSecond) {
-            return speed
-        }
-        return "Starting…"
+        .font(D.Font.progressLabel)
+        // An empty track's label is quieter, like the meta line.
+        .foregroundStyle(fillStyle == nil ? D.textSecondary : D.progressLabel)
+        .shadow(color: .black.opacity(0.3), radius: 1, y: 0.5)
+        .lineLimit(1)
+        .fixedSize()
+        .contentTransition(.numericText())
     }
 
-    private func labelText(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 14, weight: .bold))
-            .foregroundStyle(Color.white.opacity(0.92))
-            .lineLimit(1)
-            .fixedSize()
+    private var labelParts: [String] {
+        Self.labelParts(for: item, waitsForWiFi: manager?.waitsForWiFi == true)
     }
+
+    static func labelParts(for item: DownloadItem, waitsForWiFi: Bool) -> [String] {
+        switch item.status {
+        case .queued: [waitsForWiFi ? "Waiting for Wi-Fi" : "Queued"]
+        case .choosing, .existing: []
+        case .resolving: ["Fetching…"]
+        case .downloading: downloadingParts(item)
+        case .processing: ["Merging…"]
+        case .paused: Format.percent(item.fractionCompleted).map { ["Paused", "·", $0] } ?? ["Paused"]
+        case .finished: ["Done"]
+        case .failed: [item.failureReason?.text ?? "Failed"]
+        }
+    }
+
+    private static func downloadingParts(_ item: DownloadItem) -> [String] {
+        let speed = Format.speed(item.speedBytesPerSecond)
+        guard let percent = Format.percent(item.fractionCompleted) else { return [speed ?? "Starting…"] }
+        return speed.map { [percent, "-", $0] } ?? [percent]
+    }
+
+    // MARK: Failed
 
     private var failedActions: some View {
         HStack(spacing: 6) {
-            if let onRetry {
-                miniButton(icon: "arrow.clockwise", title: "Retry", action: onRetry)
-            }
-            if let onBrowserCapture {
-                miniButton(icon: "globe", title: "Browser Capture", action: onBrowserCapture)
+            switch item.failureReason?.action {
+            case .signIn:
+                if let onSignIn {
+                    miniButton(icon: "person.crop.circle", title: "Sign In", action: onSignIn)
+                } else if let onBrowserCapture {
+                    miniButton(icon: "globe", title: "Browser Capture", action: onBrowserCapture)
+                }
+            case .browserCapture:
+                if let onBrowserCapture {
+                    miniButton(icon: "globe", title: "Browser Capture", action: onBrowserCapture)
+                }
+            case .retry:
+                if let onRetry {
+                    miniButton(icon: "arrow.clockwise", title: "Retry", action: onRetry)
+                }
+            case .nothing, nil:
+                EmptyView()
             }
         }
         .padding(.trailing, 6)
     }
 
-    private func miniButton(icon: String, title: String, action: @escaping () -> Void) -> some View {
+    /// Pause and Resume: one labelled chip, like Retry on a failed bar.
+    private func chip(icon: String, title: String, action: @escaping () -> Void) -> some View {
+        miniButton(icon: icon, title: title, action: action)
+            .padding(.trailing, 6)
+            .transition(.opacity)
+    }
+
+    // MARK: Done
+
+    /// Icon-only: four labelled chips don't fit beside "Done" at the window's minimum width.
+    private var doneActions: some View {
+        HStack(spacing: 6) {
+            ForEach(finishedActions, id: \.title) { chip in
+                miniButton(icon: chip.icon, title: nil, action: chip.action)
+                    .help(chip.title)
+                    .accessibilityLabel(chip.title)
+            }
+        }
+        .padding(.trailing, 6)
+        .transition(.opacity)
+    }
+
+    private func miniButton(icon: String, title: String?, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 4) {
                 Image(systemName: icon).font(.system(size: 9, weight: .bold))
-                Text(title).font(.system(size: 10, weight: .bold))
+                if let title {
+                    Text(title).font(.system(size: 10, weight: .bold))
+                }
             }
             .foregroundStyle(.white.opacity(0.95))
             .padding(.horizontal, 8)

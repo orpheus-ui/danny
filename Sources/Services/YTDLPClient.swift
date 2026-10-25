@@ -1,4 +1,19 @@
 import Foundation
+import OSLog
+import Synchronization
+
+/// One file of a merged download, as the probe lists it.
+nonisolated struct RequestedFormat: Decodable {
+    var formatID: String
+    var filesize: Int64?
+    var filesizeApprox: Int64?
+
+    enum CodingKeys: String, CodingKey {
+        case formatID = "format_id"
+        case filesize
+        case filesizeApprox = "filesize_approx"
+    }
+}
 
 nonisolated struct VideoMetadata: Decodable {
     var id: String
@@ -10,6 +25,20 @@ nonisolated struct VideoMetadata: Decodable {
     var duration: Double?
     var filesizeApprox: Int64?
     var extractor: String?
+    /// The files a merged download fetches, such as video then audio.
+    var requestedFormats: [RequestedFormat]?
+
+    /// Approximate size of each file the download will fetch, by format id.
+    var plannedFiles: [String: Int64] {
+        var planned: [String: Int64] = [:]
+        for format in requestedFormats ?? [] {
+            planned[format.formatID] = format.filesize ?? format.filesizeApprox
+        }
+        return planned
+    }
+
+    /// Every format the site offers, for the quality options.
+    var formats: [FormatInfo]?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -21,17 +50,22 @@ nonisolated struct VideoMetadata: Decodable {
         case duration
         case filesizeApprox = "filesize_approx"
         case extractor
+        case requestedFormats = "requested_formats"
+        case formats
     }
 
     var resolutionLabel: String? {
-        if let width, let height, width > 0, height > 0 { "\(width)x\(height)" }
-        else { nil }
+        guard let width, let height, width > 0, height > 0 else { return nil }
+        return "\(width)x\(height)"
     }
 }
 
 nonisolated enum DownloadEvent: Sendable {
-    case progress(downloaded: Int64, total: Int64?, speedBytesPerSecond: Double?)
+    /// `file` is the format id being fetched; merged downloads fetch one file per format.
+    case progress(downloaded: Int64, total: Int64?, speedBytesPerSecond: Double?, file: String? = nil)
     case outputFile(String)
+    /// yt-dlp found the file already there and skipped the download.
+    case alreadyDownloaded(String)
 }
 
 struct YTDLPError: LocalizedError {
@@ -40,11 +74,29 @@ struct YTDLPError: LocalizedError {
 }
 
 nonisolated struct YTDLPClient: Sendable {
+    private static let log = Logger(subsystem: "app.danny.desktop", category: "yt-dlp")
+    /// The latest yt-dlp run per folder and link, for the next run of it to wait on.
+    /// shortcut: entries stay after their run ends (one small task per download), fine
+    /// until a session runs many thousands of downloads.
+    private static let lastRuns = Mutex<[String: Task<Void, Never>]>([:])
+    /// How long `--version` may take before yt-dlp is killed. The macOS build unpacks
+    /// itself on every run, which can take 20 s on a busy Mac.
+    var versionTimeout: Duration = .seconds(60)
+
     struct Binaries: Sendable {
         let ytdlp: URL
         let ffmpegDirectory: URL?
+        /// The bundled QuickJS-ng, which yt-dlp needs to read YouTube's player (ADR-016).
+        var jsRuntime: URL?
 
         static let missing = Binaries(ytdlp: URL(fileURLWithPath: "/usr/bin/false"), ffmpegDirectory: nil)
+
+        /// Pins yt-dlp to the bundled runtime, so a run never depends on what else is
+        /// installed. Without one, yt-dlp keeps its own default.
+        var runtimeArguments: [String] {
+            guard let jsRuntime else { return [] }
+            return ["--no-js-runtimes", "--js-runtimes", "quickjs:\(jsRuntime.path)"]
+        }
     }
 
     static func childProcessEnvironment() -> [String: String] {
@@ -55,16 +107,25 @@ nonisolated struct YTDLPClient: Sendable {
     }
 
     static func locateBinaries() -> Binaries {
-        guard let ytdlp = locate("yt-dlp") ?? locate("youtube-dl") else { return .missing }
-        return Binaries(ytdlp: ytdlp, ffmpegDirectory: locate("ffmpeg")?.deletingLastPathComponent())
+        // yt-dlp only: the progress template, format sorting and remux rules don't
+        // exist in youtube-dl.
+        // The copy Danny keeps current comes first (YTDLPUpdater), unless a newer
+        // Danny brought a newer one.
+        let managed = YTDLPUpdater.managed(YTDLPUpdater.managedBinary, unlessOlderThan: bundled("yt-dlp"))
+        guard let ytdlp = managed ?? locate("yt-dlp") else { return .missing }
+        return Binaries(
+            ytdlp: ytdlp, ffmpegDirectory: locate("ffmpeg")?.deletingLastPathComponent(), jsRuntime: bundled("qjs"),
+        )
+    }
+
+    private static func bundled(_ name: String) -> URL? {
+        guard let url = Bundle.main.url(forResource: name, withExtension: nil, subdirectory: "bin"),
+              FileManager.default.isExecutableFile(atPath: url.path) else { return nil }
+        return url
     }
 
     private static func locate(_ name: String) -> URL? {
-        if let bundled = Bundle.main.url(forResource: name, withExtension: nil, subdirectory: "bin"),
-           FileManager.default.isExecutableFile(atPath: bundled.path)
-        {
-            return bundled
-        }
+        if let bundled = bundled(name) { return bundled }
         let candidates = [
             "/opt/homebrew/bin/\(name)",
             "/usr/local/bin/\(name)",
@@ -82,10 +143,12 @@ nonisolated struct YTDLPClient: Sendable {
     }
 
     @concurrent
-    func probe(url: URL, binaries: Binaries) async throws -> VideoMetadata {
+    func probe(url: URL, binaries: Binaries, extraArguments: [String] = []) async throws -> VideoMetadata {
         let output = try await runProcess(
             binaries.ytdlp,
-            ["-J", "--no-warnings", "--no-playlist", "--skip-download", url.absoluteString])
+            ["-J", "--no-playlist", "--skip-download"] + binaries.runtimeArguments + SystemProxy.current()
+                + extraArguments + [url.absoluteString],
+        )
         guard let data = output.data(using: .utf8),
               let metadata = try? JSONDecoder().decode(VideoMetadata.self, from: data)
         else {
@@ -96,26 +159,36 @@ nonisolated struct YTDLPClient: Sendable {
 
     @concurrent
     func version(binaries: Binaries) async -> String? {
-        guard let output = try? await runProcess(binaries.ytdlp, ["--version"]) else { return nil }
+        guard let output = try? await runProcess(binaries.ytdlp, ["--version"], timeout: versionTimeout)
+        else { return nil }
         return output.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     func downloadStream(
-        url: URL, into directory: URL, binaries: Binaries, extraArguments: [String] = []
+        url: URL, into directory: URL, binaries: Binaries, extraArguments: [String] = [],
     ) -> AsyncThrowingStream<DownloadEvent, Error> {
-        AsyncThrowingStream { continuation in
-            let task = Task {
-                do {
-                    try await self.runDownload(
-                        url: url, into: directory, binaries: binaries,
-                        extraArguments: extraArguments
-                    ) { event in
-                        continuation.yield(event)
+        let key = directory.path + "\n" + url.absoluteString
+        return AsyncThrowingStream { continuation in
+            let task = Self.lastRuns.withLock { runs in
+                let previous = runs[key]
+                let task = Task {
+                    // A stopped run's yt-dlp may still be exiting: two must never write
+                    // the same `.part` files (a quick Pause and Resume).
+                    await previous?.value
+                    do {
+                        try await runDownload(
+                            url: url, into: directory, binaries: binaries,
+                            extraArguments: extraArguments,
+                        ) { event in
+                            continuation.yield(event)
+                        }
+                        continuation.finish()
+                    } catch {
+                        continuation.finish(throwing: error)
                     }
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
                 }
+                runs[key] = task
+                return task
             }
             continuation.onTermination = { _ in
                 task.cancel()
@@ -123,30 +196,24 @@ nonisolated struct YTDLPClient: Sendable {
         }
     }
 
+    /// Split when yt-dlp moves behind the plugin protocol (M2; docs/backlog.md).
     @concurrent
     private func runDownload(
         url: URL, into directory: URL, binaries: Binaries, extraArguments: [String],
-        onEvent: @escaping @Sendable (DownloadEvent) -> Void
+        onEvent: @escaping @Sendable (DownloadEvent) -> Void,
     ) async throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
-        let outputTemplate = directory
-            .appendingPathComponent("%(title).120B [%(id)s].%(ext)s", isDirectory: false).path
         let progressTemplate =
-            "download:\u{40}P|%(progress.downloaded_bytes)s|%(progress.total_bytes_estimate)s|%(progress._speed_str)s"
+            // The exact size when yt-dlp has it, else its estimate (fragmented streams).
+            "download:\u{40}P|%(progress.downloaded_bytes)s|%(progress.total_bytes,progress.total_bytes_estimate)s"
+                + "|%(progress._speed_str)s|%(info.format_id)s"
 
-        var arguments = [
-            "--newline", "--no-warnings", "--no-playlist", "--progress",
-            "--print", "after_move:FILE:%(filepath)s",
-            "--progress-template", progressTemplate,
-            "-f", "bv*+ba/b",
-            "--merge-output-format", "mp4",
-            "-o", outputTemplate,
-        ]
+        var arguments = Self.downloadArguments(in: directory, progressTemplate: progressTemplate)
         if let ffmpeg = binaries.ffmpegDirectory {
             arguments += ["--ffmpeg-location", ffmpeg.path]
         }
-        arguments += extraArguments
+        arguments += binaries.runtimeArguments + SystemProxy.current() + extraArguments
         arguments.append(url.absoluteString)
 
         let process = Process()
@@ -159,12 +226,6 @@ nonisolated struct YTDLPClient: Sendable {
         process.standardError = stdout
         process.standardInput = FileHandle.nullDevice
 
-        _ = try await withTaskCancellationHandler {
-            try process.run()
-        } onCancel: {
-            if process.isRunning { process.terminate() }
-        }
-
         defer {
             if process.isRunning { process.terminate() }
         }
@@ -172,17 +233,22 @@ nonisolated struct YTDLPClient: Sendable {
         var failureLines: [String] = []
         var outputPath: String?
 
-        for try await line in stdout.fileHandleForReading.bytes.lines {
-            if Task.isCancelled { break }
-            if line.hasPrefix("FILE:") {
-                let path = String(line.dropFirst(5))
-                if !path.isEmpty { outputPath = path }
-                continue
-            }
-            if let event = Self.parseProgressLine(line) {
-                onEvent(event)
-            } else if line.contains("ERROR") {
-                failureLines.append(line)
+        try await Self.running(process) {
+            for await line in stdout.lines {
+                if line.hasPrefix("FILE:") {
+                    let path = String(line.dropFirst(5))
+                    if !path.isEmpty { outputPath = path }
+                    continue
+                }
+                if let event = Self.parseEvent(line) {
+                    onEvent(event)
+                } else if line.contains("ERROR") {
+                    failureLines.append(line)
+                } else if line.hasPrefix("WARNING") {
+                    // Kept in the system log: they explain thin format lists (`log show
+                    // --predicate 'subsystem == "app.danny.desktop"'`).
+                    Self.log.warning("\(line, privacy: .public)")
+                }
             }
         }
 
@@ -198,39 +264,44 @@ nonisolated struct YTDLPClient: Sendable {
         }
     }
 
-    static func parseProgressLine(_ line: some StringProtocol) -> DownloadEvent? {
-        guard line.hasPrefix("@P|") else { return nil }
-        let fields = line.dropFirst(3).split(separator: "|", omittingEmptySubsequences: false)
-        guard fields.count == 3 else { return nil }
-        let downloaded = Int64(fields[0]) ?? 0
-        let total = Int64(fields[1]).flatMap { $0 > 0 ? $0 : nil }
-        let speed = parseSpeed(String(fields[2]))
-        return .progress(downloaded: downloaded, total: total, speedBytesPerSecond: speed)
+    static func downloadArguments(in directory: URL, progressTemplate: String) -> [String] {
+        [
+            "--newline", "--no-playlist", "--progress",
+            "--print", "after_move:FILE:%(filepath)s",
+            "--progress-template", progressTemplate,
+            // Only speeds up fragmented streams (DASH, HLS); more than ~8 invites rate limits.
+            "--concurrent-fragments", "8",
+        ] + outputArguments(in: directory)
     }
 
-    static func parseSpeed(_ raw: String) -> Double? {
-        let trimmed = raw.trimmingCharacters(in: .whitespaces)
-        guard let value = leadingNumber(trimmed), value >= 0 else { return nil }
-        let lower = trimmed.lowercased()
-        if lower.contains("gib") { return value * 1_073_741_824 }
-        if lower.contains("mib") { return value * 1_048_576 }
-        if lower.contains("kib") { return value * 1024 }
-        if lower.contains("gb") { return value * 1_000_000_000 }
-        if lower.contains("mb") { return value * 1_000_000 }
-        if lower.contains("kb") { return value * 1000 }
-        return value
+    /// The speed limit setting as yt-dlp arguments: bytes per second, 0 for none.
+    static func limitRateArguments(_ bytesPerSecond: Int) -> [String] {
+        bytesPerSecond > 0 ? ["--limit-rate", String(bytesPerSecond)] : []
     }
 
-    private static func leadingNumber(_ text: String) -> Double? {
-        var end = text.startIndex
-        while end < text.endIndex,
-              let scalar = text[end].unicodeScalars.first,
-              scalar == "." || CharacterSet.decimalDigits.contains(scalar)
-        {
-            end = text.index(after: end)
+    /// Where a download goes: `<name by template> [<id>]<suffix>.<ext>`. Extra arguments
+    /// repeat it with the chosen template or a suffix, as in " (2)": yt-dlp takes the last `-o`.
+    static func outputArguments(in directory: URL, template: FilenameTemplate = .title, suffix: String = "")
+        -> [String]
+    {
+        ["-o", directory.appendingPathComponent("\(template.ytdlp)\(suffix).%(ext)s", isDirectory: false).path]
+    }
+
+    /// Launches `process` and runs `body` while it lives. Cancelling terminates it at
+    /// once, not at its next line: yt-dlp can stay quiet for half a minute while it
+    /// reads a page, and a removed card's download would otherwise finish anyway.
+    private static func running<T>(_ process: Process, _ body: () async throws -> T) async throws -> T {
+        try Task.checkCancellation()
+        try process.run()
+        do {
+            return try await withTaskCancellationHandler(operation: body) {
+                if process.isRunning { process.terminate() }
+            }
+        } catch {
+            // A failed read leaves no one to wait for the process.
+            if process.isRunning { process.terminate() }
+            throw error
         }
-        guard end > text.startIndex else { return nil }
-        return Double(text[text.startIndex ..< end].replacingOccurrences(of: ",", with: "."))
     }
 
     private static func meaningfulError(_ lines: [String]) -> String? {
@@ -240,31 +311,54 @@ nonisolated struct YTDLPClient: Sendable {
     }
 
     @concurrent
-    private func runProcess(_ executable: URL, _ arguments: [String]) async throws -> String {
+    private func runProcess(_ executable: URL, _ arguments: [String], timeout: Duration? = nil) async throws -> String {
         let process = Process()
         process.executableURL = executable
         process.arguments = arguments
         process.environment = Self.childProcessEnvironment()
         process.standardInput = FileHandle.nullDevice
         let pipe = Pipe()
+        let errors = Pipe()
         process.standardOutput = pipe
-        process.standardError = FileHandle.nullDevice
+        process.standardError = errors
 
-        _ = try await withTaskCancellationHandler {
-            try process.run()
-        } onCancel: {
-            if process.isRunning { process.terminate() }
+        // A run past `timeout` is stopped, and killed if it ignores that, so a stalled
+        // yt-dlp neither holds its caller nor outlives it.
+        let watchdog = timeout.map { timeout in
+            Task {
+                try await Task.sleep(for: timeout)
+                if process.isRunning { process.terminate() }
+                try await Task.sleep(for: .seconds(2))
+                if process.isRunning { kill(process.processIdentifier, SIGKILL) }
+            }
         }
+        defer { watchdog?.cancel() }
 
+        // Read stderr alongside stdout, so neither pipe fills and stalls yt-dlp.
         var output = ""
-        for try await line in pipe.fileHandleForReading.bytes.lines {
-            output += line + "\n"
+        let errorText = try await Self.running(process) {
+            async let errorText = errors.text()
+            for await line in pipe.lines {
+                output += line + "\n"
+            }
+            return await errorText
         }
         process.waitUntilExit()
+        let errorLines = errorText.split(separator: "\n").map(String.init)
+        for line in errorLines where line.hasPrefix("WARNING") {
+            Self.log.warning("\(line, privacy: .public)")
+        }
 
         guard process.terminationStatus == 0 else {
-            throw YTDLPError(message: "yt-dlp exited with code \(process.terminationStatus).")
+            throw YTDLPError(message: Self.meaningfulError(errorLines.filter { $0.contains("ERROR") })
+                ?? "yt-dlp exited with code \(process.terminationStatus).")
         }
         return output
+    }
+}
+
+extension URL {
+    var fileExistsAsExecutable: Bool {
+        FileManager.default.isExecutableFile(atPath: path)
     }
 }

@@ -1,0 +1,143 @@
+@testable import Danny
+import Foundation
+import Testing
+
+struct YTDLPUpdaterTests {
+    private let scratch = TestScratch()
+    private let binary = Data("#!/bin/sh\necho 2026.09.01\n".utf8)
+
+    nonisolated static let signature = Data("signature".utf8)
+
+    /// A fake GitHub: the latest release, its checksums, their signature and its binary.
+    private func updater(
+        latest: String = "2026.09.01", checksum: String? = nil, signature: Data? = Self.signature, signed: Bool = true,
+        runs: Bool = true, fetched: Recorder = Recorder(),
+    ) -> (YTDLPUpdater, URL) {
+        let directory = scratch.folder()
+        let binary = binary
+        let sum = checksum ?? YTDLPUpdater.sha256(binary)
+        let sums = Data("\(sum)  yt-dlp_macos\nabc  yt-dlp.exe\n".utf8)
+        let expected = Self.signature
+        var updater = YTDLPUpdater()
+        updater.directory = directory
+        updater.fetch = { url in
+            await fetched.add(url)
+            switch url.lastPathComponent {
+            case "latest": return Data(#"{"tag_name": "\#(latest)"}"#.utf8)
+            case "SHA2-256SUMS": return sums
+            case "SHA2-256SUMS.sig":
+                guard let signature else { throw URLError(.fileDoesNotExist) }
+                return signature
+            case "yt-dlp_macos": return binary
+            default: throw URLError(.fileDoesNotExist)
+            }
+        }
+        updater.versionOf = { _ in runs ? latest : nil }
+        updater.isSigned = { file, signature in signed && file == sums && signature == expected }
+        return (updater, directory)
+    }
+
+    actor Recorder {
+        var urls: [URL] = []
+        func add(_ url: URL) { urls.append(url) }
+    }
+
+    @Test
+    func `a newer release is verified and installed as an executable`() async throws {
+        let (updater, directory) = updater()
+        #expect(await updater.update(from: "2026.08.19") == .updated("2026.09.01"))
+        let installed = directory.appendingPathComponent("yt-dlp")
+        #expect(try Data(contentsOf: installed) == binary)
+        #expect(FileManager.default.isExecutableFile(atPath: installed.path))
+        #expect(try FileManager.default.contentsOfDirectory(atPath: directory.path).sorted()
+            == ["yt-dlp", "yt-dlp.version"])
+        #expect(try String(contentsOf: directory.appendingPathComponent("yt-dlp.version"), encoding: .utf8)
+            == "2026.09.01")
+    }
+
+    @Test
+    func `the current version downloads nothing`() async {
+        let fetched = Recorder()
+        let (updater, _) = updater(fetched: fetched)
+        #expect(await updater.update(from: "2026.09.01") == .current("2026.09.01"))
+        #expect(await fetched.urls.map(\.lastPathComponent) == ["latest"])
+    }
+
+    @Test
+    func `a checksum mismatch installs nothing`() async {
+        let (updater, directory) = updater(checksum: String(repeating: "0", count: 64))
+        guard case .failed = await updater.update(from: "2026.08.19") else {
+            Issue.record("expected a failure")
+            return
+        }
+        #expect(!FileManager.default.fileExists(atPath: directory.appendingPathComponent("yt-dlp").path))
+    }
+
+    @Test(arguments: [(YTDLPUpdaterTests.signature, false), (nil, true)] as [(Data?, Bool)])
+    func `checksums without a good signature install nothing`(signature: Data?, signed: Bool) async {
+        let fetched = Recorder()
+        let (updater, directory) = updater(signature: signature, signed: signed, fetched: fetched)
+        guard case .failed = await updater.update(from: "2026.08.19") else {
+            Issue.record("expected a failure")
+            return
+        }
+        #expect(await !fetched.urls.map(\.lastPathComponent).contains("yt-dlp_macos"))
+        #expect(!FileManager.default.fileExists(atPath: directory.path))
+    }
+
+    @Test
+    func `a binary that doesn't run installs nothing`() async throws {
+        let (updater, directory) = updater(runs: false)
+        guard case .failed = await updater.update(from: nil) else {
+            Issue.record("expected a failure")
+            return
+        }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: directory.path).isEmpty)
+    }
+
+    @Test
+    func `versions compare as dates with an optional build number`() {
+        #expect(YTDLPUpdater.isNewer("2026.09.01", than: "2026.08.19"))
+        #expect(YTDLPUpdater.isNewer("2026.08.19.1", than: "2026.08.19"))
+        #expect(!YTDLPUpdater.isNewer("2026.08.19", than: "2026.08.19"))
+        #expect(!YTDLPUpdater.isNewer("2025.12.31", than: "2026.01.01"))
+    }
+
+    @Test
+    func `checksums are read from a sha256sum list`() {
+        let sums = "AAA  yt-dlp\nbbb  yt-dlp_macos\nccc *yt-dlp_linux\n"
+        #expect(YTDLPUpdater.checksum(of: "yt-dlp_macos", in: sums) == "bbb")
+        #expect(YTDLPUpdater.checksum(of: "yt-dlp_linux", in: sums) == "ccc")
+        #expect(YTDLPUpdater.checksum(of: "yt-dlp_macos_legacy", in: sums) == nil)
+    }
+
+    /// Writes an executable `yt-dlp` and its version file into a new folder.
+    private func copy(version: String?) throws -> URL {
+        let folder = scratch.folder()
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let binary = folder.appendingPathComponent("yt-dlp")
+        try self.binary.write(to: binary)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: binary.path)
+        if let version { try Data(version.utf8).write(to: YTDLPUpdater.versionFile(of: binary)) }
+        return binary
+    }
+
+    @Test
+    func `the kept copy is used unless the bundled one is newer`() throws {
+        let managed = try copy(version: "2026.09.01")
+        #expect(try YTDLPUpdater.managed(managed, unlessOlderThan: copy(version: "2026.08.19")) == managed)
+        #expect(try YTDLPUpdater.managed(managed, unlessOlderThan: copy(version: "2026.09.01")) == managed)
+        #expect(try YTDLPUpdater.managed(managed, unlessOlderThan: copy(version: "2026.10.02")) == nil)
+        #expect(try YTDLPUpdater.managed(managed, unlessOlderThan: copy(version: nil)) == managed)
+        #expect(YTDLPUpdater.managed(managed, unlessOlderThan: nil) == managed)
+        let missing = managed.deletingLastPathComponent().appendingPathComponent("none")
+        #expect(YTDLPUpdater.managed(missing, unlessOlderThan: nil) == nil)
+    }
+
+    @Test
+    func `the 403 hint fits the update setting`() {
+        #expect(DownloadManager.hinted("HTTP Error 403", updates: true).contains("reopen Danny to get the latest"))
+        #expect(DownloadManager.hinted("HTTP Error 403", updates: false).contains("Keep yt-dlp up to date"))
+        #expect(DownloadManager.hinted("Unsupported URL", updates: false) == "Unsupported URL")
+    }
+}

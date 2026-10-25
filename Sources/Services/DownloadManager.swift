@@ -5,57 +5,88 @@ import Observation
 @Observable
 @MainActor
 final class DownloadManager {
-    private(set) var items: [DownloadItem] = []
-    var sortOrder: SortOrder = .newest
-    var query: String = ""
+    private(set) var items: [DownloadItem] = [] {
+        didSet {
+            updatePauseAll()
+            regroup()
+        }
+    }
+
+    /// Running downloads' progress, by item (`LiveProgress`).
+    private(set) var liveProgress: [UUID: LiveProgress] = [:]
+
+    /// What Pause All and Resume All would change. Stored, so the menu and the bottom
+    /// bar redraw when these flip, not on every progress line.
+    private(set) var canPauseAll = false
+    private(set) var canResumeAll = false
+    var sortOrder: SortOrder = .newest { didSet { regroup() } }
+    var filter = DownloadFilter() { didSet { regroup() } }
+    /// The day the list groups against; the window sets it when the calendar day changes.
+    var today = Date.now { didSet { regroup() } }
+    /// The list as shown: active items, then Today, then Earlier, each in the sort order.
+    /// Stored, so reading it neither filters nor sorts: `regroup` redoes it when the
+    /// items, the filter, the sort order or the day change.
+    private(set) var visibleGroups: [ItemGroup] = []
+    /// The list in display order: the sections one after the other.
+    private(set) var visibleItems: [DownloadItem] = []
     var pendingManualAdd = false
     private(set) var lastFailureMessage: String?
+    /// The last yt-dlp update check, for Settings: nil until one has run.
+    private(set) var engineCheck: YTDLPUpdater.Check?
+    private(set) var isCheckingEngine = false
 
     let settings: AppSettings
+    /// Signed-in sites; a run passes the link's site cookies to yt-dlp when present.
+    var sessions: (any CookieSource)?
+    let youTubeTokens = YouTubeTokens()
 
-    private let client = YTDLPClient()
-    private var binaries: YTDLPClient.Binaries = .missing
-    private var runningTasks: [UUID: Task<Void, Never>] = [:]
+    let client: any DownloadEngine
+    private(set) var binaries: YTDLPClient.Binaries = .missing
+    /// The runs in flight; the Mac stays awake while there are any.
+    private var runningTasks: [UUID: Task<Void, Never>] = [:] {
+        didSet { keepAwake.isHeld = !runningTasks.isEmpty }
+    }
+
+    private let keepAwake: any KeepAwake
+    /// Whether the path is metered, for "Download only on Wi-Fi".
+    let network: any NetworkPath
     private var fallbackAttempted: Set<UUID> = []
     private var saveDebounce: Task<Void, Never>?
+    /// `-sample-queue` (one card per state) or `-showcase-queue` (README shots), debug builds: in memory only.
+    private var isSampleQueue = false
+    /// False in tests: the queue neither loads nor saves the history file.
+    private let persists: Bool
+    /// Replace's way to drop the old file; tests delete their own file instead.
+    var moveToTrash: (URL) throws -> Void = { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) }
 
-    var activeCount: Int {
-        items.filter { $0.status.isActive }.count
-    }
+    var activeCount: Int { items.count { $0.status.isActive } }
 
-    var visibleItems: [DownloadItem] {
-        var result = items
-        if !query.isEmpty {
-            result = result.filter {
-                $0.title.localizedCaseInsensitiveContains(query)
-                    || $0.host.localizedCaseInsensitiveContains(query)
-                    || $0.sourceURL.absoluteString.localizedCaseInsensitiveContains(query)
-            }
-        }
-        switch sortOrder {
-        case .newest: result.sort { $0.addedAt > $1.addedAt }
-        case .oldest: result.sort { $0.addedAt < $1.addedAt }
-        case .name: result.sort { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
-        case .size:
-            result.sort { ($0.totalBytes ?? -1) > ($1.totalBytes ?? -1) }
-        case .status: result.sort { $0.status < $1.status }
-        }
-        return result
-    }
-
-    init(settings: AppSettings) {
+    init(
+        settings: AppSettings, client: any DownloadEngine = YTDLPClient(),
+        binaries: YTDLPClient.Binaries? = nil, persists: Bool = true, keepAwake: any KeepAwake = SystemKeepAwake(),
+        network: any NetworkPath = SystemNetworkPath(),
+    ) {
+        self.keepAwake = keepAwake
+        self.network = network
         self.settings = settings
-        binaries = YTDLPClient.locateBinaries()
-        let restored = PersistenceStore.load().map { item -> DownloadItem in
-            var item = item
-            if item.status.isActive {
-                item.status = .queued
-                item.fractionCompleted = nil
-                item.speedBytesPerSecond = nil
+        self.client = client
+        self.persists = persists
+        self.binaries = binaries ?? YTDLPClient.locateBinaries()
+        #if DEBUG
+            let arguments = ProcessInfo.processInfo.arguments
+            if arguments.contains("-sample-queue") || arguments.contains("-showcase-queue") {
+                items = arguments.contains("-showcase-queue") ? DownloadItem.showcase : DownloadItem.samples
+                isSampleQueue = true
+                updatePauseAll()
+                regroup()
+                return
             }
-            return item
-        }
-        items = restored.sorted { $0.addedAt > $1.addedAt }
+        #endif
+        items = Self.restored(persists ? PersistenceStore.load() : []).sorted { $0.addedAt > $1.addedAt }
+        // `didSet` doesn't run in an initializer.
+        updatePauseAll()
+        regroup()
+        watchNetwork()
         pump()
     }
 
@@ -66,10 +97,7 @@ final class DownloadManager {
     @discardableResult
     func add(url: URL) -> Bool {
         let normalized = Self.normalize(url)
-        if let existing = items.first(where: {
-            Self.normalize($0.sourceURL) == normalized && $0.status.isActive
-        }) {
-            _ = existing
+        if items.contains(where: { Self.normalize($0.sourceURL) == normalized && $0.status.isActive }) {
             return false
         }
         var item = DownloadItem(url: normalized)
@@ -86,14 +114,17 @@ final class DownloadManager {
         return components.url ?? url
     }
 
+    /// Stops the card's run where Retry can start it again, and deletes what it downloaded.
     func cancel(id: UUID) {
-        runningTasks[id]?.cancel()
-        runningTasks[id] = nil
-        if let index = items.firstIndex(where: { $0.id == id }), items[index].status.isActive {
-            items[index].status = .queued
-            items[index].speedBytesPerSecond = nil
-            saveSoon()
+        let run = stopRun(id)
+        guard let item = items.first(where: { $0.id == id }), item.status.isActive else { return }
+        updateItem(id) {
+            $0.qualityOptions = nil
+            $0.choiceDeadline = nil
+            $0.existingFile = nil
         }
+        fail(itemID: id, message: "Cancelled")
+        removePartials(of: item, after: run)
     }
 
     func retry(id: UUID) {
@@ -104,31 +135,34 @@ final class DownloadManager {
         items[index].speedBytesPerSecond = nil
         items[index].errorMessage = nil
         items[index].filePath = nil
+        items[index].run = nil
         saveSoon()
         pump()
     }
 
+    /// Removes the card; an unfinished one takes its partial files with it.
     func remove(id: UUID) {
-        cancel(id: id)
+        let item = items.first { $0.id == id }
+        let run = stopRun(id)
         items.removeAll { $0.id == id }
         saveSoon()
+        if let item, item.status != .finished { removePartials(of: item, after: run) }
     }
 
     func clearFinished() {
-        for item in items where !item.status.isActive {
-            cancel(id: item.id)
-        }
+        let failed = items.filter { $0.status == .failed }
         items.removeAll { !$0.status.isActive }
         saveSoon()
+        for item in failed {
+            removePartials(of: item, after: nil)
+        }
     }
 
-    func revealInFinder(id: UUID) {
-        guard let path = items.first(where: { $0.id == id })?.filePath else { return }
-        NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: (path as NSString).deletingLastPathComponent)
-    }
-
-    private func pump() {
-        while activeCount < max(1, settings.maxConcurrentDownloads),
+    func pump() {
+        guard !isSampleQueue, !waitsForWiFi else { return }
+        // Running downloads only: queued cards and cards waiting for a pick don't
+        // hold a slot.
+        while runningTasks.count < max(1, settings.maxConcurrentDownloads),
               let next = items.last(where: { $0.status == .queued && runningTasks[$0.id] == nil })
         {
             start(item: next)
@@ -139,112 +173,155 @@ final class DownloadManager {
         guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
         items[index].status = .resolving
         items[index].errorMessage = nil
+        items[index].existingFile = nil
         let task = Task { [weak self] in
             guard let self else { return }
-            await self.run(itemID: item.id)
+            await run(itemID: item.id)
         }
         runningTasks[item.id] = task
     }
 
     private func run(itemID: UUID) async {
-        defer {
-            runningTasks[itemID] = nil
-            pump()
-        }
+        defer { runEnded(itemID) }
 
         guard let index = items.firstIndex(where: { $0.id == itemID }) else { return }
         let url = items[index].sourceURL
 
-        guard binaries.ytdlp.fileExistsAsExecutable else {
-            fail(itemID: itemID, message: "yt-dlp not found. Install with `brew install yt-dlp ffmpeg` or run scripts/fetch-dependencies.sh.")
-            return
+        guard engineIsInstalled(for: itemID) else { return }
+
+        // The signed-in site's cookies, on disk only while this run lasts; refreshed
+        // ones go back to the browser store afterwards.
+        let cookieFile = await sessions?.cookieFile(for: url)
+        defer {
+            if let cookieFile {
+                Task { [sessions] in
+                    if let sessions { await sessions.finish(cookieFile, for: url) } else { cookieFile.remove() }
+                }
+            }
         }
+        let signedIn = cookieFile?.arguments ?? []
+        var cookies = signedIn
 
         do {
-            let metadata = try await client.probe(url: url, binaries: binaries)
-            guard let index = items.firstIndex(where: { $0.id == itemID }), items[index].status == .resolving else { return }
-            items[index].title = metadata.title.isEmpty ? items[index].title : metadata.title
-            items[index].resolution = metadata.resolutionLabel
-            items[index].totalBytes = metadata.filesizeApprox
-            items[index].thumbnailURL = metadata.thumbnail.flatMap(URL.init(string:))
-            saveSoon()
+            guard let metadata = try await probe(itemID: itemID, url: url, signedIn: &cookies),
+                  let started = try await destination(
+                      for: itemID,
+                      url: url,
+                      metadata: metadata,
+                  ) else { return }
 
-            let path: String?
-            do {
-                path = try await downloadPhase(itemID: itemID, url: url, extraArguments: [])
-            } catch let error as YTDLPError
-            where !fallbackAttempted.contains(itemID) && Self.shouldRetryWithFallback(error.message) {
-                fallbackAttempted.insert(itemID)
-                path = try await downloadPhase(
-                    itemID: itemID, url: url,
-                    extraArguments: ["--extractor-args", "youtube:player_client=ios"])
-            }
-
-            guard let index = items.firstIndex(where: { $0.id == itemID }) else { return }
-            items[index].status = .finished
-            items[index].fractionCompleted = 1
-            items[index].speedBytesPerSecond = nil
-            items[index].filePath = path
-            saveSoon()
+            let path = try await download(
+                itemID: itemID, url: url, arguments: cookies + started.format + started.output, signedIn: signedIn,
+                planned: metadata.plannedFiles,
+            )
+            await finish(itemID: itemID, path: path)
         } catch is CancellationError {
             return
         } catch {
             if Task.isCancelled { return }
-            fail(itemID: itemID, message: Self.hinted(error.localizedDescription, url: url))
+            fail(itemID: itemID, message: Self.hinted(error.localizedDescription, updates: settings.keepsEngineCurrent))
         }
     }
 
-    private func downloadPhase(itemID: UUID, url: URL, extraArguments: [String]) async throws -> String? {
+    private func runEnded(_ itemID: UUID) {
+        // A stopped run's entry is gone already, and a resumed run may hold it now.
+        if !Task.isCancelled { runningTasks[itemID] = nil }
+        pump()
+    }
+
+    /// Downloads, retrying once with other YouTube clients when the first try is refused,
+    /// and with the session's `signedIn` cookies when a signed-out try asks for a sign-in.
+    private func download(
+        itemID: UUID, url: URL, arguments: [String], signedIn: [String], planned: [String: Int64],
+    ) async throws -> String? {
+        do {
+            return try await downloadPhase(itemID: itemID, url: url, extraArguments: arguments, planned: planned)
+        } catch let error as YTDLPError
+            where !fallbackAttempted.contains(itemID)
+            && Self.shouldRetry(after: error.message, tried: arguments, signedIn: signedIn)
+        {
+            fallbackAttempted.insert(itemID)
+            return try await downloadPhase(
+                itemID: itemID, url: url,
+                extraArguments: Self.retryArguments(after: error.message, tried: arguments, signedIn: signedIn),
+                planned: planned,
+            )
+        }
+    }
+
+    // MARK: Quality
+
+    /// Fails the item with install steps when yt-dlp can't be found.
+    private func engineIsInstalled(for itemID: UUID) -> Bool {
+        guard !binaries.ytdlp.fileExistsAsExecutable else { return true }
+        fail(
+            itemID: itemID,
+            message: """
+            yt-dlp not found. Install with `brew install yt-dlp ffmpeg` \
+            or run scripts/fetch-dependencies.sh.
+            """,
+        )
+        return false
+    }
+
+    private func downloadPhase(
+        itemID: UUID, url: URL, extraArguments: [String], planned: [String: Int64],
+    ) async throws -> String? {
+        // Thrown, not nil: a nil path would mark a stopped card finished.
+        let arguments = await youTubeTokens.arguments(extraArguments, for: url)
+        try Task.checkCancellation()
         guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
         items[index].status = .downloading
-        let directory = settings.downloadDirectory.appendingPathComponent("Danny", isDirectory: true)
         var finalPath: String?
-        for try await event in client.downloadStream(
-            url: url, into: directory, binaries: binaries, extraArguments: extraArguments)
-        {
-            guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
-            switch event {
-            case let .progress(downloaded, total, speed):
-                if let total {
-                    items[index].totalBytes = max(items[index].totalBytes ?? 0, total)
-                }
-                let denominator = total ?? items[index].totalBytes
-                if let denominator, denominator > 0 {
-                    items[index].fractionCompleted = Double(downloaded) / Double(denominator)
-                } else {
-                    items[index].fractionCompleted = nil
-                }
-                items[index].speedBytesPerSecond = speed
-            case let .outputFile(path):
-                finalPath = path
+        var progress = DownloadProgress(planned: planned)
+        let live = LiveProgress(.init(fraction: items[index].fractionCompleted, totalBytes: items[index].totalBytes))
+        liveProgress[itemID] = live
+        var throttle = Throttle<LiveProgress.Line>(interval: LiveProgress.interval)
+        var latest = live.line
+        // The last line reaches the item; a stopped run's was handed over by `stopRun`.
+        defer {
+            if liveProgress[itemID] === live {
+                live.line = latest
+                endLiveProgress(itemID)
             }
         }
+        for try await event in client.downloadStream(
+            url: url, into: items[index].run?.directory ?? downloadDirectory(for: url), binaries: binaries,
+            extraArguments: arguments + YTDLPClient.limitRateArguments(settings.speedLimit),
+        ) {
+            guard let index = items.firstIndex(where: { $0.id == itemID }) else { return nil }
+            switch event {
+            case let .progress(downloaded, total, speed, file):
+                latest = LiveProgress.Line(
+                    fraction: progress.update(file: file, downloaded: downloaded, total: total),
+                    totalBytes: progress.totalBytes ?? latest.totalBytes, speed: speed,
+                )
+                if throttle.admit(latest, at: .now) {
+                    let resized = live.line.totalBytes != latest.totalBytes
+                    live.line = latest
+                    // Sorted by size, the list follows the sizes as they become known.
+                    if resized, sortOrder == .size { regroup() }
+                }
+            case let .outputFile(path):
+                finalPath = path
+            case let .alreadyDownloaded(path):
+                items[index].existingFile = ExistingFile(path: path)
+            }
+        }
+        // A stopped run's stream just ends; it mustn't mark the card finished.
+        try Task.checkCancellation()
         return finalPath
     }
 
-    private static func shouldRetryWithFallback(_ message: String) -> Bool {
-        let lowered = message.lowercased()
-        return lowered.contains("403")
-            || lowered.contains("confirm you")
-            || lowered.contains("sign in to confirm")
+    /// Changes one item in place; how the manager's extensions in other files write.
+    func updateItem(_ id: UUID, _ body: (inout DownloadItem) -> Void) {
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        body(&items[index])
     }
 
-    private static func hinted(_ message: String, url: URL) -> String {
-        let lowered = message.lowercased()
-        if lowered.contains("403") || lowered.contains("confirm you") {
-            return message + "\nThis usually means yt-dlp needs an update: run `brew upgrade yt-dlp` and retry."
-        }
-        return message
-    }
+    var outputDirectory: URL { settings.downloadDirectory }
 
-    func toolVersions() async -> String {
-        async let ytdlpVersion = client.version(binaries: binaries)
-        let ffmpegInstalled = binaries.ffmpegDirectory != nil
-        let ytdlpText = (await ytdlpVersion) ?? "not found"
-        return "yt-dlp \(ytdlpText) · ffmpeg \(ffmpegInstalled ? "found" : "missing")"
-    }
-
-    private func fail(itemID: UUID, message: String) {
+    func fail(itemID: UUID, message: String) {
         guard let index = items.firstIndex(where: { $0.id == itemID }) else { return }
         items[index].status = .failed
         items[index].errorMessage = message
@@ -253,7 +330,8 @@ final class DownloadManager {
         saveSoon()
     }
 
-    private func saveSoon() {
+    func saveSoon() {
+        guard !isSampleQueue, persists else { return }
         saveDebounce?.cancel()
         saveDebounce = Task { [items] in
             try? await Task.sleep(for: .milliseconds(400))
@@ -263,8 +341,56 @@ final class DownloadManager {
     }
 }
 
-extension URL {
-    var fileExistsAsExecutable: Bool {
-        FileManager.default.isExecutableFile(atPath: path)
+// MARK: - Run bookkeeping
+
+/// In this file for the class's private state, outside its body for its length.
+extension DownloadManager {
+    /// Ends the card's run, if any, and returns it so its files can wait for it to exit.
+    @discardableResult
+    func stopRun(_ id: UUID) -> Task<Void, Never>? {
+        let run = runningTasks.removeValue(forKey: id)
+        run?.cancel()
+        endLiveProgress(id)
+        return run
+    }
+
+    /// Hands a run's last progress to its item, which keeps it from here on.
+    private func endLiveProgress(_ id: UUID) {
+        guard let line = liveProgress.removeValue(forKey: id)?.line else { return }
+        updateItem(id) {
+            $0.fractionCompleted = line.fraction
+            $0.totalBytes = line.totalBytes
+        }
+    }
+
+    private func regroup() {
+        let matching = filter.isEmpty ? items : items.filter(filter.matches)
+        let sorted = Self.sorted(matching, by: sortOrder) { withProgress($0).totalBytes }
+        visibleGroups = Self.grouped(sorted, now: today)
+        visibleItems = visibleGroups.flatMap(\.items)
+    }
+
+    private func updatePauseAll() {
+        let pausable = items.contains { $0.status.canPause }
+        let paused = items.contains { $0.status == .paused }
+        if canPauseAll != pausable { canPauseAll = pausable }
+        if canResumeAll != paused { canResumeAll = paused }
+    }
+}
+
+// MARK: - Engine updates
+
+extension DownloadManager {
+    /// Fetches the latest yt-dlp: at launch when the setting allows, and whenever
+    /// Settings' Check Now asks (`manual`). A new copy is used from the next download
+    /// on; running ones keep theirs.
+    func checkEngine(with updater: YTDLPUpdater = YTDLPUpdater(), manual: Bool = false) async {
+        guard manual || settings.keepsEngineCurrent, !isSampleQueue, !isCheckingEngine else { return }
+        isCheckingEngine = true
+        defer { isCheckingEngine = false }
+        let installed = await client.version(binaries: binaries)
+        let outcome = await updater.update(from: installed)
+        if case .updated = outcome { refreshBinaries() }
+        engineCheck = YTDLPUpdater.Check(outcome: outcome, date: .now)
     }
 }

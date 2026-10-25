@@ -1,0 +1,6 @@
+# CodeRabbit reviews code. Docs-only changes are skipped: they get no CI tests
+# either, and a review round on prose costs about ten minutes per push.
+reviews:
+  path_filters:
+    - "!docs/**"
+    - "!**/*.md"

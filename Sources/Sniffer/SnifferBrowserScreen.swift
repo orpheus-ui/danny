@@ -10,14 +10,12 @@ struct SnifferBrowserScreen: View {
     @State private var addressField = ""
     @State private var startURL = SnifferBrowserScreen.initialURL()
     @State private var reference = WebViewReference()
+    /// Outer nil until the rules are looked up, so the first page already loads blocked;
+    /// inner nil when WebKit couldn't compile them.
+    @State private var ruleList: WKContentRuleList??
 
     static func initialURL() -> URL {
-        if let text = NSPasteboard.general.string(forType: .string),
-           let url = ClipboardWatcher.firstURL(in: text)
-        {
-            return url
-        }
-        return URL(string: "https://duckduckgo.com")!
+        LinkIntake.pasteboardLink() ?? URL(string: "https://duckduckgo.com")!
     }
 
     var body: some View {
@@ -25,26 +23,40 @@ struct SnifferBrowserScreen: View {
             VStack(spacing: 0) {
                 toolbar
                 Divider().opacity(0.15)
-                MediaSnifferWebView(
-                    startURL: startURL,
-                    reference: reference,
-                    onCaptured: { store.capture(rawURL: $0) },
-                    onCommitted: { url in
-                        currentURLSync(url)
-                    })
+                if let ruleList {
+                    MediaSnifferWebView(
+                        startURL: startURL,
+                        reference: reference,
+                        ruleList: ruleList,
+                        blocksAds: { settings.blocksAds(on: $0) },
+                        onCaptured: { store.capture(rawURL: $0) },
+                        onCommitted: { url in
+                            currentURLSync(url)
+                        },
+                    )
+                } else {
+                    Color.clear
+                }
             }
             Divider().opacity(0.2)
             sidebar
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .frame(minWidth: 860, minHeight: 540)
+        .task { ruleList = await ContentBlocker.ruleList() }
         .task(id: model.snifferStartURL) {
             if let url = model.snifferStartURL {
                 model.snifferStartURL = nil
                 addressField = url.absoluteString
-                reference.webView?.load(URLRequest(url: url))
+                if let webView = reference.webView {
+                    webView.load(URLRequest(url: url))
+                } else {
+                    startURL = url
+                }
             }
         }
+        // The reload adds or removes the rules for the page on screen.
+        .onChange(of: settings.blocksAds) { reference.webView?.reload() }
     }
 
     private func currentURLSync(_ url: URL?) {
@@ -86,6 +98,8 @@ struct SnifferBrowserScreen: View {
             .padding(.vertical, 6)
             .background(Capsule().fill(Color.primary.opacity(0.06)))
 
+            adsMenu
+
             Button("Send to Danny") {
                 if let url = resolvedAddressURL {
                     _ = manager.add(url: url)
@@ -99,6 +113,43 @@ struct SnifferBrowserScreen: View {
         .buttonStyle(.plain)
     }
 
+    private var currentHost: String? {
+        reference.webView?.url?.host()?.lowercased()
+    }
+
+    /// The blocker's switch, and "Allow on this site" for a page it breaks. A change
+    /// reloads the page so the rules match it.
+    private var adsMenu: some View {
+        @Bindable var settings = settings
+        let host = currentHost
+        let blocksHere = settings.blocksAds(on: host)
+        return Menu {
+            Toggle("Block Ads and Trackers", isOn: $settings.blocksAds)
+            if let host {
+                Toggle("Allow on \(host)", isOn: Binding(
+                    get: { settings.adsAllowedSites.contains(host) },
+                    set: { allowed in
+                        if allowed {
+                            settings.adsAllowedSites.insert(host)
+                        } else {
+                            settings.adsAllowedSites.remove(host)
+                        }
+                        reference.webView?.reload()
+                    },
+                ))
+                .disabled(!settings.blocksAds)
+            }
+        } label: {
+            Image(systemName: blocksHere ? "shield.lefthalf.filled" : "shield.slash")
+        }
+        .menuStyle(.button)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help(blocksHere ? "Ads and trackers blocked" : "Ads and trackers allowed")
+        .accessibilityLabel("Ad blocking")
+        .accessibilityValue(blocksHere ? "On" : "Off")
+    }
+
     private var resolvedAddressURL: URL? {
         if let url = URL(string: addressField.trimmingCharacters(in: .whitespaces)),
            ["http", "https"].contains(url.scheme?.lowercased() ?? "")
@@ -106,7 +157,8 @@ struct SnifferBrowserScreen: View {
             return url
         }
         return URL(
-            string: "https://duckduckgo.com/?q=\(addressField.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")")
+            string: "https://duckduckgo.com/?q=\(addressField.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")",
+        )
     }
 
     private func go() {
@@ -222,7 +274,8 @@ struct CapturedMediaRow: View {
         .padding(8)
         .background(
             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.primary.opacity(0.05)))
+                .fill(Color.primary.opacity(0.05)),
+        )
     }
 
     private var host: String {

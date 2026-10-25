@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Entitlements for the helpers bundled in Contents/Resources/bin (yt-dlp, ffmpeg).
+  yt-dlp_macos is a PyInstaller build: at launch it unpacks its Python runtime
+  and loads those libraries, which the hardened runtime blocks unless library
+  validation is relaxed for this helper. The app itself keeps full protection.
+-->
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+</dict>
+</plist>

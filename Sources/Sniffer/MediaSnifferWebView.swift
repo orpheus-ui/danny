@@ -70,10 +70,11 @@ final class SniffingWebView: WKWebView {
         }
         NotificationCenter.default.addObserver(
             self, selector: #selector(windowWillClose(_:)),
-            name: NSWindow.willCloseNotification, object: window)
+            name: NSWindow.willCloseNotification, object: window,
+        )
     }
 
-    @objc private func windowWillClose(_ notification: Notification) {
+    @objc private func windowWillClose(_: Notification) {
         teardownMedia()
     }
 
@@ -93,11 +94,14 @@ final class SniffingWebView: WKWebView {
 struct MediaSnifferWebView: NSViewRepresentable {
     let startURL: URL
     let reference: WebViewReference
+    /// Ad and tracker rules, applied to each page whose host `blocksAds` returns true for.
+    let ruleList: WKContentRuleList?
+    let blocksAds: @MainActor (String?) -> Bool
     let onCaptured: @MainActor (String) -> Void
     let onCommitted: @MainActor (URL?) -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onCaptured: onCaptured, onCommitted: onCommitted)
+        Coordinator(ruleList: ruleList, blocksAds: blocksAds, onCaptured: onCaptured, onCommitted: onCommitted)
     }
 
     func makeNSView(context: Context) -> WKWebView {
@@ -105,7 +109,8 @@ struct MediaSnifferWebView: NSViewRepresentable {
         let controller = WKUserContentController()
         controller.add(context.coordinator, name: "dannySniff")
         controller.addUserScript(
-            WKUserScript(source: sniffJS, injectionTime: .atDocumentStart, forMainFrameOnly: false))
+            WKUserScript(source: sniffJS, injectionTime: .atDocumentStart, forMainFrameOnly: false),
+        )
         configuration.userContentController = controller
 
         let webView = SniffingWebView(frame: .zero, configuration: configuration)
@@ -114,59 +119,74 @@ struct MediaSnifferWebView: NSViewRepresentable {
         webView.allowsBackForwardNavigationGestures = true
         context.coordinator.webView = webView
         reference.webView = webView
+        context.coordinator.applyRules(to: webView, host: startURL.host())
         webView.load(URLRequest(url: startURL))
         return webView
     }
 
-    func updateNSView(_ webView: WKWebView, context: Context) {
+    func updateNSView(_ webView: WKWebView, context _: Context) {
         reference.webView = webView
     }
 
     @MainActor
     final class Coordinator: NSObject {
         weak var webView: WKWebView?
+        private let ruleList: WKContentRuleList?
+        private let blocksAds: @MainActor (String?) -> Bool
         private let onCaptured: @MainActor (String) -> Void
         private let onCommitted: @MainActor (URL?) -> Void
+        private var rulesApplied = false
 
-        init(onCaptured: @escaping @MainActor (String) -> Void, onCommitted: @escaping @MainActor (URL?) -> Void) {
+        init(
+            ruleList: WKContentRuleList?, blocksAds: @escaping @MainActor (String?) -> Bool,
+            onCaptured: @escaping @MainActor (String) -> Void, onCommitted: @escaping @MainActor (URL?) -> Void,
+        ) {
+            self.ruleList = ruleList
+            self.blocksAds = blocksAds
             self.onCaptured = onCaptured
             self.onCommitted = onCommitted
+        }
+
+        /// Adds or removes the rules for the page about to load; they apply to its requests.
+        func applyRules(to webView: WKWebView, host: String?) {
+            guard let ruleList else { return }
+            let blocks = blocksAds(host)
+            guard blocks != rulesApplied else { return }
+            rulesApplied = blocks
+            let controller = webView.configuration.userContentController
+            if blocks { controller.add(ruleList) } else { controller.remove(ruleList) }
         }
     }
 }
 
 extension MediaSnifferWebView.Coordinator: WKScriptMessageHandler {
-    nonisolated func userContentController(
-        _ userContentController: WKUserContentController, didReceive message: WKScriptMessage
-    ) {
+    func userContentController(_: WKUserContentController, didReceive message: WKScriptMessage) {
         guard let body = message.body as? [String: Any],
               let rawURL = body["url"] as? String
         else { return }
-        Task { @MainActor in
-            self.onCaptured(rawURL)
-        }
+        onCaptured(rawURL)
     }
 }
 
 extension MediaSnifferWebView.Coordinator: WKNavigationDelegate {
-    nonisolated func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
-        Task { @MainActor in
-            self.onCommitted(webView.url)
+    func webView(
+        _ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
+    ) async -> WKNavigationActionPolicy {
+        if navigationAction.targetFrame?.isMainFrame == true {
+            applyRules(to: webView, host: navigationAction.request.url?.host())
         }
+        return .allow
     }
 
-    nonisolated func webView(
-        _ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
-        decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
-    ) {
-        decisionHandler(.allow)
+    func webView(_ webView: WKWebView, didCommit _: WKNavigation!) {
+        onCommitted(webView.url)
     }
 }
 
 extension MediaSnifferWebView.Coordinator: WKUIDelegate {
-    nonisolated func webView(
-        _ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
-        for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures
+    func webView(
+        _ webView: WKWebView, createWebViewWith _: WKWebViewConfiguration,
+        for navigationAction: WKNavigationAction, windowFeatures _: WKWindowFeatures,
     ) -> WKWebView? {
         webView.load(navigationAction.request)
         return nil

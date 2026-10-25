@@ -7,35 +7,74 @@ struct DownloadCardView: View {
     let onRetry: () -> Void
     let onReveal: () -> Void
     let onBrowserCapture: () -> Void
+    let onOpen: () -> Void
+    let onQuickLook: () -> Void
+    let onCopyLink: () -> Void
+    let onOpenPage: () -> Void
+    var isSelected = false
+    var onSignIn: (() -> Void)?
+    var onChoose: ((QualityChoice) -> Void)?
+    var onResolveExisting: ((ExistingFilePolicy) -> Void)?
+    var onKeepExisting: (() -> Void)?
+    var onPause: (() -> Void)?
+    var onResume: (() -> Void)?
 
     @State private var hovering = false
-    @State private var showingSource = false
+    /// Optional, like the bar's, so a card draws without a queue.
+    @Environment(DownloadManager.self) private var manager: DownloadManager?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var showingError = false
 
     var body: some View {
         content
-            .padding(10)
-            .frame(maxWidth: .infinity, minHeight: 104, maxHeight: 104, alignment: .top)
-            .background { D.cardShade.allowsHitTesting(false) }
+            .padding(D.Spacing.cardPadding)
+            .frame(maxWidth: .infinity, minHeight: D.Size.cardHeight, maxHeight: D.Size.cardHeight, alignment: .top)
+            .background { D.cardScrim.allowsHitTesting(false) }
             .background { thumbnailLayer }
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: D.Radius.card, style: .continuous))
+            // The whole card takes clicks, not just its text: select, double-click to open.
+            .contentShape(.interaction, RoundedRectangle(cornerRadius: D.Radius.card, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(Color.white.opacity(hovering ? 0.16 : 0.09), lineWidth: 1)
+                RoundedRectangle(cornerRadius: D.Radius.card, style: .continuous)
+                    .strokeBorder(isSelected ? D.accent : D.cardStroke, lineWidth: D.Stroke.card)
             }
-            .background {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .dannyGlass(tint: Color.black.opacity(0.30), in: .rect(cornerRadius: 12))
-            }
-            .shadow(color: .black.opacity(0.25), radius: 6, y: 2)
             .onHover { hovering in
                 self.hovering = hovering
             }
-            .animation(.easeInOut(duration: 0.15), value: hovering)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: hovering)
+            // One group per card, named by its title, so VoiceOver can say which card is selected.
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(item.title)
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
+            // The bar's chips are drawn only while hovered; VoiceOver reaches them here.
+            .accessibilityActions {
+                ForEach(fileActions, id: \.title) { action in
+                    Button(action.title, action: action.action)
+                }
+                if item.status.canPause, let onPause { Button("Pause", action: onPause) }
+            }
+    }
+
+    /// The item with its run's latest progress. Read here, a progress line redraws this
+    /// card and no other.
+    private var current: DownloadItem {
+        manager?.withProgress(item) ?? item
+    }
+
+    /// A finished file's actions: chips on the Done bar while hovered, and accessibility actions.
+    private var fileActions: [ProgressBarView.Chip] {
+        guard item.fileURL != nil else { return [] }
+        return [
+            .init(icon: "play.fill", title: "Play", action: onOpen),
+            .init(icon: "folder", title: "Show in Finder", action: onReveal),
+            .init(icon: "link", title: "Copy Link", action: onCopyLink),
+            .init(icon: "eye", title: "Quick Look", action: onQuickLook),
+        ]
     }
 
     private var thumbnailLayer: some View {
         ZStack {
-            Color(red: 0.07, green: 0.06, blue: 0.09)
+            D.cardBackdrop
             if let url = item.thumbnailURL {
                 AsyncImage(url: url) { phase in
                     if let image = phase.image {
@@ -47,7 +86,6 @@ struct DownloadCardView: View {
             }
         }
         .clipped()
-        .opacity(0.9)
         .allowsHitTesting(false)
     }
 
@@ -55,36 +93,38 @@ struct DownloadCardView: View {
         VStack(alignment: .leading, spacing: 8) {
             headerRow
             Spacer(minLength: 0)
-            ProgressBarView(
-                item: item,
-                onRetry: onRetry,
-                onBrowserCapture: onBrowserCapture)
+            if item.status == .choosing, let options = item.qualityOptions, let onChoose {
+                QualityChips(options: options, deadline: item.choiceDeadline, onChoose: onChoose)
+            } else if item.status == .existing, let existing = item.existingFile,
+                      let onResolveExisting, let onKeepExisting
+            {
+                ExistingFileChoices(existing: existing, onResolve: onResolveExisting, onKeep: onKeepExisting)
+            } else {
+                ProgressBarView(
+                    item: current,
+                    onRetry: onRetry,
+                    onBrowserCapture: onBrowserCapture,
+                    onSignIn: onSignIn,
+                    // Drawn only for the hovered card (ADR-008), never for every card at rest.
+                    finishedActions: hovering ? fileActions : [],
+                    onPause: hovering ? onPause : nil,
+                    onResume: onResume,
+                )
+                .help(item.status == .failed ? item.errorMessage ?? "" : "")
+                .popover(isPresented: $showingError, arrowEdge: .top) { errorPopover }
+            }
         }
     }
 
     private var headerRow: some View {
         HStack(alignment: .top, spacing: 10) {
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(item.title)
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                    if hovering {
-                        Button {
-                            showingSource.toggle()
-                        } label: {
-                            Image("icon-search")
-                                .resizable()
-                                .frame(width: 16, height: 16)
-                        }
-                        .buttonStyle(.plain)
-                        .transition(.opacity)
-                        .help(item.sourceURL.absoluteString)
-                        .popover(isPresented: $showingSource, arrowEdge: .bottom) { sourcePopover }
-                    }
-                }
+            VStack(alignment: .leading, spacing: D.Spacing.cardTitleMeta) {
+                Text(item.title)
+                    .font(D.Font.cardTitle)
+                    .foregroundStyle(D.textPrimary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .help(item.title)
                 metaRow
             }
             Spacer(minLength: 8)
@@ -92,58 +132,69 @@ struct DownloadCardView: View {
         }
     }
 
-    private var sourcePopover: some View {
+    /// yt-dlp's own output, for bug reports.
+    private var errorPopover: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Source")
+            Text("Error Details")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.secondary)
-            Text(item.sourceURL.absoluteString)
-                .font(.system(size: 12, design: .monospaced))
-                .textSelection(.enabled)
-                .lineLimit(3)
-            HStack {
-                Button("Open") {
-                    NSWorkspace.shared.open(item.sourceURL)
-                }
-                Button("Copy") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(item.sourceURL.absoluteString, forType: .string)
-                }
+            ScrollView {
+                Text(item.errorMessage ?? "")
+                    .font(.system(size: 11, design: .monospaced))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: 160)
+            Button("Copy") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(item.errorMessage ?? "", forType: .string)
             }
             .controlSize(.small)
         }
         .padding(12)
-        .frame(width: 320)
+        .frame(width: 360)
     }
 
     private var metaRow: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: D.Spacing.cardMeta) {
             Text(item.host.replacingOccurrences(of: "www.", with: ""))
             if let resolution = item.resolution {
                 separatorDot
                 Text(resolution)
             }
-            if let size = Format.size(item.totalBytes) {
+            if let size = Format.size(current.totalBytes) {
                 separatorDot
                 Text(size)
             }
         }
-        .font(.system(size: 12, weight: .medium))
-        .foregroundStyle(Color.white.opacity(0.55))
+        .font(D.Font.cardMeta)
+        .foregroundStyle(D.textSecondary)
         .lineLimit(1)
     }
 
     private var separatorDot: some View {
-        Circle().frame(width: 3, height: 3).foregroundStyle(Color.white.opacity(0.4))
+        Circle().frame(width: D.Size.metaDot, height: D.Size.metaDot).foregroundStyle(D.textSecondary)
     }
 
     private var actionPills: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: D.Spacing.cardActions) {
             PillMenu(icon: "icon-dots") {
+                if item.fileURL != nil {
+                    Button("Open", action: onOpen)
+                    Button("Quick Look", action: onQuickLook)
+                }
+                if item.status.canPause, let onPause {
+                    Button("Pause", action: onPause)
+                } else if item.status == .paused, let onResume {
+                    Button("Resume", action: onResume)
+                }
                 if item.status.isActive {
                     Button("Cancel", action: onCancel)
                 } else {
                     Button("Retry", action: onRetry)
+                }
+                if item.status == .failed {
+                    Button("Show Error Details") { showingError = true }
                 }
                 if item.filePath != nil {
                     Button("Show in Finder", action: onReveal)
@@ -153,10 +204,8 @@ struct DownloadCardView: View {
                     }
                 }
                 Divider()
-                Button("Copy Link") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(item.sourceURL.absoluteString, forType: .string)
-                }
+                Button("Copy Link", action: onCopyLink)
+                Button("Open Original Page", action: onOpenPage)
                 Divider()
                 Button("Remove", role: .destructive, action: onRemove)
             }
@@ -167,3 +216,31 @@ struct DownloadCardView: View {
         }
     }
 }
+
+#if DEBUG
+    extension DownloadCardView {
+        /// A card with no-op actions, for previews and snapshot tests.
+        init(preview item: DownloadItem) {
+            self.init(
+                item: item, onRemove: {}, onCancel: {}, onRetry: {}, onReveal: {}, onBrowserCapture: {},
+                onOpen: {}, onQuickLook: {}, onCopyLink: {}, onOpenPage: {},
+                onChoose: { _ in }, onResolveExisting: { _ in }, onKeepExisting: {}, onPause: {}, onResume: {},
+            )
+        }
+    }
+
+    #Preview("Every state") {
+        ScrollView {
+            VStack(spacing: D.Spacing.list) {
+                ForEach(DownloadItem.samples) { DownloadCardView(preview: $0) }
+            }
+            .padding(D.Spacing.listInset)
+        }
+        .frame(width: 640, height: 1100)
+        .background(D.ink)
+    }
+
+    #Preview("Failed") {
+        DownloadCardView(preview: .sample(.failed)).padding().frame(width: 640)
+    }
+#endif

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/orpheus-ui/danny/security/advisories/new
+    about: Privately — please don't open a public issue for security problems.
+  - name: A site doesn't download
+    url: https://github.com/yt-dlp/yt-dlp/issues
+    about: If the site also fails with yt-dlp on its own, it's a yt-dlp issue — report it there.

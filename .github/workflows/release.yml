@@ -1,0 +1,186 @@
+name: Release
+
+# Merging a release PR into main publishes a DRAFT GitHub Release for the
+# version in project.yml, to be reviewed and published by hand. Process and the
+# secrets that enable signing/notarization: docs/releasing.md.
+#
+# Without Apple secrets the build is ad-hoc signed and not notarized, and the
+# release notes say so. Pull requests that touch the pipeline, and manual runs,
+# build everything as a dry run and upload it as a workflow artifact.
+#
+# Two jobs on purpose: `build` has read-only access; only `publish`, which runs
+# for pushes to main alone, can write a release.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - scripts/release.sh
+      - scripts/fetch-dependencies.sh
+      - scripts/build-ffmpeg.sh
+      - scripts/check-ffmpeg.sh
+      - Tests/Fixtures/media/**
+      - scripts/helper.entitlements
+      - .github/workflows/release.yml
+      - project.yml
+      - cliff.toml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: Build, sign and notarize
+    runs-on: macos-26
+    timeout-minutes: 60
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    env:
+      HAS_SIGNING: ${{ secrets.DEVELOPER_ID_P12_BASE64 != '' }}
+      # Notarization takes minutes; PR dry runs skip it, manual runs and releases do it.
+      HAS_NOTARY: ${{ github.event_name != 'pull_request' && secrets.NOTARY_KEY_P8_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the build number and git-cliff need full history
+          # The job runs ffmpeg's and LAME's own configure/make; keep the token out of reach.
+          persist-credentials: false
+
+      - name: Version
+        id: version
+        run: |
+          v=$(scripts/release.sh version)
+          echo "$v" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' \
+            || { echo "::error::MARKETING_VERSION '$v' in project.yml is not x.y.z"; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Tools
+        run: |
+          brew install xcodegen xcbeautify git-cliff
+          xcrun metal --version > /dev/null 2>&1 || xcodebuild -downloadComponent MetalToolchain
+
+      # ffmpeg is built from source (scripts/build-ffmpeg.sh). The key is the build
+      # script's hash, so a cached build is always the one the script would make;
+      # the script runs scripts/check-ffmpeg.sh on it either way.
+      - name: Cache the ffmpeg build
+        uses: actions/cache@v6
+        with:
+          path: build/deps
+          key: ffmpeg-${{ hashFiles('scripts/build-ffmpeg.sh') }}
+
+      - name: Bundle yt-dlp and ffmpeg (pinned, checksum-verified)
+        run: scripts/fetch-dependencies.sh
+
+      - name: Import Developer ID certificate
+        if: env.HAS_SIGNING == 'true'
+        env:
+          P12_BASE64: ${{ secrets.DEVELOPER_ID_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          password=$(openssl rand -hex 24)
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          echo "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -P "$P12_PASSWORD" -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple: -k "$password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          identity=$(security find-identity -v -p codesigning "$keychain" \
+            | awk -F'"' '/Developer ID Application/ { print $2; exit }')
+          [ -n "$identity" ] || { echo "::error::The certificate has no 'Developer ID Application' identity"; exit 1; }
+          echo "DEVELOPER_ID=$identity" >> "$GITHUB_ENV"
+
+      - name: Notary key
+        if: env.HAS_NOTARY == 'true'
+        env:
+          KEY_P8_BASE64: ${{ secrets.NOTARY_KEY_P8_BASE64 }}
+          KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: |
+          echo "$KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/notary.p8"
+          {
+            echo "NOTARY_KEY_PATH=$RUNNER_TEMP/notary.p8"
+            echo "NOTARY_KEY_ID=$KEY_ID"
+            echo "NOTARY_ISSUER_ID=$ISSUER_ID"
+          } >> "$GITHUB_ENV"
+
+      - name: Build
+        run: scripts/release.sh build
+      - name: Sign
+        run: scripts/release.sh sign
+      - name: Notarize app
+        run: scripts/release.sh notarize build/release/Danny.app
+      - name: Package
+        run: scripts/release.sh package
+      - name: Notarize disk image
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: scripts/release.sh notarize "build/release/Danny-$VERSION.dmg"
+      # LGPL: the exact source of the bundled ffmpeg goes out with every release.
+      - name: Source of the bundled ffmpeg
+        run: cp "$(ls -d build/deps/ffmpeg-*/source | tail -1)"/* build/release/
+
+      - name: Checksums and release notes
+        run: scripts/release.sh checksums && scripts/release.sh notes
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: danny-${{ steps.version.outputs.version }}
+          path: |
+            build/release/*.dmg
+            build/release/*.zip
+            build/release/SHA256SUMS.txt
+            build/release/notes.md
+            build/release/*.tar.*
+          retention-days: ${{ github.event_name == 'push' && 30 || 7 }}
+          if-no-files-found: error
+
+      - name: Remove signing material
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2> /dev/null || true
+          rm -f "$RUNNER_TEMP/notary.p8"
+
+  publish:
+    name: Draft GitHub Release
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.build.outputs.version }}
+    steps:
+      - name: Already released?
+        id: existing
+        run: |
+          if gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::v$VERSION already has a release. Bump the version in a release PR to publish a new one."
+          fi
+
+      - uses: actions/download-artifact@v8
+        if: steps.existing.outputs.skip != 'true'
+        with:
+          name: danny-${{ needs.build.outputs.version }}
+          path: release
+
+      - name: Create draft
+        if: steps.existing.outputs.skip != 'true'
+        run: |
+          prerelease=""
+          case "$VERSION" in 0.*) prerelease="--prerelease" ;; esac
+          gh release create "v$VERSION" --repo "$GITHUB_REPOSITORY" --draft $prerelease \
+            --target "$GITHUB_SHA" --title "Danny $VERSION" --notes-file release/notes.md \
+            "release/Danny-$VERSION.dmg" "release/Danny-$VERSION.zip" release/SHA256SUMS.txt \
+            release/*.tar.*
+          echo "::notice::Draft release v$VERSION created — review and publish it on GitHub."

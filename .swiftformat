@@ -1,0 +1,13 @@
+# SwiftFormat — `make format` applies it, `make lint` and CI check it.
+--swiftversion 6.2
+--exclude Danny.xcodeproj,DerivedData,build
+
+--indent 4
+--maxwidth 120
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+--closingparen balanced
+
+# One-line bodies (`guard x else { return }`) read fine here; keep them.
+--disable wrapIfStatementBodies,wrapPropertyBodies,wrapFunctionBodies,wrapIfExpressionBodies

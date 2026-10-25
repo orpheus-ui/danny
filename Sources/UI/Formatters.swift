@@ -3,23 +3,47 @@ import Foundation
 enum Format {
     static func size(_ bytes: Int64?) -> String? {
         guard let bytes, bytes > 0 else { return nil }
-        let gb = Double(bytes) / 1_000_000_000
-        if gb >= 1 {
-            return gb >= 10 ? String(format: "%.0f GB", gb) : String(format: "%.2f GB", gb)
+        let gigabytes = Double(bytes) / 1_000_000_000
+        if gigabytes >= 1 {
+            return String(format: gigabytes >= 10 ? "%.0f GB" : "%.2f GB", gigabytes)
         }
-        let mb = Double(bytes) / 1_000_000
-        if mb >= 1 { return String(format: "%.0f MB", mb) }
-        let kb = Double(bytes) / 1000
-        return String(format: "%.0f KB", kb)
+        let megabytes = Double(bytes) / 1_000_000
+        if megabytes >= 1 { return String(format: "%.0f MB", megabytes) }
+        return String(format: "%.0f KB", Double(bytes) / 1000)
     }
 
     static func speed(_ bytesPerSecond: Double?) -> String? {
         guard let bytesPerSecond, bytesPerSecond > 0 else { return nil }
         let mbps = bytesPerSecond / 1_000_000
-        if mbps >= 1 { return String(format: "%.0f MBps", mbps) }
+        if mbps >= 1 { return String(format: "%.0f MB/s", mbps) }
         let kbps = bytesPerSecond / 1000
-        if kbps >= 1 { return String(format: "%.0f KBps", kbps) }
-        return String(format: "%.0f Bps", bytesPerSecond)
+        if kbps >= 1 { return String(format: "%.0f KB/s", kbps) }
+        return String(format: "%.0f B/s", bytesPerSecond)
+    }
+
+    /// A speed limit: "5 MB/s", "2.5 MB/s". Limits are never below 0.5 MB/s.
+    static func limit(_ bytesPerSecond: Int) -> String {
+        "\((Double(bytesPerSecond) / 1_000_000).formatted(.number.precision(.fractionLength(0 ... 1)))) MB/s"
+    }
+
+    /// The speed as VoiceOver reads it: "4.1 megabytes per second".
+    static func spokenSpeed(_ bytesPerSecond: Double?) -> String? {
+        guard let bytesPerSecond, bytesPerSecond > 0 else { return nil }
+        let unit: UnitInformationStorage = bytesPerSecond >= 1_000_000 ? .megabytes : .kilobytes
+        let amount = Measurement(value: bytesPerSecond, unit: UnitInformationStorage.bytes).converted(to: unit)
+        let style = Measurement<UnitInformationStorage>.FormatStyle(
+            width: .wide, locale: Locale(identifier: "en_US"), usage: .asProvided,
+            numberFormatStyle: .number.precision(.fractionLength(0 ... 1)),
+        )
+        return "\(amount.formatted(style)) per second"
+    }
+
+    /// "45 s left", "3 min left", "2 h left".
+    static func remaining(_ seconds: TimeInterval?) -> String? {
+        guard let seconds, seconds.isFinite, seconds >= 0 else { return nil }
+        if seconds < 60 { return "\(max(1, Int(seconds.rounded(.up)))) s left" }
+        if seconds < 3600 { return "\(Int((seconds / 60).rounded())) min left" }
+        return "\(Int((seconds / 3600).rounded())) h left"
     }
 
     static func percent(_ fraction: Double?) -> String? {

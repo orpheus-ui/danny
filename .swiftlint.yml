@@ -1,0 +1,47 @@
+# SwiftLint — catches what a formatter can't. Formatting itself is
+# SwiftFormat's job (.swiftformat), so rules that fight it are off.
+included:
+  - Sources
+  - Tests
+excluded:
+  - Danny.xcodeproj
+  - DerivedData
+  - build
+
+disabled_rules:
+  - trailing_comma # SwiftFormat owns commas
+  - opening_brace # SwiftFormat puts `{` on its own line after a wrapped condition
+
+opt_in_rules:
+  - empty_count
+  - first_where
+  - contains_over_filter_count
+  - sorted_first_last
+  - weak_delegate
+
+analyzer_rules: # `swiftlint analyze`, needs a build log
+  - unused_declaration
+  - unused_import
+
+line_length:
+  warning: 120
+  error: 160
+  ignores_urls: true
+
+identifier_name:
+  excluded: [id, x, y, t, D, url, to]
+
+type_name:
+  excluded: [D]
+
+function_body_length:
+  warning: 60
+  error: 100
+
+type_body_length:
+  warning: 300
+  error: 500
+
+file_length:
+  warning: 400
+  error: 600

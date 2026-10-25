@@ -58,6 +58,5 @@ make_vector_imageset "icon-settings"    "icon-settings.svg"
 make_vector_imageset "menu-bar-mark"    "menu-bar-mark.svg" "template"
 
 make_raster_imageset "noise-texture"    "noise-texture.png"
-make_raster_imageset "sample-thumbnail" "sample-thumbnail.png"
 
 echo "Asset catalog built at $ASSETS"

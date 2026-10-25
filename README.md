@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="Resources/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width="128" height="128" alt="Danny icon">
+<img src="Resources/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width="128" height="128" alt="Danny's icon, a purple character with a calm face">
 
 # Danny
 

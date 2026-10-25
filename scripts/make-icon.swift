@@ -7,6 +7,15 @@ let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 let outDir = root.appendingPathComponent("Resources/Assets.xcassets/AppIcon.appiconset")
 try? FileManager.default.createDirectory(at: outDir, withIntermediateDirectories: true)
 
+/// The character layer (Resources/Icons/app-icon-layer.webp): a sphere with a face and
+/// its glow, placed large and low so the icon's edges cut it.
+let layerURL = root.appendingPathComponent("Resources/Icons/app-icon-layer.webp")
+guard let source = CGImageSourceCreateWithURL(layerURL as CFURL, nil),
+      let layer = CGImageSourceCreateImageAtIndex(source, 0, nil)
+else { fatalError("Can't read \(layerURL.path)") }
+
+/// Draws on Apple's macOS icon grid, in points of a 1024 canvas: an 824-point rounded
+/// square with 100-point margins, so macOS shows it like any native icon.
 func renderIcon(side: CGFloat) -> CGImage {
     let ctx = CGContext(
         data: nil, width: Int(side), height: Int(side),
@@ -14,81 +23,41 @@ func renderIcon(side: CGFloat) -> CGImage {
         space: CGColorSpace(name: CGColorSpace.sRGB)!,
         bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue,
     )!
+    ctx.interpolationQuality = .high
+    ctx.scaleBy(x: side / 1024, y: side / 1024)
 
-    let s = side
-    let rect = CGRect(x: 0, y: 0, width: s, height: s)
-    let radius = s * 0.2237
-    let shape = CGPath(roundedRect: rect, cornerWidth: radius, cornerHeight: radius, transform: nil)
+    let body = CGRect(x: 100, y: 100, width: 824, height: 824)
+    let shape = CGPath(roundedRect: body, cornerWidth: 185, cornerHeight: 185, transform: nil)
+
+    // The drop shadow every macOS icon sits on.
+    ctx.saveGState()
+    ctx.setShadow(offset: CGSize(width: 0, height: -10), blur: 24, color: CGColor(gray: 0, alpha: 0.35))
+    ctx.addPath(shape)
+    ctx.setFillColor(CGColor(gray: 0.12, alpha: 1))
+    ctx.fillPath()
+    ctx.restoreGState()
 
     ctx.addPath(shape)
     ctx.clip()
-
-    let bg = CGGradient(colorsSpace: nil, colors: [
-        CGColor(red: 0.086, green: 0.075, blue: 0.118, alpha: 1),
-        CGColor(red: 0.043, green: 0.031, blue: 0.067, alpha: 1),
+    let background = CGGradient(colorsSpace: nil, colors: [
+        CGColor(red: 0.165, green: 0.161, blue: 0.176, alpha: 1),
+        CGColor(red: 0.098, green: 0.094, blue: 0.110, alpha: 1),
     ] as CFArray, locations: [0, 1])!
-    ctx.drawLinearGradient(bg, start: CGPoint(x: 0, y: s), end: CGPoint(x: s, y: 0), options: [])
+    ctx.drawLinearGradient(background, start: CGPoint(x: 512, y: 924), end: CGPoint(x: 512, y: 100), options: [])
 
-    let glowCenter = CGPoint(x: s * 0.5, y: s * 0.62)
-    let glow = CGGradient(colorsSpace: nil, colors: [
-        CGColor(red: 0.463, green: 0.400, blue: 1, alpha: 0.55),
-        CGColor(red: 0.463, green: 0.400, blue: 1, alpha: 0),
-    ] as CFArray, locations: [0, 1])!
-    ctx.drawRadialGradient(
-        glow, startCenter: glowCenter, startRadius: 0,
-        endCenter: glowCenter, endRadius: s * 0.55, options: [],
-    )
+    // The sphere is 1050 px across in the layer and 947 points here, centred at
+    // (452, 336) from the bottom left: the face lands in the middle, the top of the
+    // sphere a fifth of the way down, and the left, right and bottom edges cut it.
+    let scale: CGFloat = 947 / 1050
+    let width = CGFloat(layer.width) * scale, height = CGFloat(layer.height) * scale
+    let sphereCentre = CGPoint(x: 730 * scale, y: (CGFloat(layer.height) - 770) * scale)
+    ctx.draw(layer, in: CGRect(x: 452 - sphereCentre.x, y: 336 - sphereCentre.y, width: width, height: height))
 
-    let chipSide = s * 0.52
-    let chipRect = CGRect(
-        x: (s - chipSide) / 2, y: (s - chipSide) / 2 - s * 0.01,
-        width: chipSide, height: chipSide,
-    )
-    let chipRadius = chipSide * 0.28
-    ctx.saveGState()
-    ctx.addPath(CGPath(roundedRect: chipRect, cornerWidth: chipRadius, cornerHeight: chipRadius, transform: nil))
-    ctx.clip()
-    let chip = CGGradient(colorsSpace: nil, colors: [
-        CGColor(red: 0.337, green: 0.137, blue: 1, alpha: 1),
-        CGColor(red: 0.635, green: 0.584, blue: 1, alpha: 1),
-    ] as CFArray, locations: [0, 1])!
-    ctx.drawLinearGradient(
-        chip,
-        start: CGPoint(x: chipRect.minX, y: chipRect.maxY),
-        end: CGPoint(x: chipRect.maxX, y: chipRect.minY), options: [],
-    )
-    ctx.restoreGState()
-
-    let white = CGColor(red: 1, green: 1, blue: 1, alpha: 1)
-    let cx = s / 2
-    let arrowTop = chipRect.maxY - chipSide * 0.26
-    let arrowBottom = chipRect.minY + chipSide * 0.30
-    let shaftHalf = chipSide * 0.055
-
-    ctx.setFillColor(white)
-    ctx.fill(CGRect(x: cx - shaftHalf, y: arrowBottom, width: shaftHalf * 2, height: arrowTop - arrowBottom))
-
-    let headW = chipSide * 0.24
-    let headH = chipSide * 0.17
-    let head = CGMutablePath()
-    head.move(to: CGPoint(x: cx - headW / 2, y: arrowBottom + headH))
-    head.addLine(to: CGPoint(x: cx + headW / 2, y: arrowBottom + headH))
-    head.addLine(to: CGPoint(x: cx, y: arrowBottom))
-    head.closeSubpath()
-    ctx.addPath(head)
-    ctx.fillPath()
-
-    let trayY = chipRect.minY + chipSide * 0.16
-    let trayHalf = chipSide * 0.21
-    let trayLine = CGRect(x: cx - trayHalf, y: trayY, width: trayHalf * 2, height: shaftHalf * 1.6)
-    let trayPath = CGPath(
-        roundedRect: trayLine,
-        cornerWidth: shaftHalf * 0.8,
-        cornerHeight: shaftHalf * 0.8,
-        transform: nil,
-    )
-    ctx.addPath(trayPath)
-    ctx.fillPath()
+    // A hairline inner edge, as on Apple's own icons.
+    ctx.addPath(shape)
+    ctx.setStrokeColor(CGColor(gray: 1, alpha: 0.08))
+    ctx.setLineWidth(3)
+    ctx.strokePath()
 
     return ctx.makeImage()!
 }

@@ -30,7 +30,7 @@ its own PR, delete it from here when it merges.
 
 - **Say when quality falls short.** If the best format is below the chosen quality,
   the card should say so instead of quietly downloading 360p.
-- **UI snapshot tests** for every card state (M1).
+- **UI snapshot tests** for every card state (M1). `DownloadItem.sample(_:)` and `DownloadCardView(preview:)` render one state on its own.
 - **App size.** The bundled tools are most of the app: yt-dlp's PyInstaller binary
   (37 MB, universal), and ffmpeg and ffprobe at 17 MB each now that they're built
   for Danny (ADR-013; the old static ffmpeg alone was 161 MB). Options: download

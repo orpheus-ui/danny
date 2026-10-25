@@ -65,7 +65,7 @@ struct ProgressBarView: View {
 
     private func fill(_ style: FillStyle, width: CGFloat, track: CGFloat) -> some View {
         EasedFill(width: width, style: style)
-            .opacity(item.status == .paused ? 0.45 : 1)
+            .opacity(Self.fillOpacity(for: item.status))
             .overlay(alignment: .leading) {
                 ProgressLight(trackWidth: track, isRunning: sweeps)
             }
@@ -119,6 +119,11 @@ struct ProgressBarView: View {
         let dotEnd: Color
     }
 
+    /// Dimmed while the fill stands for no progress yet (Fetching) or for stopped progress (Paused).
+    static func fillOpacity(for status: ItemStatus) -> Double {
+        status == .resolving || status == .paused ? D.dimmedFill : 1
+    }
+
     private var fillStyle: FillStyle? {
         switch item.status {
         case .queued, .choosing, .existing:
@@ -149,7 +154,8 @@ struct ProgressBarView: View {
             }
         }
         .font(D.Font.progressLabel)
-        .foregroundStyle(D.progressLabel)
+        // An empty track's label is quieter, like the meta line.
+        .foregroundStyle(fillStyle == nil ? D.textSecondary : D.progressLabel)
         .shadow(color: .black.opacity(0.3), radius: 1, y: 0.5)
         .lineLimit(1)
         .fixedSize()
@@ -157,11 +163,15 @@ struct ProgressBarView: View {
     }
 
     private var labelParts: [String] {
+        Self.labelParts(for: item, waitsForWiFi: manager?.waitsForWiFi == true)
+    }
+
+    static func labelParts(for item: DownloadItem, waitsForWiFi: Bool) -> [String] {
         switch item.status {
-        case .queued: manager?.waitsForWiFi == true ? ["Waiting for Wi-Fi"] : []
+        case .queued: [waitsForWiFi ? "Waiting for Wi-Fi" : "Queued"]
         case .choosing, .existing: []
         case .resolving: ["Fetching…"]
-        case .downloading: downloadingParts
+        case .downloading: downloadingParts(item)
         case .processing: ["Merging…"]
         case .paused: Format.percent(item.fractionCompleted).map { ["Paused", "·", $0] } ?? ["Paused"]
         case .finished: ["Done"]
@@ -169,7 +179,7 @@ struct ProgressBarView: View {
         }
     }
 
-    private var downloadingParts: [String] {
+    private static func downloadingParts(_ item: DownloadItem) -> [String] {
         let speed = Format.speed(item.speedBytesPerSecond)
         guard let percent = Format.percent(item.fractionCompleted) else { return [speed ?? "Starting…"] }
         return speed.map { [percent, "-", $0] } ?? [percent]

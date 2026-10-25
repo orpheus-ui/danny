@@ -13,6 +13,15 @@ extension DownloadManager {
         SignInSite.site(for: url)?.signsInOnlyWhenAsked == true ? [] : cookies
     }
 
+    /// Retries the downloads that stopped to ask for a sign-in on `site`, once it has one.
+    func retrySignInFailures(on site: SignInSite) {
+        Self.waitingForSignIn(items, on: site).forEach(retry(id:))
+    }
+
+    static func waitingForSignIn(_ items: [DownloadItem], on site: SignInSite) -> [UUID] {
+        items.filter { $0.asksForSignIn && SignInSite.site(for: $0.sourceURL, in: [site]) != nil }.map(\.id)
+    }
+
     /// The retry's arguments: other YouTube clients, plus the session's cookies when a
     /// signed-out try was asked to sign in.
     static func retryArguments(after message: String, tried: [String], signedIn: [String]) -> [String] {

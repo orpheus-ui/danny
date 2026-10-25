@@ -28,10 +28,10 @@ struct CardStateTests {
         }
     }
 
-    @Test
-    func `every state has a sample card`() {
-        for status in Set(DownloadItem.samples.map(\.status)) {
-            #expect(DownloadItem.sample(status).status == status)
-        }
+    @Test(arguments: [
+        ItemStatus.queued, .resolving, .choosing, .existing, .downloading, .processing, .paused, .finished, .failed,
+    ])
+    func `every state has a sample card`(status: ItemStatus) {
+        #expect(DownloadItem.samples.contains { $0.status == status })
     }
 }

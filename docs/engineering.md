@@ -56,6 +56,9 @@ big-bang rewrites.
 - **Match the file you're in.** One type per file where practical; files under ~400 lines.
 - **Concurrency:** UI state is `@MainActor`; process and file work runs off it
   (`@concurrent`). Never block a cooperative thread (`waitUntilExit`, semaphores).
+- **Read a child's output with `Pipe.lines`**, not `FileHandle.bytes`: that reads
+  every handle in turn on one queue, so one quiet child holds back all the others.
+  A child that might never answer gets a time limit that kills it.
 - **Don't swallow errors.** Handle them, or let them reach a boundary that
   reports them to the user. `try?` needs a reason.
 - **Validate at boundaries** — anything from a child process, a web page or the

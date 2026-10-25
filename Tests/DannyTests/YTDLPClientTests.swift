@@ -3,6 +3,18 @@ import Foundation
 import Testing
 
 struct YTDLPClientTests {
+    private let scratch = TestScratch()
+
+    /// A stand-in yt-dlp that runs `script`.
+    private func fakeYTDLP(_ script: String) throws -> YTDLPClient.Binaries {
+        let folder = scratch.folder()
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let binary = folder.appendingPathComponent("yt-dlp")
+        try Data("#!/bin/sh\n\(script)\n".utf8).write(to: binary)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: binary.path)
+        return .init(ytdlp: binary, ffmpegDirectory: nil)
+    }
+
     @Test func `parses progress line`() throws {
         let event = try #require(YTDLPClient.parseProgressLine("@P|1048576|4194304|2.00MiB/s"))
         guard case let .progress(downloaded, total, speed, _) = event else {
@@ -62,5 +74,31 @@ struct YTDLPClientTests {
 
     @Test func `rejects speed without number`() {
         #expect(YTDLPClient.parseSpeed("Unknown B/s") == nil)
+    }
+
+    /// A yt-dlp that never answers. Its output ends only when the process does, so
+    /// an early answer means it was killed.
+    @Test func `a stalled version check is stopped and its process killed`() async throws {
+        let stalled = try fakeYTDLP("exec sleep 10")
+        var client = YTDLPClient()
+        client.versionTimeout = .milliseconds(300)
+        let start = ContinuousClock.now
+        #expect(await client.version(binaries: stalled) == nil)
+        #expect(ContinuousClock.now - start < .seconds(5))
+    }
+
+    /// Each yt-dlp's output is read on its own: a quiet one (a cold start, a slow
+    /// page) used to hold back every other one's, downloads' progress included.
+    @Test func `a quiet yt-dlp doesn't hold back another one's output`() async throws {
+        let quiet = try fakeYTDLP("exec sleep 10")
+        // One line in two writes, ended the Windows way: lines are joined across reads.
+        let answering = try fakeYTDLP(#"printf 2026.; sleep 0.1; printf '10.21\r\n'"#)
+        let client = YTDLPClient()
+        let waiting = Task { await client.version(binaries: quiet) }
+        defer { waiting.cancel() }
+        try await Task.sleep(for: .milliseconds(300))
+        let start = ContinuousClock.now
+        #expect(await client.version(binaries: answering) == "2026.10.21")
+        #expect(ContinuousClock.now - start < .seconds(5))
     }
 }

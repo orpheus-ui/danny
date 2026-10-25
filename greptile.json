@@ -12,7 +12,7 @@
     "rules": [
       {
         "rule": "Views don't start processes or touch the file system; that work belongs in Services.",
-        "scope": ["Sources/Views/**", "Sources/UI/**"]
+        "scope": ["Sources/Views/**", "Sources/UI/**", "Sources/Sniffer/*Screen.swift"]
       },
       {
         "rule": "Services and Models don't import SwiftUI (the core stays UI-free).",

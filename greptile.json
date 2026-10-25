@@ -1,0 +1,40 @@
+{
+  "strictness": 2,
+  "autoReview": ["open", "push"],
+  "includeBranches": ["development", "main"],
+  "ignorePatterns": "Resources/Assets.xcassets/**\nCHANGELOG.md",
+  "shouldUpdateDescription": false,
+  "fixWithAI": false,
+  "includeConfidenceScore": true,
+  "includeSequenceDiagram": false,
+  "summarySection": { "included": true, "collapsible": true, "defaultOpen": false },
+  "customContext": {
+    "rules": [
+      {
+        "rule": "Views don't start processes or touch the file system; that work belongs in Services.",
+        "scope": ["Sources/Views/**", "Sources/UI/**"]
+      },
+      {
+        "rule": "Services and Models don't import SwiftUI (the core stays UI-free).",
+        "scope": ["Sources/Services/**", "Sources/Models/**"]
+      },
+      {
+        "rule": "Nothing runs while idle: no repeating timers, polling or animations when nothing is changing. Custom animation is capped at 30 fps and stops when hidden; updates from child processes are throttled to a few per second."
+      },
+      {
+        "rule": "UI state is @MainActor; process and file work runs off the main actor."
+      },
+      {
+        "rule": "Anything from a child process, a web page or the network is validated before use."
+      },
+      {
+        "rule": "A behavior change or bug fix comes with a Swift Testing test in Tests/DannyTests."
+      }
+    ],
+    "files": [
+      { "path": "docs/architecture.md", "description": "How the pieces fit and the layer rules" },
+      { "path": "docs/engineering.md", "description": "Conventions, tests and the resource budget" },
+      { "path": "docs/decisions.md", "description": "Architecture decision records (ADRs)" }
+    ]
+  }
+}

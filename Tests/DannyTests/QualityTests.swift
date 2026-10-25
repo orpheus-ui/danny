@@ -66,8 +66,18 @@ struct QualityTests {
     @Test
     func `audio is extracted, as AAC when it has to play everywhere`() {
         #expect(QualitySelection.arguments(for: .audio, format: .compatible)
-            == ["-f", "ba[acodec^=mp4a]/ba", "-x", "--audio-format", "m4a"])
-        #expect(QualitySelection.arguments(for: .audio, format: .highest) == ["-f", "ba", "-x"])
+            == ["-f", "ba[acodec^=mp4a]/ba/b", "-x", "--audio-format", "m4a"])
+        #expect(QualitySelection.arguments(for: .audio, format: .highest) == ["-f", "ba/b", "-x"])
+    }
+
+    /// A page with only combined audio and video (a direct MP4 link) still gives audio:
+    /// the selector falls back to the combined stream and `-x` extracts its audio.
+    @Test
+    func `audio falls back to a combined stream`() {
+        for format in [FormatPreference.compatible, .highest] {
+            let arguments = QualitySelection.arguments(for: .audio, format: format)
+            #expect(arguments[1].hasSuffix("/b"))
+        }
     }
 
     @Test

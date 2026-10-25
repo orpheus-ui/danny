@@ -146,14 +146,34 @@ struct ExistingFileTests {
     }
 
     @Test func `replace moves the old file to the Trash and downloads again`() async throws {
-        let old = try file("Clip [abc].webm")
+        let engine = FakeEngine()
+        let manager = try manager(engine, policy: .replace)
+        manager.moveToTrash = { try FileManager.default.removeItem(at: $0) }
+        // The history ties the file to this site: an earlier card from it ended there.
+        try add(manager)
+        let first = try await settle(manager, until: .finished)
+        let old = try file("Clip [abc].mp4")
+        #expect(same(first.filePath, old))
+
+        try add(manager)
+        for _ in 0 ..< 200 where engine.calledSuffixes.count < 2 {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(!FileManager.default.fileExists(atPath: old.path))
+        #expect(engine.calledSuffixes == ["", ""])
+    }
+
+    /// Another site may use the same video ID: Replace mustn't trash its file.
+    @Test func `replace asks about a file the history doesn't tie to the site`() async throws {
+        let other = try file("Someone else's video [abc].mp4")
         let engine = FakeEngine()
         let manager = try manager(engine, policy: .replace)
         manager.moveToTrash = { try FileManager.default.removeItem(at: $0) }
         try add(manager)
-        _ = try await settle(manager, until: .finished)
-        #expect(!FileManager.default.fileExists(atPath: old.path))
-        #expect(engine.calledSuffixes == [""])
+        let item = try await settle(manager, until: .existing)
+        #expect(same(item.existingFile?.path, other))
+        #expect(FileManager.default.fileExists(atPath: other.path))
+        #expect(engine.calledSuffixes.isEmpty)
     }
 
     @Test func `keeping the old file ends the card on it`() async throws {

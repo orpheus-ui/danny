@@ -13,6 +13,12 @@ extension DownloadManager {
         else { return outputArguments(for: url) }
         switch item.existingFilePolicy ?? settings.existingFiles {
         case .replace:
+            // Two sites can use the same video ID: only a file the history ties to this
+            // link's site goes to the Trash. Any other is asked about.
+            guard downloadedFromSameSite(existing, as: item) else {
+                await askAboutExisting(itemID, file: existing)
+                return nil
+            }
             do {
                 try moveToTrash(existing)
             } catch {
@@ -62,6 +68,15 @@ extension DownloadManager {
     /// The file already downloaded for this video, in any of those folders.
     func existingFile(id: String, audio: Bool, url: URL) -> URL? {
         directories(for: url).lazy.compactMap { ExistingFiles.find(id: id, audio: audio, in: $0) }.first
+    }
+
+    /// Whether a finished card from the same site ended on this file.
+    func downloadedFromSameSite(_ file: URL, as item: DownloadItem) -> Bool {
+        let path = file.resolvingSymlinksInPath().path
+        return items.contains { other in
+            other.host == item.host
+                && other.filePath.map { URL(fileURLWithPath: $0).resolvingSymlinksInPath().path } == path
+        }
     }
 
     /// Puts the card in `.existing`, showing the file found. Like a quality pick, the

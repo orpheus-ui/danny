@@ -37,11 +37,17 @@ nonisolated extension Pipe {
 private final nonisolated class PendingBytes: @unchecked Sendable {
     private var bytes = Data()
 
-    /// The lines `chunk` completes; an empty chunk, the end, flushes the rest.
+    /// The lines `chunk` completes; an empty chunk, the end, flushes the rest. Only new
+    /// bytes are searched for a break, so `-J`'s one long line of JSON costs one pass.
     func lines(adding chunk: Data) -> [String] {
+        let start = bytes.endIndex
         bytes.append(chunk)
-        var pieces = bytes.split(omittingEmptySubsequences: false) { $0 == 0x0A || $0 == 0x0D }
-        bytes = chunk.isEmpty ? Data() : Data(pieces.removeLast())
-        return pieces.filter { !$0.isEmpty }.compactMap { String(bytes: $0, encoding: .utf8) }
+        let end = chunk.isEmpty ? bytes.endIndex : bytes[start...].lastIndex(where: Self.isBreak).map { $0 + 1 }
+        guard let end else { return [] }
+        let complete = bytes[..<end]
+        bytes = Data(bytes[end...])
+        return complete.split(whereSeparator: Self.isBreak).compactMap { String(bytes: $0, encoding: .utf8) }
     }
+
+    private static func isBreak(_ byte: UInt8) -> Bool { byte == 0x0A || byte == 0x0D }
 }

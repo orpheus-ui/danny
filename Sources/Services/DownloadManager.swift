@@ -37,7 +37,7 @@ final class DownloadManager {
 
     let settings: AppSettings
     /// Signed-in sites; a run passes the link's site cookies to yt-dlp when present.
-    var sessions: SiteSessions?
+    var sessions: (any CookieSource)?
     let youTubeTokens = YouTubeTokens()
 
     let client: any DownloadEngine
@@ -96,10 +96,7 @@ final class DownloadManager {
     @discardableResult
     func add(url: URL) -> Bool {
         let normalized = Self.normalize(url)
-        if let existing = items.first(where: {
-            Self.normalize($0.sourceURL) == normalized && $0.status.isActive
-        }) {
-            _ = existing
+        if items.contains(where: { Self.normalize($0.sourceURL) == normalized && $0.status.isActive }) {
             return false
         }
         var item = DownloadItem(url: normalized)
